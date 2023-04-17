@@ -267,7 +267,7 @@ namespace StockDory
 
             template<Color We, Color By>
             [[nodiscard]]
-            constexpr inline std::pair<BitBoard, BitBoard> Pin(Square sq) const
+            constexpr inline std::pair<BitBoard, BitBoard> Pin(const Square sq) const
             {
                 BitBoard straight = BBDefault;
                 BitBoard diagonal = BBDefault;
