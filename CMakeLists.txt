@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 project(StockDory)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -fconstexpr-steps=100000000")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -ftime-report")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx512f -mavx512bw")
 
