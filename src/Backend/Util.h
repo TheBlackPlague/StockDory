@@ -11,8 +11,6 @@
 
 #include "Type/Square.h"
 
-#include "../External/MantaRay/src/IO/BinaryFileStream.h"
-
 namespace StockDory
 {
 

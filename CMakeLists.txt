@@ -8,18 +8,25 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx512f -mavx512bw")
 
 set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
 
-file(GLOB MantaRaySRC
-        "src/External/MantaRay/src/Activation/*.h"
-        "src/External/MantaRay/src/Backend/*.h"
-        "src/External/MantaRay/src/External/*.hpp"
-        "src/External/MantaRay/src/IO/*.h"
-        "src/External/MantaRay/src/Perspective/*.h"
-        "src/External/MantaRay/src/AccumulatorOperation.h"
-        "src/External/MantaRay/src/SIMD.h")
+include(FetchContent)
 
-add_library(MantaRay ${MantaRaySRC})
+FetchContent_Declare(ftxui
+        GIT_REPOSITORY https://github.com/ArthurSonzogni/ftxui
+        GIT_TAG v3.0.0
+        )
 
-set_target_properties(MantaRay PROPERTIES LINKER_LANGUAGE CXX)
+FetchContent_GetProperties(ftxui)
+if(NOT ftxui_POPULATED)
+    FetchContent_Populate(ftxui)
+    add_subdirectory(${ftxui_SOURCE_DIR} ${ftxui_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
+FetchContent_Declare(MantaRay
+        GIT_REPOSITORY https://github.com/TheBlackPlague/MantaRay
+        GIT_TAG master
+        )
+
+FetchContent_MakeAvailable(MantaRay)
 
 file(GLOB StockDoryBackendType
         "src/Backend/Type/*.h"
@@ -27,4 +34,9 @@ file(GLOB StockDoryBackendType
         "src/Backend/Move/*.h"
         "src/Backend/*.h")
 
-add_executable(StockDory src/Terminal/main.cpp ${StockDoryBackendType})
+file(GLOB StockDoryFrontendType
+        "src/Terminal/UI/*.h")
+
+add_executable(StockDory src/Terminal/main.cpp ${StockDoryBackendType} ${StockDoryFrontendType})
+
+target_link_libraries(StockDory ftxui::screen ftxui::dom ftxui::component MantaRay)

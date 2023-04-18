@@ -212,8 +212,9 @@ namespace StockDory
 
             template<Color By>
             [[nodiscard]]
-            constexpr inline std::pair<BitBoard, bool> Check(const Square sq) const
+            constexpr inline std::pair<BitBoard, bool> Check() const
             {
+                Square   sq     = ToSquare(BB[Opposite(By)][King]);
                 uint8_t  count  = 0;
                 BitBoard checks = BBDefault;
 
@@ -267,8 +268,9 @@ namespace StockDory
 
             template<Color We, Color By>
             [[nodiscard]]
-            constexpr inline std::pair<BitBoard, BitBoard> Pin(const Square sq) const
+            constexpr inline std::pair<BitBoard, BitBoard> Pin() const
             {
+                Square   sq       = ToSquare(BB[We][King]);
                 BitBoard straight = BBDefault;
                 BitBoard diagonal = BBDefault;
 
