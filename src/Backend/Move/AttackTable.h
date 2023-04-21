@@ -8,7 +8,10 @@
 
 #include <array>
 
+#include "BlackMagicFactory.h"
+
 #include "../Type/BitBoard.h"
+#include "../Type/Piece.h"
 
 #include "../Util.h"
 

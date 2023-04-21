@@ -21,6 +21,8 @@
 #include "Move/UtilityTable.h"
 #include "Move/BlackMagicFactory.h"
 
+#include "../External/strutil.h"
+
 #include "Util.h"
 
 namespace StockDory
@@ -66,24 +68,27 @@ namespace StockDory
                 for (uint8_t i = 0; i < 3; i++)
                     std::fill(std::begin(BB[i]), std::end(BB[i]), BBDefault);
 
-                std::vector<std::string> splitFen = Util::Split(fen, ' ');
+                std::vector<std::string> splitFen = strutil::split(fen, " ");
 
-                std::vector<std::string> splitPosition = Util::Split(splitFen[0], '/');
+                assert(splitFen.size() == 6);
+
+                std::vector<std::string> splitPosition = strutil::split(splitFen[0], "/");
                 std::reverse(splitPosition.begin(), splitPosition.end());
 
                 assert(splitPosition.size() == 8);
 
                 for (uint8_t v = 0; v < 8; v++) {
-                    std::string& rankStr = splitPosition[0];
+                    std::string& rankStr = splitPosition[v];
                     uint8_t h = 0;
                     for (char p : rankStr) {
                         if (isdigit(p)) {
                             h += static_cast<uint8_t>(p);
+                            continue;
                         }
 
-                        Color color = Color::White;
+                        Color color = Color::Black;
 
-                        if (isupper(p)) color = Color::Black;
+                        if (isupper(p)) color = Color::White;
 
                         Piece piece = Piece::NAP;
                         switch (tolower(p)) {
@@ -110,6 +115,8 @@ namespace StockDory
                         uint8_t idx = v * 8 + h;
                         Set<true>(BB[color][piece], static_cast<Square>(idx));
                         PieceAndColor[idx] = PieceColor(piece, color);
+
+                        h++;
                     }
                 }
 

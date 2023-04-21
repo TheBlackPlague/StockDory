@@ -7,6 +7,7 @@
 #define STOCKDORY_COLOR_H
 
 #include <cstdint>
+#include <map>
 
 enum Color : uint8_t
 {
@@ -25,6 +26,17 @@ inline constexpr Color Next(const Color c)
 inline constexpr Color Opposite(const Color c)
 {
     return static_cast<Color>(static_cast<uint8_t>(c) ^ 0x1);
+}
+
+std::map<Color, std::string> C_STRING = {
+    {White, "White"},
+    {Black, "Black"},
+    {NAC, "NAC"}
+};
+
+inline std::string ToString(const Color c)
+{
+    return C_STRING[c];
 }
 
 #endif //STOCKDORY_COLOR_H

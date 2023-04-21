@@ -1,19 +1,20 @@
 #include <iostream>
 
-#include "../Backend/Type/BitBoard.h"
-
-#include "../Backend/Move/UtilityTable.h"
 #include "../Backend/Move/TableSetup.h"
+
+#include "../Backend/Board.h"
+
+#include "UI/ScreenManager.h"
 
 int main()
 {
     TableSetup();
 
-    BitBoard x = BBDefault;
-    x |= StockDory::UtilityTable::Between[Square::A1][Square::H8];
-    x |= StockDory::UtilityTable::Between[Square::H1][Square::H8];
-    x |= StockDory::UtilityTable::Between[Square::B3][Square::H3];
+    StockDory::Board board = StockDory::Board();
 
-    std::cout << ToString(x) << std::endl;
+    StockDory::ScreenManager::DrawBoard(board);
+
+    StockDory::ScreenManager::Refresh();
+
     return 0;
 }

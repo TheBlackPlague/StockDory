@@ -18,20 +18,6 @@ namespace StockDory
     {
 
         public:
-            static std::vector<std::string> Split(const std::string &s, char d)
-            {
-                std::vector<std::string> result;
-
-                std::stringstream stream (s);
-
-                std::string item;
-                while(std::getline(stream, item, d)) {
-                    result.push_back(item);
-                }
-
-                return result;
-            }
-
             constexpr static Square StringToSquare(const std::string &s)
             {
                 int file = tolower(s[0]) - 97;

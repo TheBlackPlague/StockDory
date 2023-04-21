@@ -43,6 +43,15 @@ struct PieceColor
             return static_cast<enum Color>(Internal >> 4);
         }
 
+        [[nodiscard]]
+        inline std::string ToString() const
+        {
+            enum Piece p = Piece();
+            enum Color c = Color();
+
+            return ::ToString(c) + std::string(" ") + ::ToString(p);
+        }
+
 };
 
 #endif //STOCKDORY_PIECECOLOR_H

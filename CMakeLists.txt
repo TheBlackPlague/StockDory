@@ -12,7 +12,7 @@ include(FetchContent)
 
 FetchContent_Declare(ftxui
         GIT_REPOSITORY https://github.com/ArthurSonzogni/ftxui
-        GIT_TAG v3.0.0
+        GIT_TAG v4.0.0
         )
 
 FetchContent_GetProperties(ftxui)
@@ -34,9 +34,12 @@ file(GLOB StockDoryBackendType
         "src/Backend/Move/*.h"
         "src/Backend/*.h")
 
+file(GLOB StockDoryExternalType
+        "src/External/*.h")
+
 file(GLOB StockDoryFrontendType
         "src/Terminal/UI/*.h")
 
-add_executable(StockDory src/Terminal/main.cpp ${StockDoryBackendType} ${StockDoryFrontendType})
+add_executable(StockDory src/Terminal/main.cpp ${StockDoryBackendType} ${StockDoryExternalType} ${StockDoryFrontendType})
 
 target_link_libraries(StockDory ftxui::screen ftxui::dom ftxui::component MantaRay)

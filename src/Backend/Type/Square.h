@@ -29,6 +29,38 @@ inline constexpr Square Next(const Square sq)
     return static_cast<Square>(static_cast<uint8_t>(sq) + 1);
 }
 
+constexpr std::array<char, 65> FILE_CHAR {
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', ' '
+};
+
+constexpr std::array<char, 65> RANK {
+    '1', '1', '1', '1', '1', '1', '1', '1',
+    '2', '2', '2', '2', '2', '2', '2', '2',
+    '3', '3', '3', '3', '3', '3', '3', '3',
+    '4', '4', '4', '4', '4', '4', '4', '4',
+    '5', '5', '5', '5', '5', '5', '5', '5',
+    '6', '6', '6', '6', '6', '6', '6', '6',
+    '7', '7', '7', '7', '7', '7', '7', '7',
+    '8', '8', '8', '8', '8', '8', '8', '8', ' '
+};
+
+inline constexpr char File(const Square sq)
+{
+    return FILE_CHAR[sq];
+}
+
+inline constexpr char Rank(const Square sq)
+{
+    return RANK[sq];
+}
+
 #endif //STOCKDORY_SQUARE_H
 
 #pragma clang diagnostic pop
