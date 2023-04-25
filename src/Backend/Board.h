@@ -14,6 +14,8 @@
 #include "Type/Piece.h"
 #include "Type/Color.h"
 #include "Type/PieceColor.h"
+#include "Type/PinBitBoard.h"
+#include "Type/CheckBitBoard.h"
 
 #include "Template/MoveType.h"
 
@@ -50,7 +52,7 @@ namespace StockDory
 
             BitBoard EnPassantTarget;
 
-            inline void UpdateNACBB()
+            constexpr inline void UpdateNACBB()
             {
                 ColorBB[Color::NAC] = ~(ColorBB[Color::White] | ColorBB[Color::Black]);
             }
@@ -60,7 +62,7 @@ namespace StockDory
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "cppcoreguidelines-pro-type-member-init"
-            explicit Board(const std::string &fen)
+            explicit Board(const std::string& fen)
             {
                 PieceColor none = PieceColor(Piece::NAP, Color::NAC);
                 std::fill(std::begin(PieceAndColor), std::end(PieceAndColor), none);
@@ -82,7 +84,7 @@ namespace StockDory
                     uint8_t h = 0;
                     for (char p : rankStr) {
                         if (isdigit(p)) {
-                            h += static_cast<uint8_t>(p);
+                            h += static_cast<uint8_t>(p - 48);
                             continue;
                         }
 
@@ -128,10 +130,10 @@ namespace StockDory
                 CastlingRightAndColorToMove |= (castlingData.find('k') != std::string::npos ? 0x2 : 0x0);
                 CastlingRightAndColorToMove |= (castlingData.find('q') != std::string::npos ? 0x1 : 0x0);
 
-                EnPassantTarget = Square::NASQ;
+                EnPassantTarget = BBDefault;
                 std::string& epData = splitFen[3];
                 if (epData.length() == 2) {
-                    EnPassantTarget = Util::StringToSquare(epData);
+                    EnPassantTarget = FromSquare(Util::StringToSquare(epData));
                 }
 
                 ColorBB[Color::White] = BBDefault;
@@ -154,6 +156,16 @@ namespace StockDory
                 return ColorBB[c];
             }
 
+            template<Color Color>
+            [[nodiscard]]
+            constexpr inline BitBoard PieceBoard(const Piece p) const
+            {
+                assert(p     != Piece::NAP);
+                assert(Color != Color::NAC);
+
+                return BB[Color][p];
+            }
+
             [[nodiscard]]
             constexpr inline BitBoard PieceBoard(const Piece p, const Color c) const
             {
@@ -169,40 +181,34 @@ namespace StockDory
                 return static_cast<Color>(CastlingRightAndColorToMove & ColorToMoveMask);
             }
 
+            template<Color Color>
             [[nodiscard]]
-            constexpr inline bool WhiteKCastle() const
+            constexpr inline bool CastlingRight() const
             {
-                return CastlingRightAndColorToMove & WhiteKCastleMask;
+                if (Color == White) return CastlingRightAndColorToMove & (WhiteKCastleMask | WhiteQCastleMask);
+                if (Color == Black) return CastlingRightAndColorToMove & (BlackKCastleMask | BlackQCastleMask);
+
+                throw std::invalid_argument("Invalid color");
             }
 
+            template<Color Color>
             [[nodiscard]]
-            constexpr inline bool WhiteQCastle() const
+            constexpr inline bool CastlingRightK() const
             {
-                return CastlingRightAndColorToMove & WhiteQCastleMask;
+                if (Color == White) return CastlingRightAndColorToMove & WhiteKCastleMask;
+                if (Color == Black) return CastlingRightAndColorToMove & BlackKCastleMask;
+
+                throw std::invalid_argument("Invalid color");
             }
 
+            template<Color Color>
             [[nodiscard]]
-            constexpr inline bool WhiteCastle() const
+            constexpr inline bool CastlingRightQ() const
             {
-                return CastlingRightAndColorToMove & (WhiteKCastleMask | WhiteQCastleMask);
-            }
+                if (Color == White) return CastlingRightAndColorToMove & WhiteQCastleMask;
+                if (Color == Black) return CastlingRightAndColorToMove & BlackQCastleMask;
 
-            [[nodiscard]]
-            constexpr inline bool BlackKCastle() const
-            {
-                return CastlingRightAndColorToMove & BlackKCastleMask;
-            }
-
-            [[nodiscard]]
-            constexpr inline bool BlackQCastle() const
-            {
-                return CastlingRightAndColorToMove & BlackQCastleMask;
-            }
-
-            [[nodiscard]]
-            constexpr inline bool BlackCastle() const
-            {
-                return CastlingRightAndColorToMove & (BlackKCastleMask | BlackQCastleMask);
+                throw std::invalid_argument("Invalid color");
             }
 
             [[nodiscard]]
@@ -219,107 +225,114 @@ namespace StockDory
 
             template<Color By>
             [[nodiscard]]
-            constexpr inline std::pair<BitBoard, bool> Check() const
+            constexpr inline CheckBitBoard Check() const
             {
-                Square   sq     = ToSquare(BB[Opposite(By)][King]);
-                uint8_t  count  = 0;
-                BitBoard checks = BBDefault;
+                uint8_t       count = 0;
+                CheckBitBoard check = CheckBitBoard();
+
+                const Square sq = ToSquare(BB[Opposite(By)][King]);
 
                 // Check if the square is under attack by opponent knights or pawns.
-                constexpr BitBoard pawnCheck   = AttackTable::Pawn[Opposite(By)][sq] & BB[By][Pawn  ];
-                constexpr BitBoard knightCheck = AttackTable::Knight[sq]                & BB[By][Knight];
+                const BitBoard pawnCheck   = AttackTable::Pawn[Opposite(By)][sq] & BB[By][Pawn  ];
+                const BitBoard knightCheck = AttackTable::Knight               [sq] & BB[By][Knight];
 
                 // If the square is under attack by a pawn or knight, add it our checks.
-                checks |= pawnCheck;
-                checks |= knightCheck;
+                check.Check |= pawnCheck;
+                check.Check |= knightCheck;
 
                 // Increment the count if there are checks.
-                count  += static_cast<bool>(pawnCheck);
-                count  += static_cast<bool>(knightCheck);
+                count += static_cast<bool>(pawnCheck);
+                count += static_cast<bool>(knightCheck);
 
                 // Check if the square is under attack by opponent bishops, rooks, or queens.
                 // For queen, we can merge with checks for bishop and rook.
-                constexpr BitBoard queen = BB[By][Queen];
+                const BitBoard queen = BB[By][Queen];
 
                 // All the occupied squares:
                 BitBoard occupied = ~ColorBB[Color::NAC];
 
                 // Check if the square is under attack by opponent bishops or queens (diagonally).
-                constexpr BitBoard diagonalCheck =
+                const BitBoard diagonalCheck =
                         AttackTable::Sliding[BlackMagicFactory::MagicIndex(Piece::Bishop, sq, occupied)] &
                         (queen | BB[By][Bishop]);
 
                 // Check if the square is under attack by opponent rooks or queens (straight).
-                constexpr BitBoard straightCheck =
+                const BitBoard straightCheck =
                         AttackTable::Sliding[BlackMagicFactory::MagicIndex(Piece::Rook  , sq, occupied)] &
                         (queen | BB[By][Rook  ]);
 
                 // For sliding attacks, we must add the square of the attack's origin and all the squares to us from the
                 // attack:
-                constexpr Square diagonalCheckSq = ToSquare(diagonalCheck);
-                checks |= UtilityTable::Between[sq][diagonalCheckSq] | FromSquare(diagonalCheckSq);
-                constexpr Square straightCheckSq = ToSquare(straightCheck);
-                checks |= UtilityTable::Between[sq][straightCheckSq] | FromSquare(straightCheckSq);
+                if (diagonalCheck) {
+                    const Square diagonalCheckSq = ToSquare(diagonalCheck);
+                    check.Check |= UtilityTable::Between[sq][diagonalCheckSq] | FromSquare(diagonalCheckSq);
+                }
 
-                count  += static_cast<bool>(diagonalCheck);
-                count  += static_cast<bool>(straightCheck);
+                if (straightCheck) {
+                    const Square straightCheckSq = ToSquare(straightCheck);
+                    check.Check |= UtilityTable::Between[sq][straightCheckSq] | FromSquare(straightCheckSq);
+                }
+
+                count += static_cast<bool>(diagonalCheck);
+                count += static_cast<bool>(straightCheck);
 
                 // In the case where there is more than one check, we must increment the count once more, as it's a
                 // double check.
                 if (Count(diagonalCheck) > 1 || Count(straightCheck)) count++;
 
-                if (checks == BBDefault) checks = BBFilled;
+                if (check.Check == BBDefault) check.Check = BBFilled;
 
-                return {checks, count > 1};
+                check.DoubleCheck = count > 1;
+                return check;
             }
 
             template<Color We, Color By>
             [[nodiscard]]
-            constexpr inline std::pair<BitBoard, BitBoard> Pin() const
+            constexpr inline PinBitBoard Pin() const
             {
-                Square   sq       = ToSquare(BB[We][King]);
-                BitBoard straight = BBDefault;
-                BitBoard diagonal = BBDefault;
+                PinBitBoard pin = PinBitBoard();
+
+                const Square sq = ToSquare(BB[We][King]);
 
                 // All the occupied squares:
                 // In this case, we want to let the pins pass through our pieces, since our pieces can move on the pins.
-                BitBoard occupied = ColorBB[By];
+                const BitBoard occupied = ColorBB[By];
 
                 // For queen, we can merge with checks for bishop and rook.
-                BitBoard queen = BB[We][Queen];
+                const BitBoard queen = BB[By][Queen];
 
                 // Check if the square is under attack by opponent bishops or queens (diagonally).
-                BitBoard diagonalCheck =
+                const BitBoard diagonalCheck =
                         AttackTable::Sliding[BlackMagicFactory::MagicIndex(Piece::Bishop, sq, occupied)] &
                         (queen | BB[By][Bishop]);
 
                 // Check if the square is under attack by opponent rooks or queens (straight).
-                BitBoard straightCheck =
+                const BitBoard straightCheck =
                         AttackTable::Sliding[BlackMagicFactory::MagicIndex(Piece::Rook  , sq, occupied)] &
                         (queen | BB[By][Rook  ]);
 
                 // Iterate through the attacks and check if the attack is a diagonally pinning one.
                 BitBoardIterator iterator (diagonalCheck);
                 for (Square attSq = iterator.Value(); attSq != Square::NASQ; attSq = iterator.Value()) {
-                    BitBoard possiblePin = UtilityTable::Between[sq][attSq] | FromSquare(attSq);
-                    if (Count(possiblePin | ColorBB[We]) == 1) diagonal |= possiblePin;
+                    const BitBoard possiblePin = UtilityTable::Between[sq][attSq] | FromSquare(attSq);
+                    if (Count(possiblePin & ColorBB[We]) == 1) pin.Diagonal |= possiblePin;
                 }
 
                 // Iterate through the attacks and check if the attack is a straight pinning one.
                 iterator = BitBoardIterator(straightCheck);
                 for (Square attSq = iterator.Value(); attSq != Square::NASQ; attSq = iterator.Value()) {
-                    BitBoard possiblePin = UtilityTable::Between[sq][attSq] | FromSquare(attSq);
-                    if (Count(possiblePin | ColorBB[We]) == 1) straight |= possiblePin;
+                    const BitBoard possiblePin = UtilityTable::Between[sq][attSq] | FromSquare(attSq);
+                    if (Count(possiblePin & ColorBB[We]) == 1) pin.Straight |= possiblePin;
                 }
 
-                return {straight, diagonal};
+                return pin;
             }
 
             template<MoveType T>
             inline void MoveNative(const Square from, const Square to)
             {
-                PieceColor pcFrom = PieceAndColor[from];
-                PieceColor pcTo   = PieceAndColor[to  ];
+                const PieceColor pcFrom = PieceAndColor[from];
+                const PieceColor pcTo   = PieceAndColor[to  ];
 
                 MoveNative<T>(pcFrom.Piece(), pcFrom.Color(), from, pcTo.Piece(), pcTo.Color(), to);
             }
@@ -349,7 +362,7 @@ namespace StockDory
             template<MoveType T>
             inline void EmptyNative(const Square sq)
             {
-                PieceColor pc = PieceAndColor[sq];
+                const PieceColor pc = PieceAndColor[sq];
                 EmptyNative<T>(pc.Piece(), pc.Color(), sq);
             }
 

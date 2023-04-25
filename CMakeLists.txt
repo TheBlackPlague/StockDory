@@ -2,8 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 project(StockDory)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -ftime-report")
+set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g -ftime-report")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx512f -mavx512bw")
 
 set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
@@ -38,8 +37,10 @@ file(GLOB StockDoryExternalType
         "src/External/*.h")
 
 file(GLOB StockDoryFrontendType
-        "src/Terminal/UI/*.h")
+        "src/Terminal/UI/*.h"
+        "src/Terminal/Perft/*.h")
 
-add_executable(StockDory src/Terminal/main.cpp ${StockDoryBackendType} ${StockDoryExternalType} ${StockDoryFrontendType})
+add_executable(StockDory src/Terminal/main.cpp
+        ${StockDoryBackendType} ${StockDoryExternalType} ${StockDoryFrontendType})
 
 target_link_libraries(StockDory ftxui::screen ftxui::dom ftxui::component MantaRay)

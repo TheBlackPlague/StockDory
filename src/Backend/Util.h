@@ -18,13 +18,23 @@ namespace StockDory
     {
 
         public:
-            constexpr static Square StringToSquare(const std::string &s)
+            constexpr static Square StringToSquare(const std::string& s)
             {
                 int file = tolower(s[0]) - 97;
                 int rank = tolower(s[0]) - 49;
 
                 return static_cast<Square>(rank * 8 + file);
             }
+
+            static inline std::string SquareToString(const Square sq)
+            {
+                std::string s;
+                s += static_cast<char>(tolower(File(sq)));
+                s += Rank(sq);
+
+                return s;
+            }
+
     };
 
 } // StockDory

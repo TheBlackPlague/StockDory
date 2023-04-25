@@ -106,18 +106,18 @@ namespace StockDory
             {
                 StockDory::AttackTable::Sliding = std::array<BitBoard, 87988>();
 
-                const std::array<std::array<std::pair<int, int>, 4>, 2> deltaStride = {{
+                const std::array<std::array<std::pair<int8_t, int8_t>, 4>, 2> deltaStride = {{
                     {{{ 1,  1 },{ 1, -1 },{ -1, -1 },{ -1,  1 }}}, {{{ 1,  0 },{ 0, -1 },{ -1,  0 },{ 0,  1 }}}
                 }};
 
                 using MagicPair = std::pair<BitBoard, BitBoard>;
 
-                for (int i = 0; i < 2; i++) {
+                for (uint8_t i = 0; i < 2; i++) {
                     const auto p = static_cast<Piece>(i + 2);
                     const std::array<std::pair<MagicPair, int32_t>, 64>& magic = StockDory::BlackMagicFactory::Magic[i];
-                    const std::array<std::pair<int      ,     int>,  4>& delta = deltaStride[i];
+                    const std::array<std::pair<int8_t   ,  int8_t>,  4>& delta = deltaStride[i];
 
-                    for (int h = 0; h < 8; h++) for (int v = 0; v < 8; v++) {
+                    for (uint8_t h = 0; h < 8; h++) for (uint8_t v = 0; v < 8; v++) {
                         auto sq = static_cast<Square>(v * 8 + h);
 
                         // Black Magic:
@@ -128,19 +128,19 @@ namespace StockDory
                         while (true) {
                             BitBoard moves = BBDefault;
 
-                            for (std::pair<int, int> stride : delta) {
-                                int hI = h;
-                                int vI = v;
+                            for (std::pair<int8_t, int8_t> stride : delta) {
+                                auto hI = static_cast<int8_t>(h);
+                                auto vI = static_cast<int8_t>(v);
 
                                 while (!Get(occ, static_cast<Square>(vI * 8 + hI))) {
-                                    int dHI = hI + stride.first ;
-                                    int dVI = vI + stride.second;
+                                    auto dHI = static_cast<int8_t>(hI + stride.first );
+                                    auto dVI = static_cast<int8_t>(vI + stride.second);
 
                                     if (dHI > 7 || dHI < 0) break;
                                     if (dVI > 7 || dVI < 0) break;
 
-                                    hI += stride.first;
-                                    vI += stride.second;
+                                    hI = static_cast<int8_t>(hI + stride.first );
+                                    vI = static_cast<int8_t>(vI + stride.second);
 
                                     moves |= FromSquare(static_cast<Square>(vI * 8 + hI));
                                 }
