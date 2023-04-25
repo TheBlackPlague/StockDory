@@ -104,8 +104,8 @@ namespace StockDory
                     BitBoard pushes = (Color == White ? sqBoard << 8  : sqBoard >> 8 ) & board[Color::NAC];
                     if (pushes &&
                        (sqBoard &     (Color == White ?
-                                   BlackMagicFactory::Horizontal[2] :
-                                   BlackMagicFactory::Horizontal[5])))
+                                   BlackMagicFactory::Vertical[1] :
+                                   BlackMagicFactory::Vertical[6])))
                             pushes |= (Color == White ? sqBoard << 16 : sqBoard >> 16) & board[Color::NAC];
 
                     InternalContainer |= pushes & pin.Straight & check.Check;
