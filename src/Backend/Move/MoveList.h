@@ -273,14 +273,8 @@ namespace StockDory
                 const BitBoard queen =              board.PieceBoard(Piece::Queen, Opposite(Color));
                 const Square   king  = ToSquare(board.PieceBoard(Piece::King ,             Color));
 
-
-                if (AttackTable::Sliding[BlackMagicFactory::MagicIndex(Piece::Bishop, king, occupied)] &
-                    (queen | board.PieceBoard(Piece::Bishop, Opposite(Color)))) return false;
-
-                if (AttackTable::Sliding[BlackMagicFactory::MagicIndex(Piece::Rook  , king, occupied)] &
-                    (queen | board.PieceBoard(Piece::Rook  , Opposite(Color)))) return false;
-
-                return true;
+                return !(AttackTable::Sliding[BlackMagicFactory::MagicIndex(Piece::Rook, king, occupied)] &
+                        (queen | board.PieceBoard(Piece::Rook, Opposite(Color))));
             }
 
     };
