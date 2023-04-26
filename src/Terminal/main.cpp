@@ -12,19 +12,16 @@ int main()
 {
     TableSetup();
 
-    const std::string fen = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10";
+    const std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     auto board = StockDory::Board(fen);
 
     StockDory::ScreenManager::DrawBoard(board);
-
     StockDory::ScreenManager::Refresh();
 
-    std::cout << std::endl;
+    StockDory::Perft::PerftRunner::SetBoard(board);
 
-    StockDory::Perft::PerftRunner::SetBoard(fen);
-
-    StockDory::Perft::PerftRunner::Perft<true>(1);
+    StockDory::Perft::PerftRunner::Perft<false>(7);
 
     return 0;
 }

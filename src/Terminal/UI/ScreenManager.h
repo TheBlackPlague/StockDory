@@ -186,6 +186,7 @@ namespace StockDory
                 Screen screen = Screen::Create(Dimension::Fit(windowOnScreen));
                 Render(screen, windowOnScreen);
                 screen.Print();
+                std::cout << std::endl;
             }
 
     };

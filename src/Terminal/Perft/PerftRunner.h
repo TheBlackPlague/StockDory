@@ -7,6 +7,7 @@
 #define STOCKDORY_PERFTRUNNER_H
 
 #include <iostream>
+#include <chrono>
 
 #include "../../Backend/Board.h"
 #include "../../Backend/Util.h"
@@ -28,6 +29,12 @@ namespace StockDory::Perft
 
                 const PinBitBoard   pin   = PerftBoard.Pin  <Color, Opposite(Color)>();
                 const CheckBitBoard check = PerftBoard.Check<       Opposite(Color)>();
+
+                if (check.DoubleCheck) {
+                    const BitBoardIterator kings (PerftBoard.PieceBoard<Color>(Piece::King));
+                    nodes += PerftPieceExpansion<King, Color, Divide>(depth, pin, check, kings);
+                    return nodes;
+                }
 
                 const BitBoardIterator pawns   (PerftBoard.PieceBoard<Color>(Piece::Pawn  ));
                 const BitBoardIterator knights (PerftBoard.PieceBoard<Color>(Piece::Knight));
@@ -64,8 +71,13 @@ namespace StockDory::Perft
                         BitBoardIterator mIterator = moves.Iterator();
 
                         for (Square m = mIterator.Value(); m != Square::NASQ; m = mIterator.Value()) {
-                            if (moves.Promotion(sq)) LogMove<true >(sq, m, 1);
-                            else                     LogMove<false>(sq, m, 1);
+                            if (moves.Promotion(sq)) {
+                                 LogMove<Queen >(sq, m, 1);
+                                 LogMove<Rook  >(sq, m, 1);
+                                 LogMove<Bishop>(sq, m, 1);
+                                 LogMove<Knight>(sq, m, 1);
+                            }
+                            else LogMove        (sq, m, 1);
                         }
                     }
                 }
@@ -77,15 +89,40 @@ namespace StockDory::Perft
 
                     for (Square m = mIterator.Value(); m != Square::NASQ; m = mIterator.Value()) {
                         if (moves.Promotion(sq)) {
-                            for (enum Piece p = Piece::Knight; p < Piece::King; p = Next(p)) {
-                                // Make promotional move.
-                                nodes += Perft<Opposite(Color), false>(depth - 1);
-                                // Unmake promotional move.
-                            }
+                            PreviousState state = PerftBoard.Move<MoveType::NAMT>(sq, m, Queen);
+                            const uint64_t queenNodes = Perft<Opposite(Color), false>(depth - 1);
+                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            nodes += queenNodes;
+
+                            if (Divide) LogMove<Queen >(sq, m, queenNodes);
+
+                            state = PerftBoard.Move<MoveType::NAMT>(sq, m, Rook);
+                            const uint64_t rookNodes = Perft<Opposite(Color), false>(depth - 1);
+                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            nodes += rookNodes;
+
+                            if (Divide) LogMove<Rook  >(sq, m, rookNodes);
+
+                            state = PerftBoard.Move<MoveType::NAMT>(sq, m, Bishop);
+                            const uint64_t bishopNodes = Perft<Opposite(Color), false>(depth - 1);
+                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            nodes += bishopNodes;
+
+                            if (Divide) LogMove<Bishop>(sq, m, bishopNodes);
+
+                            state = PerftBoard.Move<MoveType::NAMT>(sq, m, Knight);
+                            const uint64_t knightNodes = Perft<Opposite(Color), false>(depth - 1);
+                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            nodes += knightNodes;
+
+                            if (Divide) LogMove<Knight>(sq, m, knightNodes);
                         } else {
-                            // Make Move.
-                            nodes += Perft<Opposite(Color), false>(depth - 1);
-                            // Unmake Move.
+                            const PreviousState state = PerftBoard.Move<MoveType::NAMT>(sq, m);
+                            const uint64_t perftNodes = Perft<Opposite(Color), false>(depth - 1);
+                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            nodes += perftNodes;
+
+                            if (Divide) LogMove(sq, m, perftNodes);
                         }
                     }
                 }
@@ -93,11 +130,12 @@ namespace StockDory::Perft
                 return nodes;
             }
 
-            template<bool Promotion>
+            template<Piece Promotion = NAP>
             static void LogMove(const Square from, const Square to, const uint64_t nodes)
             {
-                std::cout << Util::SquareToString(from) << Util::SquareToString(to) << ": ";
-                std::cout << ((Promotion ? 4 : 1) * nodes) << std::endl;
+                std::cout << Util::SquareToString(from) << Util::SquareToString(to);
+                if (Promotion != NAP) std::cout << static_cast<char>(tolower(FirstLetter(Promotion)));
+                std::cout << ": " << nodes << std::endl;
             }
 
         public:
@@ -106,17 +144,25 @@ namespace StockDory::Perft
                 PerftBoard = Board(fen);
             }
 
+            static void SetBoard(const Board& board)
+            {
+                PerftBoard = board;
+            }
+
             template <bool Divide>
             static void Perft(const uint8_t depth)
             {
                 std::cout << "Running PERFT @ depth " << static_cast<uint32_t>(depth) << ":" << std::endl;
 
+                auto start = std::chrono::high_resolution_clock::now();
                 const uint64_t nodes =
                         PerftBoard.ColorToMove() == White ?
                         Perft<White, Divide>(depth) :
                         Perft<Black, Divide>(depth);
+                auto stop  = std::chrono::high_resolution_clock::now();
+                auto time = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
 
-                std::cout << "Searched " << nodes << " nodes." << std::endl;
+                std::cout << "Searched " << nodes << " nodes. (" << time << "µs)" << std::endl;
             }
 
     };

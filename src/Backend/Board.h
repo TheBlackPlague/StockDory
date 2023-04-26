@@ -16,6 +16,7 @@
 #include "Type/PieceColor.h"
 #include "Type/PinBitBoard.h"
 #include "Type/CheckBitBoard.h"
+#include "Type/PreviousState.h"
 
 #include "Template/MoveType.h"
 
@@ -44,13 +45,30 @@ namespace StockDory
             // [    4 BITS   ] [      1 BIT      ] [       1 BIT      ] [      1 BIT      ] [       1 BIT      ]
             uint8_t CastlingRightAndColorToMove;
 
+            BitBoard EnPassantTarget;
+
             constexpr static uint8_t  ColorToMoveMask = 0xF0;
             constexpr static uint8_t WhiteKCastleMask = 0x08;
             constexpr static uint8_t WhiteQCastleMask = 0x04;
             constexpr static uint8_t BlackKCastleMask = 0x02;
             constexpr static uint8_t BlackQCastleMask = 0x01;
 
-            BitBoard EnPassantTarget;
+            constexpr static uint8_t ColorFlipMask = 0x10;
+
+            constexpr static std::array<uint8_t, 2> ColorCastleMask {
+                WhiteKCastleMask | WhiteQCastleMask,
+                BlackKCastleMask | BlackQCastleMask
+            };
+
+            constexpr static std::array<std::array<Square, 2>, 2> CastleRookSquareStart {{
+                {Square::H1, Square::A1},
+                {Square::H8, Square::A8}
+            }};
+
+            constexpr static std::array<std::array<Square, 2>, 2> CastleRookSquareEnd {{
+                {Square::F1, Square::D1},
+                {Square::F8, Square::D8}
+            }};
 
             constexpr inline void UpdateNACBB()
             {
@@ -278,7 +296,7 @@ namespace StockDory
 
                 // In the case where there is more than one check, we must increment the count once more, as it's a
                 // double check.
-                if (Count(diagonalCheck) > 1 || Count(straightCheck)) count++;
+                if (Count(straightCheck) > 1) count++;
 
                 if (check.Check == BBDefault) check.Check = BBFilled;
 
@@ -329,17 +347,108 @@ namespace StockDory
             }
 
             template<MoveType T>
-            inline void MoveNative(const Square from, const Square to)
+            constexpr inline PreviousState Move(const Square from, const Square to, const Piece promotion = NAP)
             {
-                const PieceColor pcFrom = PieceAndColor[from];
-                const PieceColor pcTo   = PieceAndColor[to  ];
+                PreviousState state = PreviousState(PieceAndColor[from], PieceAndColor[to],
+                                                    EnPassantSquare(), CastlingRightAndColorToMove);
 
-                MoveNative<T>(pcFrom.Piece(), pcFrom.Color(), from, pcTo.Piece(), pcTo.Color(), to);
+                const Piece pieceF = state.MovedPiece   .Piece();
+                const Color colorF = state.MovedPiece   .Color();
+                const Piece pieceT = state.CapturedPiece.Piece();
+                const Color colorT = state.CapturedPiece.Color();
+
+                if (pieceT == Rook && (CastlingRightAndColorToMove & ColorCastleMask[colorT])) {
+                    if (to == A1) CastlingRightAndColorToMove &= ~WhiteQCastleMask;
+                    if (to == A8) CastlingRightAndColorToMove &= ~BlackQCastleMask;
+                    if (to == H1) CastlingRightAndColorToMove &= ~WhiteKCastleMask;
+                    if (to == H8) CastlingRightAndColorToMove &= ~BlackKCastleMask;
+                }
+
+                if (pieceF == Pawn) {
+                    if (to == state.EnPassant) {
+                        EmptyNative<T>(Pawn, Opposite(colorF), static_cast<Square>(state.EnPassant ^ 8));
+                        state.EnPassantCapture = true;
+                        EnPassantTarget = BBDefault;
+                    } else if (std::abs(from - to) == 16) {
+                        auto epSq = static_cast<Square>((from + to) >> 1);
+                        if (AttackTable::Pawn[colorF][epSq] & BB[Opposite(colorF)][Pawn])
+                             EnPassantTarget = FromSquare(static_cast<Square>(to ^ 8));
+                        else EnPassantTarget = BBDefault;
+                    } else if (promotion != NAP) {
+                        EmptyNative <T>(Pawn     , colorF, from);
+                        EmptyNative <T>(pieceT   , colorT, to  );
+                        InsertNative<T>(promotion, colorF, to  );
+
+                        state.PromotedPiece = promotion;
+
+                        EnPassantTarget = BBDefault;
+                        CastlingRightAndColorToMove ^= ColorFlipMask;
+                        return state;
+                    } else EnPassantTarget = BBDefault;
+                } else {
+                    EnPassantTarget = BBDefault;
+
+                    if ((CastlingRightAndColorToMove & ColorCastleMask[colorF])) {
+                        if        (pieceF == Rook) {
+                            if (from == A1) CastlingRightAndColorToMove &= ~WhiteQCastleMask;
+                            if (from == A8) CastlingRightAndColorToMove &= ~BlackQCastleMask;
+                            if (from == H1) CastlingRightAndColorToMove &= ~WhiteKCastleMask;
+                            if (from == H8) CastlingRightAndColorToMove &= ~BlackKCastleMask;
+                        } else if (pieceF == King) {
+                            CastlingRightAndColorToMove &= ~ColorCastleMask[colorF];
+
+                            if (std::abs(from - to) == 2) {
+                                state.CastlingFrom = CastleRookSquareStart[colorF][to < from];
+                                state.CastlingTo   = CastleRookSquareEnd  [colorF][to < from];
+
+                                EmptyNative <T>(King, colorF, from              );
+                                EmptyNative <T>(Rook, colorF, state.CastlingFrom);
+                                InsertNative<T>(King, colorF, to                );
+                                InsertNative<T>(Rook, colorF, state.CastlingTo  );
+
+                                CastlingRightAndColorToMove ^= ColorFlipMask;
+                                return state;
+                            }
+                        }
+                    }
+                }
+
+                MoveNative<T>(pieceF, colorF, from, pieceT, colorT, to);
+                CastlingRightAndColorToMove ^= ColorFlipMask;
+
+                return state;
             }
 
             template<MoveType T>
-            inline void MoveNative(const Piece pF, const Color cF, const Square sqF,
-                                   const Piece pT, const Color cT, const Square sqT)
+            constexpr inline void UndoMove(const PreviousState state, const Square from, const Square to)
+            {
+                CastlingRightAndColorToMove = state.CastlingRightAndColorToMove;\
+
+                if (state.EnPassant != NASQ) EnPassantTarget = FromSquare(state.EnPassant);
+                else                         EnPassantTarget = BBDefault;
+
+                if (state.PromotedPiece         != NAP) {
+                    EmptyNative <T>(state.PromotedPiece, state.MovedPiece.Color(), to  );
+                    InsertNative<T>(Pawn               , state.MovedPiece.Color(), from);
+                } else {
+                    EmptyNative <T>(state.MovedPiece.Piece(), state.MovedPiece.Color(), to  );
+                    InsertNative<T>(state.MovedPiece.Piece(), state.MovedPiece.Color(), from);
+                }
+
+                if (state.CapturedPiece.Piece() != NAP) {
+                    InsertNative<T>(state.CapturedPiece.Piece(), state.CapturedPiece.Color(), to);
+                } else if (state.EnPassantCapture) {
+                    auto epPieceSq = static_cast<Square>(to ^ 8);
+                    InsertNative<T>(Pawn, Opposite(state.MovedPiece.Color()), epPieceSq);
+                } else if (state.CastlingFrom != NASQ) {
+                    EmptyNative <T>(Rook, state.MovedPiece.Color(), state.CastlingTo  );
+                    InsertNative<T>(Rook, state.MovedPiece.Color(), state.CastlingFrom);
+                }
+            }
+
+            template<MoveType T>
+            constexpr inline void MoveNative(const Piece pF, const Color cF, const Square sqF,
+                                             const Piece pT, const Color cT, const Square sqT)
             {
                 // Capture Section:
                 Set<false>(BB[cT][pT], sqT);
@@ -360,14 +469,7 @@ namespace StockDory
             }
 
             template<MoveType T>
-            inline void EmptyNative(const Square sq)
-            {
-                const PieceColor pc = PieceAndColor[sq];
-                EmptyNative<T>(pc.Piece(), pc.Color(), sq);
-            }
-
-            template<MoveType T>
-            inline void EmptyNative(const Piece p, const Color c, const Square sq)
+            constexpr inline void EmptyNative(const Piece p, const Color c, const Square sq)
             {
                 Set<false>(BB[c][p], sq);
 
@@ -379,7 +481,7 @@ namespace StockDory
             }
 
             template<MoveType T>
-            inline void InsertNative(const Piece p, const Color c, const Square sq)
+            constexpr inline void InsertNative(const Piece p, const Color c, const Square sq)
             {
                 Set<true>(BB[c][p], sq);
 

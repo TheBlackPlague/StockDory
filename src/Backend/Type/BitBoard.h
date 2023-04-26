@@ -35,9 +35,7 @@ constexpr inline bool Get(const BitBoard bb, const Square sq)
 
 constexpr inline BitBoard FromSquare(const Square sq)
 {
-    BitBoard temp = BBDefault;
-    Set<true>(temp, sq);
-    return temp;
+    return 1ULL << sq;
 }
 
 constexpr inline Square ToSquare(const BitBoard bb)

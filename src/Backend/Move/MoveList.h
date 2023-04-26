@@ -94,8 +94,7 @@ namespace StockDory
                     const BitBoard enPassant  = board.EnPassant() & pawnAttack;
                     const BitBoard normal     = pawnAttack & board[Opposite(Color)];
 
-                    InternalContainer |= enPassant | normal;
-                    InternalContainer &= pin.Diagonal & check.Check;
+                    InternalContainer |= (enPassant & pin.Diagonal) | (normal & pin.Diagonal & check.Check);
 
                     return;
                 } else if (Get(pin.Straight, sq)) {
@@ -114,10 +113,9 @@ namespace StockDory
                 }
 
                 const BitBoard pawnAttack = AttackTable::Pawn[Color][sq];
-                const BitBoard enPassant  = board.EnPassant() & pawnAttack;
                 const BitBoard normal     = pawnAttack & board[Opposite(Color)];
 
-                InternalContainer |= enPassant | normal;
+                InternalContainer |= normal;
 
                 const BitBoard sqBoard = FromSquare(sq);
 
@@ -132,7 +130,11 @@ namespace StockDory
 
                 InternalContainer &= check.Check;
 
-                if (enPassant & InternalContainer) {
+                const BitBoard enPassant  = board.EnPassant() & pawnAttack;
+
+                InternalContainer |= enPassant;
+
+                if (enPassant) {
                     const Square epTarget  = board.EnPassantSquare();
                     const auto   epPieceSq = static_cast<Square>(
                             Color == White ?
