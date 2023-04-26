@@ -43,7 +43,7 @@ namespace StockDory
             {
                 if (Piece != Piece::Pawn) return false;
 
-                return (Color == Color::White && sq > H6) || (Color == Color::Black && sq < A3);
+                return (Color == White && sq > H6) || (Color == Black && sq < A3);
             }
 
             constexpr MoveList(const Board& board, const Square sq, const PinBitBoard& pin, const CheckBitBoard& check)
@@ -100,12 +100,12 @@ namespace StockDory
                 } else if (Get(pin.Straight, sq)) {
                     const BitBoard sqBoard = FromSquare(sq);
 
-                    BitBoard pushes = (Color == White ? sqBoard << 8  : sqBoard >> 8 ) & board[Color::NAC];
+                    BitBoard pushes = (Color == White ? sqBoard << 8  : sqBoard >> 8 ) & board[NAC];
                     if (pushes &&
                        (sqBoard &     (Color == White ?
                                    BlackMagicFactory::Vertical[1] :
                                    BlackMagicFactory::Vertical[6])))
-                            pushes |= (Color == White ? sqBoard << 16 : sqBoard >> 16) & board[Color::NAC];
+                            pushes |= (Color == White ? sqBoard << 16 : sqBoard >> 16) & board[NAC];
 
                     InternalContainer |= pushes & pin.Straight & check.Check;
 
@@ -119,12 +119,12 @@ namespace StockDory
 
                 const BitBoard sqBoard = FromSquare(sq);
 
-                BitBoard pushes = (Color == White ? sqBoard << 8  : sqBoard >> 8 ) & board[Color::NAC];
+                BitBoard pushes = (Color == White ? sqBoard << 8  : sqBoard >> 8 ) & board[NAC];
                 if (pushes &&
                    (sqBoard &     (Color == White ?
                                BlackMagicFactory::Vertical[1] :
                                BlackMagicFactory::Vertical[6])))
-                        pushes |= (Color == White ? sqBoard << 16 : sqBoard >> 16) & board[Color::NAC];
+                        pushes |= (Color == White ? sqBoard << 16 : sqBoard >> 16) & board[NAC];
 
                 InternalContainer |= pushes;
 
@@ -159,7 +159,7 @@ namespace StockDory
             {
                 if (Get(pin.Straight, sq)) return;
 
-                const uint32_t idx = BlackMagicFactory::MagicIndex(Piece, sq, ~board[Color::NAC]);
+                const uint32_t idx = BlackMagicFactory::MagicIndex(Piece, sq, ~board[NAC]);
                 InternalContainer |= AttackTable::Sliding[idx] & ~board[Color] & check.Check;
 
                 if (Get(pin.Diagonal, sq)) InternalContainer &= pin.Diagonal;
@@ -170,7 +170,7 @@ namespace StockDory
             {
                 if (Get(pin.Diagonal, sq)) return;
 
-                const uint32_t idx = BlackMagicFactory::MagicIndex(Piece, sq, ~board[Color::NAC]);
+                const uint32_t idx = BlackMagicFactory::MagicIndex(Piece, sq, ~board[NAC]);
                 InternalContainer |= AttackTable::Sliding[idx] & ~board[Color] & check.Check;
 
                 if (Get(pin.Straight, sq)) InternalContainer &= pin.Straight;
@@ -186,21 +186,21 @@ namespace StockDory
 
                 if        (straight) {
                     const uint32_t idx =
-                            BlackMagicFactory::MagicIndex(Piece::Rook  , sq, ~board[Color::NAC]);
+                            BlackMagicFactory::MagicIndex(Piece::Rook  , sq, ~board[NAC]);
                     InternalContainer |= AttackTable::Sliding[idx ] & ~board[Color] & check.Check & pin.Straight;
 
                 } else if (diagonal) {
                     const uint32_t idx =
-                            BlackMagicFactory::MagicIndex(Piece::Bishop, sq, ~board[Color::NAC]);
+                            BlackMagicFactory::MagicIndex(Piece::Bishop, sq, ~board[NAC]);
                     InternalContainer |= AttackTable::Sliding[idx ] & ~board[Color] & check.Check & pin.Diagonal;
 
                 } else {
                     const uint32_t idxR =
-                            BlackMagicFactory::MagicIndex(Piece::Rook  , sq, ~board[Color::NAC]);
+                            BlackMagicFactory::MagicIndex(Piece::Rook  , sq, ~board[NAC]);
                     InternalContainer |= AttackTable::Sliding[idxR] & ~board[Color] & check.Check;
 
                     const uint32_t idxB =
-                            BlackMagicFactory::MagicIndex(Piece::Bishop, sq, ~board[Color::NAC]);
+                            BlackMagicFactory::MagicIndex(Piece::Bishop, sq, ~board[NAC]);
                     InternalContainer |= AttackTable::Sliding[idxB] & ~board[Color] & check.Check;
                 }
             }
@@ -228,7 +228,7 @@ namespace StockDory
                     KingMoveLegal(board, static_cast<Square>(sq - 2))) {
                     const BitBoard path = Color == White ? WhiteQueenCastlePath : BlackQueenCastlePath;
 
-                    if (!(path & ~board[Color::NAC])) InternalContainer |= path & QueenCastlePathMask;
+                    if (!(path & ~board[NAC])) InternalContainer |= path & QueenCastlePathMask;
                 }
 
                 if (kingSide &&
@@ -236,7 +236,7 @@ namespace StockDory
                     KingMoveLegal(board, static_cast<Square>(sq + 2))) {
                     const BitBoard path = Color == White ? WhiteKingCastlePath : BlackKingCastlePath;
 
-                    if (!(path & ~board[Color::NAC])) InternalContainer |= path;
+                    if (!(path & ~board[NAC])) InternalContainer |= path;
                 }
             }
 

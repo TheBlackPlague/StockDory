@@ -27,7 +27,7 @@ struct Move
             Internal = 0;
         }
 
-        template<Piece promotion = Piece::NAP, bool Null = false>
+        template<Piece promotion = NAP, bool Null = false>
         constexpr explicit Move(const Square from, const Square to)
         {
             if (Null) Internal = NullMask;

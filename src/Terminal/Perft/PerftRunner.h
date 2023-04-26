@@ -31,17 +31,17 @@ namespace StockDory::Perft
                 const CheckBitBoard check = PerftBoard.Check<       Opposite(Color)>();
 
                 if (check.DoubleCheck) {
-                    const BitBoardIterator kings (PerftBoard.PieceBoard<Color>(Piece::King));
+                    const BitBoardIterator kings (PerftBoard.PieceBoard<Color>(King));
                     nodes += PerftPieceExpansion<King, Color, Divide>(depth, pin, check, kings);
                     return nodes;
                 }
 
-                const BitBoardIterator pawns   (PerftBoard.PieceBoard<Color>(Piece::Pawn  ));
-                const BitBoardIterator knights (PerftBoard.PieceBoard<Color>(Piece::Knight));
-                const BitBoardIterator bishops (PerftBoard.PieceBoard<Color>(Piece::Bishop));
-                const BitBoardIterator rooks   (PerftBoard.PieceBoard<Color>(Piece::Rook  ));
-                const BitBoardIterator queens  (PerftBoard.PieceBoard<Color>(Piece::Queen ));
-                const BitBoardIterator kings   (PerftBoard.PieceBoard<Color>(Piece::King  ));
+                const BitBoardIterator pawns   (PerftBoard.PieceBoard<Color>(Pawn  ));
+                const BitBoardIterator knights (PerftBoard.PieceBoard<Color>(Knight));
+                const BitBoardIterator bishops (PerftBoard.PieceBoard<Color>(Bishop));
+                const BitBoardIterator rooks   (PerftBoard.PieceBoard<Color>(Rook  ));
+                const BitBoardIterator queens  (PerftBoard.PieceBoard<Color>(Queen ));
+                const BitBoardIterator kings   (PerftBoard.PieceBoard<Color>(King  ));
 
                 nodes += PerftPieceExpansion<Pawn  , Color, Divide>(depth, pin, check, pawns  );
                 nodes += PerftPieceExpansion<Knight, Color, Divide>(depth, pin, check, knights);

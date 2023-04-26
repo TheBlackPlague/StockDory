@@ -82,7 +82,7 @@ namespace StockDory
 #pragma ide diagnostic ignored "cppcoreguidelines-pro-type-member-init"
             explicit Board(const std::string& fen)
             {
-                PieceColor none = PieceColor(Piece::NAP, Color::NAC);
+                PieceColor none = PieceColor(NAP, NAC);
                 std::fill(std::begin(PieceAndColor), std::end(PieceAndColor), none);
 
                 for (uint8_t i = 0; i < 3; i++)
@@ -106,11 +106,11 @@ namespace StockDory
                             continue;
                         }
 
-                        Color color = Color::Black;
+                        Color color = Black;
 
-                        if (isupper(p)) color = Color::White;
+                        if (isupper(p)) color = White;
 
-                        Piece piece = Piece::NAP;
+                        Piece piece = NAP;
                         switch (tolower(p)) {
                             case 'p':
                                 piece = Pawn;
@@ -140,7 +140,7 @@ namespace StockDory
                     }
                 }
 
-                CastlingRightAndColorToMove = splitFen[1][0] == 'w' ? Color::White << 4 : Color::Black << 4;
+                CastlingRightAndColorToMove = splitFen[1][0] == 'w' ? White << 4 : Black << 4;
 
                 std::string& castlingData = splitFen[2];
                 CastlingRightAndColorToMove |= (castlingData.find('K') != std::string::npos ? 0x8 : 0x0);
@@ -156,11 +156,11 @@ namespace StockDory
 
                 ColorBB[Color::White] = BBDefault;
                 ColorBB[Color::Black] = BBDefault;
-                for (Piece p = Piece::Pawn; p != Piece::NAP; p = Next(p)) {
-                    ColorBB[Color::White] |= BB[Color::White][p];
-                    ColorBB[Color::Black] |= BB[Color::Black][p];
+                for (Piece p = Pawn; p != NAP; p = Next(p)) {
+                    ColorBB[White] |= BB[White][p];
+                    ColorBB[Black] |= BB[Black][p];
                 }
-                ColorBB[Color::NAC] = ~(ColorBB[Color::White] | ColorBB[Color::Black]);
+                ColorBB[NAC] = ~(ColorBB[White] | ColorBB[Black]);
             }
 #pragma clang diagnostic pop
 
@@ -178,8 +178,8 @@ namespace StockDory
             [[nodiscard]]
             constexpr inline BitBoard PieceBoard(const Piece p) const
             {
-                assert(p     != Piece::NAP);
-                assert(Color != Color::NAC);
+                assert(p     != NAP);
+                assert(Color != NAC);
 
                 return BB[Color][p];
             }
@@ -187,8 +187,8 @@ namespace StockDory
             [[nodiscard]]
             constexpr inline BitBoard PieceBoard(const Piece p, const Color c) const
             {
-                assert(p != Piece::NAP);
-                assert(c != Color::NAC);
+                assert(p != NAP);
+                assert(c != NAC);
 
                 return BB[c][p];
             }
@@ -267,16 +267,16 @@ namespace StockDory
                 const BitBoard queen = BB[By][Queen];
 
                 // All the occupied squares:
-                BitBoard occupied = ~ColorBB[Color::NAC];
+                BitBoard occupied = ~ColorBB[NAC];
 
                 // Check if the square is under attack by opponent bishops or queens (diagonally).
                 const BitBoard diagonalCheck =
-                        AttackTable::Sliding[BlackMagicFactory::MagicIndex(Piece::Bishop, sq, occupied)] &
+                        AttackTable::Sliding[BlackMagicFactory::MagicIndex(Bishop, sq, occupied)] &
                         (queen | BB[By][Bishop]);
 
                 // Check if the square is under attack by opponent rooks or queens (straight).
                 const BitBoard straightCheck =
-                        AttackTable::Sliding[BlackMagicFactory::MagicIndex(Piece::Rook  , sq, occupied)] &
+                        AttackTable::Sliding[BlackMagicFactory::MagicIndex(Rook  , sq, occupied)] &
                         (queen | BB[By][Rook  ]);
 
                 // For sliding attacks, we must add the square of the attack's origin and all the squares to us from the
@@ -321,24 +321,24 @@ namespace StockDory
 
                 // Check if the square is under attack by opponent bishops or queens (diagonally).
                 const BitBoard diagonalCheck =
-                        AttackTable::Sliding[BlackMagicFactory::MagicIndex(Piece::Bishop, sq, occupied)] &
+                        AttackTable::Sliding[BlackMagicFactory::MagicIndex(Bishop, sq, occupied)] &
                         (queen | BB[By][Bishop]);
 
                 // Check if the square is under attack by opponent rooks or queens (straight).
                 const BitBoard straightCheck =
-                        AttackTable::Sliding[BlackMagicFactory::MagicIndex(Piece::Rook  , sq, occupied)] &
+                        AttackTable::Sliding[BlackMagicFactory::MagicIndex(Rook  , sq, occupied)] &
                         (queen | BB[By][Rook  ]);
 
                 // Iterate through the attacks and check if the attack is a diagonally pinning one.
                 BitBoardIterator iterator (diagonalCheck);
-                for (Square attSq = iterator.Value(); attSq != Square::NASQ; attSq = iterator.Value()) {
+                for (Square attSq = iterator.Value(); attSq != NASQ; attSq = iterator.Value()) {
                     const BitBoard possiblePin = UtilityTable::Between[sq][attSq] | FromSquare(attSq);
                     if (Count(possiblePin & ColorBB[We]) == 1) pin.Diagonal |= possiblePin;
                 }
 
                 // Iterate through the attacks and check if the attack is a straight pinning one.
                 iterator = BitBoardIterator(straightCheck);
-                for (Square attSq = iterator.Value(); attSq != Square::NASQ; attSq = iterator.Value()) {
+                for (Square attSq = iterator.Value(); attSq != NASQ; attSq = iterator.Value()) {
                     const BitBoard possiblePin = UtilityTable::Between[sq][attSq] | FromSquare(attSq);
                     if (Count(possiblePin & ColorBB[We]) == 1) pin.Straight |= possiblePin;
                 }
@@ -465,7 +465,7 @@ namespace StockDory
                 UpdateNACBB();
 
                 PieceAndColor[sqT] = PieceAndColor[sqF];
-                PieceAndColor[sqF] = PieceColor(Piece::NAP, Color::NAC);
+                PieceAndColor[sqF] = PieceColor(NAP, NAC);
             }
 
             template<MoveType T>
@@ -477,7 +477,7 @@ namespace StockDory
 
                 UpdateNACBB();
 
-                PieceAndColor[sq] = PieceColor(Piece::NAP, Color::NAC);
+                PieceAndColor[sq] = PieceColor(NAP, NAC);
             }
 
             template<MoveType T>
