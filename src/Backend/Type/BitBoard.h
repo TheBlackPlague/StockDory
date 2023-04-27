@@ -72,7 +72,7 @@ constexpr inline BitBoardIterator Iterator(const BitBoard bb)
     return BitBoardIterator(bb);
 }
 
-inline std::string ToString(const BitBoard bb)
+constexpr inline std::string ToString(const BitBoard bb)
 {
     std::string s;
 
