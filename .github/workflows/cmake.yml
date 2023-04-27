@@ -22,9 +22,10 @@ jobs:
       with:
         submodules: true
 
-    - name: Allow permissions for Clang Location
+    - name: Prepare environment for Clang and Caching.
       run: |
         sudo chown $(whoami) /usr/local
+        sudo apt install libncurses5
 
     - name: Cache Clang
       id: cache-clang
@@ -36,7 +37,6 @@ jobs:
     - name: Install Clang-16
       if: steps.cache-clang.outputs.cache-hit != 'true'
       run: |
-        sudo apt install libncurses5
         curl -SL https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz | tar -xJC .
         mv clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04 clang-16
         sudo mv clang-16 /usr/local
