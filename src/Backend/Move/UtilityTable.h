@@ -21,11 +21,11 @@ namespace StockDory
 
             static void InitializeBetween()
             {
-                for (Square f = Square::A1; f != Square::NASQ; f = Next(f)) {
+                for (Square f = A1; f != NASQ; f = Next(f)) {
                     const uint8_t fH = f % 8;
                     const uint8_t fV = f / 8;
 
-                    for (Square t = Square::A1; t != Square::NASQ; t = Next(t)) {
+                    for (Square t = A1; t != NASQ; t = Next(t)) {
                         Between[f][t] = BBDefault;
 
                         if (f == t) continue;
@@ -38,8 +38,8 @@ namespace StockDory
                         if (fH == tH || fV == tV) {
                             occ = FromSquare(f) | FromSquare(t);
 
-                            const uint32_t mF = BlackMagicFactory::MagicIndex(Piece::Rook, f, occ);
-                            const uint32_t mT = BlackMagicFactory::MagicIndex(Piece::Rook, t, occ);
+                            const uint32_t mF = BlackMagicFactory::MagicIndex(Rook, f, occ);
+                            const uint32_t mT = BlackMagicFactory::MagicIndex(Rook, t, occ);
 
                             // Rook squares:
                             Between[f][t] = AttackTable::Sliding[mF] & AttackTable::Sliding[mT];
@@ -57,8 +57,8 @@ namespace StockDory
                         // Bishop squares:
                         occ = FromSquare(f) | FromSquare(t);
 
-                        const uint32_t mF = BlackMagicFactory::MagicIndex(Piece::Bishop, f, occ);
-                        const uint32_t mT = BlackMagicFactory::MagicIndex(Piece::Bishop, t, occ);
+                        const uint32_t mF = BlackMagicFactory::MagicIndex(Bishop, f, occ);
+                        const uint32_t mT = BlackMagicFactory::MagicIndex(Bishop, t, occ);
 
                         Between[f][t] = AttackTable::Sliding[mF] & AttackTable::Sliding[mT];
                     }

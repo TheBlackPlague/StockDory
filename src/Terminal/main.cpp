@@ -1,19 +1,27 @@
 #include <iostream>
 
-#include "../Backend/Type/BitBoard.h"
-
-#include "../Backend/Move/UtilityTable.h"
 #include "../Backend/Move/TableSetup.h"
+
+#include "../Backend/Move/MoveList.h"
+
+#include "UI/ScreenManager.h"
+
+#include "Perft/PerftRunner.h"
 
 int main()
 {
     TableSetup();
 
-    BitBoard x = BBDefault;
-    x |= StockDory::UtilityTable::Between[Square::A1][Square::H8];
-    x |= StockDory::UtilityTable::Between[Square::H1][Square::H8];
-    x |= StockDory::UtilityTable::Between[Square::B3][Square::H3];
+    const std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-    std::cout << ToString(x) << std::endl;
+    auto board = StockDory::Board(fen);
+
+    StockDory::ScreenManager::DrawBoard(board);
+    StockDory::ScreenManager::Refresh();
+
+    StockDory::Perft::PerftRunner::SetBoard(board);
+
+    StockDory::Perft::PerftRunner::Perft<false>(7);
+
     return 0;
 }

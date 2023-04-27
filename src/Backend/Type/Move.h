@@ -19,33 +19,43 @@ struct Move
         // [     4 BITS      ] [   6 BITS   ] [   6 BITS   ]
         uint16_t Internal;
 
-        constexpr static uint16_t SquareMask = 0x3F;
+        constexpr static uint16_t SquareMask = 0x003F;
+        constexpr static uint16_t NullMask   = 0x8000;
 
     public:
         constexpr Move() {
             Internal = 0;
         }
 
-        template<Piece promotion = Piece::NAP>
+        template<Piece promotion = NAP, bool Null = false>
         constexpr explicit Move(const Square from, const Square to)
         {
-            Internal = from | (to << 6);
-            if (promotion != Piece::NAP) Internal |= (promotion << 12);
+            if (Null) Internal = NullMask;
+            else      Internal = from | (to << 6) | (promotion << 12);
         }
 
+        [[nodiscard]]
         constexpr Square From() const
         {
             return static_cast<Square>(Internal & SquareMask);
         }
 
+        [[nodiscard]]
         constexpr Square To() const
         {
             return static_cast<Square>((Internal >> 6) & SquareMask);
         }
 
+        [[nodiscard]]
         constexpr Piece Promotion() const
         {
             return static_cast<Piece>(Internal >> 12);
+        }
+
+        [[nodiscard]]
+        constexpr bool IsNull() const
+        {
+            return Internal & NullMask;
         }
 
 };
