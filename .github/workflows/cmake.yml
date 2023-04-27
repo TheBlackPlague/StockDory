@@ -28,8 +28,11 @@ jobs:
         curl -SL https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz | tar -xJC .
         mv clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04 clang-16
         sudo mv clang-16 /usr/local
-        export CC=/usr/local/clang-16/bin/clang
-        export CXX=/usr/local/clang-16/bin/clang++
+
+    - name: Setup Compiler Environment
+      run: |
+        echo "CC=/usr/bin/clang-16.0" >> $GITHUB_ENV
+        echo "CXX=/usr/bin/clang++-16.0" >> $GITHUB_ENV
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
