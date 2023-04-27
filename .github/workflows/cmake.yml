@@ -22,7 +22,15 @@ jobs:
       with:
         submodules: true
 
+    - name: Cache Clang
+      id: cache-clang
+      uses: actions/cache@v3
+      with:
+        path: /usr/local/clang-16
+        key: ${{ runner.os }}-clang-16
+
     - name: Install Clang-16
+      if: steps.cache-clang.outputs.cache-hit != 'true'
       run: |
         sudo apt install libncurses5
         curl -SL https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz | tar -xJC .
