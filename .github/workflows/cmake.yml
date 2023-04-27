@@ -24,7 +24,7 @@ jobs:
 
     - name: Install Clang-16
       run: |
-        apt install libncurses5
+        sudo apt install libncurses5
         curl -SL https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz | tar -xJC .
         mv clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04 clang-16
         sudo mv clang-16 /usr/local
