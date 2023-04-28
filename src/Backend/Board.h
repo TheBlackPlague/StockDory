@@ -74,11 +74,6 @@ namespace StockDory
                 {Square::F8, Square::D8}
             }};
 
-            constexpr inline void UpdateNACBB()
-            {
-                ColorBB[Color::NAC] = ~(ColorBB[Color::White] | ColorBB[Color::Black]);
-            }
-
         public:
             Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
 
@@ -299,14 +294,14 @@ namespace StockDory
                 if (straightCheck) {
                     const Square straightCheckSq = ToSquare(straightCheck);
                     check.Check |= UtilityTable::Between[sq][straightCheckSq] | FromSquare(straightCheckSq);
+
+                    // In the case where there is more than one check, we must increment the count once more, as it's a
+                    // double check.
+                    if (Count(straightCheck) > 1) count++;
                 }
 
                 count += static_cast<bool>(diagonalCheck);
                 count += static_cast<bool>(straightCheck);
-
-                // In the case where there is more than one check, we must increment the count once more, as it's a
-                // double check.
-                if (Count(straightCheck) > 1) count++;
 
                 if (check.Check == BBDefault) check.Check = BBFilled;
 
@@ -396,7 +391,7 @@ namespace StockDory
                         EmptyNative<T>(        Pawn, Opposite(colorF), epPawnSq);
                         Hash = HashPiece<T>(Hash, Pawn, Opposite(colorF), epPawnSq);
                         state.EnPassantCapture = true;
-                    } else if (std::abs(from - to) == 16) {
+                    } else if (static_cast<Square>(from ^ 16) == to) {
                         const auto epSq = static_cast<Square>(to ^ 8);
                         if (AttackTable::Pawn[colorF][epSq] & BB[Opposite(colorF)][Pawn]) {
                             EnPassantTarget = FromSquare(epSq);
@@ -433,7 +428,7 @@ namespace StockDory
                         CastlingRightAndColorToMove &= ~ColorCastleMask[colorF];
                         Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
 
-                        if (std::abs(from - to) == 2) {
+                        if (to == C1 || to == C8 || to == G1 || to == G8) {
                             state.CastlingFrom = CastleRookSquareStart[colorF][to < from];
                             state.CastlingTo   = CastleRookSquareEnd  [colorF][to < from];
 
@@ -532,6 +527,11 @@ namespace StockDory
                 UpdateNACBB();
 
                 PieceAndColor[sq] = PieceColor(p, c);
+            }
+
+            constexpr inline void UpdateNACBB()
+            {
+                ColorBB[Color::NAC] = ~(ColorBB[Color::White] | ColorBB[Color::Black]);
             }
 
     };
