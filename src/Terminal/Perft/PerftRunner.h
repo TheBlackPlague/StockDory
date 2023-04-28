@@ -89,37 +89,37 @@ namespace StockDory::Perft
 
                     for (Square m = mIterator.Value(); m != Square::NASQ; m = mIterator.Value()) {
                         if (moves.Promotion(sq)) {
-                            PreviousState state = PerftBoard.Move<MoveType::NAMT>(sq, m, Queen);
+                            PreviousState state = PerftBoard.Move<STANDARD>(sq, m, Queen);
                             const uint64_t queenNodes = Perft<Opposite(Color), false>(depth - 1);
-                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            PerftBoard.UndoMove<STANDARD>(state, sq, m);
                             nodes += queenNodes;
 
                             if (Divide) LogMove<Queen >(sq, m, queenNodes);
 
-                            state = PerftBoard.Move<MoveType::NAMT>(sq, m, Rook);
+                            state = PerftBoard.Move<STANDARD>(sq, m, Rook);
                             const uint64_t rookNodes = Perft<Opposite(Color), false>(depth - 1);
-                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            PerftBoard.UndoMove<STANDARD>(state, sq, m);
                             nodes += rookNodes;
 
                             if (Divide) LogMove<Rook  >(sq, m, rookNodes);
 
-                            state = PerftBoard.Move<MoveType::NAMT>(sq, m, Bishop);
+                            state = PerftBoard.Move<STANDARD>(sq, m, Bishop);
                             const uint64_t bishopNodes = Perft<Opposite(Color), false>(depth - 1);
-                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            PerftBoard.UndoMove<STANDARD>(state, sq, m);
                             nodes += bishopNodes;
 
                             if (Divide) LogMove<Bishop>(sq, m, bishopNodes);
 
-                            state = PerftBoard.Move<MoveType::NAMT>(sq, m, Knight);
+                            state = PerftBoard.Move<STANDARD>(sq, m, Knight);
                             const uint64_t knightNodes = Perft<Opposite(Color), false>(depth - 1);
-                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            PerftBoard.UndoMove<STANDARD>(state, sq, m);
                             nodes += knightNodes;
 
                             if (Divide) LogMove<Knight>(sq, m, knightNodes);
                         } else {
-                            const PreviousState state = PerftBoard.Move<MoveType::NAMT>(sq, m);
+                            const PreviousState state = PerftBoard.Move<STANDARD>(sq, m);
                             const uint64_t perftNodes = Perft<Opposite(Color), false>(depth - 1);
-                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            PerftBoard.UndoMove<STANDARD>(state, sq, m);
                             nodes += perftNodes;
 
                             if (Divide) LogMove(sq, m, perftNodes);

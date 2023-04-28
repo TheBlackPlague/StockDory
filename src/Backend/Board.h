@@ -17,6 +17,7 @@
 #include "Type/PinBitBoard.h"
 #include "Type/CheckBitBoard.h"
 #include "Type/PreviousState.h"
+#include "Type/Zobrist.h"
 
 #include "Template/MoveType.h"
 
@@ -47,7 +48,10 @@ namespace StockDory
 
             BitBoard EnPassantTarget;
 
+            ZobristHash Hash;
+
             constexpr static uint8_t  ColorToMoveMask = 0xF0;
+            constexpr static uint8_t     CastlingMask = 0x0F;
             constexpr static uint8_t WhiteKCastleMask = 0x08;
             constexpr static uint8_t WhiteQCastleMask = 0x04;
             constexpr static uint8_t BlackKCastleMask = 0x02;
@@ -135,12 +139,18 @@ namespace StockDory
                         uint8_t idx = v * 8 + h;
                         Set<true>(BB[color][piece], static_cast<Square>(idx));
                         PieceAndColor[idx] = PieceColor(piece, color);
+                        Hash = HashPiece<ZOBRIST>(Hash, piece, color, static_cast<Square>(idx));
 
                         h++;
                     }
                 }
 
-                CastlingRightAndColorToMove = splitFen[1][0] == 'w' ? White << 4 : Black << 4;
+                if (splitFen[1][0] == 'w') {
+                    CastlingRightAndColorToMove = White << 4;
+                    Hash = HashColorFlip<ZOBRIST>(Hash);
+                } else {
+                    CastlingRightAndColorToMove = Black << 4;
+                }
 
                 std::string& castlingData = splitFen[2];
                 CastlingRightAndColorToMove |= (castlingData.find('K') != std::string::npos ? 0x8 : 0x0);
@@ -148,10 +158,14 @@ namespace StockDory
                 CastlingRightAndColorToMove |= (castlingData.find('k') != std::string::npos ? 0x2 : 0x0);
                 CastlingRightAndColorToMove |= (castlingData.find('q') != std::string::npos ? 0x1 : 0x0);
 
+                Hash = HashCastling<ZOBRIST>(Hash, CastlingRightAndColorToMove & CastlingMask);
+
                 EnPassantTarget = BBDefault;
                 std::string& epData = splitFen[3];
                 if (epData.length() == 2) {
-                    EnPassantTarget = FromSquare(Util::StringToSquare(epData));
+                    Square epSq = Util::StringToSquare(epData);
+                    EnPassantTarget = FromSquare(epSq);
+                    Hash = HashEnPassant<ZOBRIST>(Hash, epSq);
                 }
 
                 ColorBB[Color::White] = BBDefault;
@@ -163,6 +177,12 @@ namespace StockDory
                 ColorBB[NAC] = ~(ColorBB[White] | ColorBB[Black]);
             }
 #pragma clang diagnostic pop
+
+            [[nodiscard]]
+            constexpr inline ZobristHash GetHash() const
+            {
+                return Hash;
+            }
 
             constexpr inline PieceColor operator [](const Square sq) const
             {
@@ -197,16 +217,6 @@ namespace StockDory
             constexpr inline Color ColorToMove() const
             {
                 return static_cast<Color>(CastlingRightAndColorToMove & ColorToMoveMask);
-            }
-
-            template<Color Color>
-            [[nodiscard]]
-            constexpr inline bool CastlingRight() const
-            {
-                if (Color == White) return CastlingRightAndColorToMove & (WhiteKCastleMask | WhiteQCastleMask);
-                if (Color == Black) return CastlingRightAndColorToMove & (BlackKCastleMask | BlackQCastleMask);
-
-                throw std::invalid_argument("Invalid color");
             }
 
             template<Color Color>
@@ -350,7 +360,14 @@ namespace StockDory
             constexpr inline PreviousState Move(const Square from, const Square to, const Piece promotion = NAP)
             {
                 PreviousState state = PreviousState(PieceAndColor[from], PieceAndColor[to],
-                                                    EnPassantSquare(), CastlingRightAndColorToMove);
+                                                    EnPassantSquare(), CastlingRightAndColorToMove,
+                                                    Hash);
+
+                Hash = HashEnPassant<T>(Hash, EnPassantSquare());
+                EnPassantTarget = BBDefault;
+
+                CastlingRightAndColorToMove ^= ColorFlipMask;
+                Hash = HashColorFlip<T>(Hash);
 
                 const Piece pieceF = state.MovedPiece   .Piece();
                 const Color colorF = state.MovedPiece   .Color();
@@ -358,71 +375,96 @@ namespace StockDory
                 const Color colorT = state.CapturedPiece.Color();
 
                 if (pieceT == Rook && (CastlingRightAndColorToMove & ColorCastleMask[colorT])) {
-                    if (to == A1) CastlingRightAndColorToMove &= ~WhiteQCastleMask;
-                    if (to == A8) CastlingRightAndColorToMove &= ~BlackQCastleMask;
-                    if (to == H1) CastlingRightAndColorToMove &= ~WhiteKCastleMask;
-                    if (to == H8) CastlingRightAndColorToMove &= ~BlackKCastleMask;
+                    if (to == A1) {
+                        CastlingRightAndColorToMove &= ~WhiteQCastleMask;
+                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                    } else if (to == A8) {
+                        CastlingRightAndColorToMove &= ~BlackQCastleMask;
+                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                    } else if (to == H1) {
+                        CastlingRightAndColorToMove &= ~WhiteKCastleMask;
+                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                    } else if (to == H8) {
+                        CastlingRightAndColorToMove &= ~BlackKCastleMask;
+                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                    }
                 }
 
                 if (pieceF == Pawn) {
                     if (to == state.EnPassant) {
-                        EmptyNative<T>(Pawn, Opposite(colorF), static_cast<Square>(state.EnPassant ^ 8));
+                        const auto epPawnSq = static_cast<Square>(state.EnPassant ^ 8);
+                        EmptyNative<T>(        Pawn, Opposite(colorF), epPawnSq);
+                        Hash = HashPiece<T>(Hash, Pawn, Opposite(colorF), epPawnSq);
                         state.EnPassantCapture = true;
-                        EnPassantTarget = BBDefault;
                     } else if (std::abs(from - to) == 16) {
-                        auto epSq = static_cast<Square>((from + to) >> 1);
-                        if (AttackTable::Pawn[colorF][epSq] & BB[Opposite(colorF)][Pawn])
-                             EnPassantTarget = FromSquare(static_cast<Square>(to ^ 8));
-                        else EnPassantTarget = BBDefault;
+                        const auto epSq = static_cast<Square>(to ^ 8);
+                        if (AttackTable::Pawn[colorF][epSq] & BB[Opposite(colorF)][Pawn]) {
+                            EnPassantTarget = FromSquare(epSq);
+                            Hash = HashEnPassant<T>(Hash, epSq);
+                        }
                     } else if (promotion != NAP) {
                         EmptyNative <T>(Pawn     , colorF, from);
                         EmptyNative <T>(pieceT   , colorT, to  );
                         InsertNative<T>(promotion, colorF, to  );
 
+                        Hash = HashPiece<T>(Hash, Pawn     , colorF, from);
+                        Hash = HashPiece<T>(Hash, pieceT   , colorF, to  );
+                        Hash = HashPiece<T>(Hash, promotion, colorF, to  );
+
                         state.PromotedPiece = promotion;
-
-                        EnPassantTarget = BBDefault;
-                        CastlingRightAndColorToMove ^= ColorFlipMask;
                         return state;
-                    } else EnPassantTarget = BBDefault;
-                } else {
-                    EnPassantTarget = BBDefault;
+                    }
+                } else if ((CastlingRightAndColorToMove & ColorCastleMask[colorF])) {
+                    if        (pieceF == Rook) {
+                        if (from == A1) {
+                            CastlingRightAndColorToMove &= ~WhiteQCastleMask;
+                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                        } else if (from == A8) {
+                            CastlingRightAndColorToMove &= ~BlackQCastleMask;
+                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                        } else if (from == H1) {
+                            CastlingRightAndColorToMove &= ~WhiteKCastleMask;
+                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                        } else if (from == H8) {
+                            CastlingRightAndColorToMove &= ~BlackKCastleMask;
+                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                        }
+                    } else if (pieceF == King) {
+                        CastlingRightAndColorToMove &= ~ColorCastleMask[colorF];
+                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
 
-                    if ((CastlingRightAndColorToMove & ColorCastleMask[colorF])) {
-                        if        (pieceF == Rook) {
-                            if (from == A1) CastlingRightAndColorToMove &= ~WhiteQCastleMask;
-                            if (from == A8) CastlingRightAndColorToMove &= ~BlackQCastleMask;
-                            if (from == H1) CastlingRightAndColorToMove &= ~WhiteKCastleMask;
-                            if (from == H8) CastlingRightAndColorToMove &= ~BlackKCastleMask;
-                        } else if (pieceF == King) {
-                            CastlingRightAndColorToMove &= ~ColorCastleMask[colorF];
+                        if (std::abs(from - to) == 2) {
+                            state.CastlingFrom = CastleRookSquareStart[colorF][to < from];
+                            state.CastlingTo   = CastleRookSquareEnd  [colorF][to < from];
 
-                            if (std::abs(from - to) == 2) {
-                                state.CastlingFrom = CastleRookSquareStart[colorF][to < from];
-                                state.CastlingTo   = CastleRookSquareEnd  [colorF][to < from];
+                            EmptyNative <T>(King, colorF, from              );
+                            EmptyNative <T>(Rook, colorF, state.CastlingFrom);
+                            InsertNative<T>(King, colorF, to                );
+                            InsertNative<T>(Rook, colorF, state.CastlingTo  );
 
-                                EmptyNative <T>(King, colorF, from              );
-                                EmptyNative <T>(Rook, colorF, state.CastlingFrom);
-                                InsertNative<T>(King, colorF, to                );
-                                InsertNative<T>(Rook, colorF, state.CastlingTo  );
+                            Hash = HashPiece<T>(Hash, King, colorF, from              );
+                            Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingFrom);
+                            Hash = HashPiece<T>(Hash, King, colorF, to                );
+                            Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingTo  );
 
-                                CastlingRightAndColorToMove ^= ColorFlipMask;
-                                return state;
-                            }
+                            return state;
                         }
                     }
                 }
 
                 MoveNative<T>(pieceF, colorF, from, pieceT, colorT, to);
-                CastlingRightAndColorToMove ^= ColorFlipMask;
+                Hash = HashPiece<T>(Hash, pieceF, colorF, from);
+                Hash = HashPiece<T>(Hash, pieceT, colorT, to  );
+                Hash = HashPiece<T>(Hash, pieceF, colorF, to  );
 
                 return state;
             }
 
             template<MoveType T>
-            constexpr inline void UndoMove(const PreviousState state, const Square from, const Square to)
+            constexpr inline void UndoMove(const PreviousState& state, const Square from, const Square to)
             {
-                CastlingRightAndColorToMove = state.CastlingRightAndColorToMove;\
+                CastlingRightAndColorToMove = state.CastlingRightAndColorToMove;
+                if (T & ZOBRIST) Hash = state.Hash;
 
                 if (state.EnPassant != NASQ) EnPassantTarget = FromSquare(state.EnPassant);
                 else                         EnPassantTarget = BBDefault;

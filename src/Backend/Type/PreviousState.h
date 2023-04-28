@@ -10,6 +10,7 @@
 
 #include "PieceColor.h"
 #include "Square.h"
+#include "Zobrist.h"
 
 struct PreviousState
 {
@@ -24,8 +25,11 @@ struct PreviousState
         Square     CastlingTo                 ;
         uint8_t    CastlingRightAndColorToMove;
 
+        ZobristHash Hash;
+
         constexpr PreviousState(const PieceColor movedPiece , const PieceColor capturedPiece              ,
-                                const Square     EnPassantSq, const uint8_t    castlingRightAndColorToMove)
+                                const Square     EnPassantSq, const uint8_t    castlingRightAndColorToMove,
+                                const ZobristHash hash)
         {
             MovedPiece                  = movedPiece;
             CapturedPiece               = capturedPiece;
@@ -36,6 +40,8 @@ struct PreviousState
             PromotedPiece    = NAP;
             CastlingFrom     = NASQ;
             CastlingTo       = NASQ;
+
+            Hash = hash;
         }
 
 };
