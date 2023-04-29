@@ -9,6 +9,8 @@
 #include <iostream>
 #include <chrono>
 
+#include <ppl.h>
+
 #include "../../Backend/Board.h"
 #include "../../Backend/Util.h"
 #include "../../Backend/Move/MoveList.h"
@@ -22,46 +24,59 @@ namespace StockDory::Perft
         private:
             static Board PerftBoard;
 
-            template<::Color Color, bool Divide>
-            static inline uint64_t Perft(const uint8_t depth)
+            template<::Color Color, bool Divide, bool Sync>
+            struct PerftLayer
+            {
+
+                public:
+                    static inline uint64_t Perft(Board& board, const uint8_t depth)
+                    {
+                        return PerftRunner::Perft<Color, Divide, Sync>(board, depth);
+                    }
+
+            };
+
+            template<::Color Color, bool Divide, bool Sync>
+            static inline uint64_t Perft(Board& board, const uint8_t depth)
             {
                 uint64_t nodes = 0;
 
-                const PinBitBoard   pin   = PerftBoard.Pin  <Color, Opposite(Color)>();
-                const CheckBitBoard check = PerftBoard.Check<       Opposite(Color)>();
+                const PinBitBoard   pin   = board.Pin  <Color, Opposite(Color)>();
+                const CheckBitBoard check = board.Check<       Opposite(Color)>();
 
                 if (check.DoubleCheck) {
-                    const BitBoardIterator kings (PerftBoard.PieceBoard<Color>(King));
-                    nodes += PerftPieceExpansion<King, Color, Divide>(depth, pin, check, kings);
+                    const BitBoardIterator kings (board.PieceBoard<Color>(King));
+                    nodes += PerftLoop<King, Color, Divide, Sync>(board, depth, pin, check, kings);
                     return nodes;
                 }
 
-                const BitBoardIterator pawns   (PerftBoard.PieceBoard<Color>(Pawn  ));
-                const BitBoardIterator knights (PerftBoard.PieceBoard<Color>(Knight));
-                const BitBoardIterator bishops (PerftBoard.PieceBoard<Color>(Bishop));
-                const BitBoardIterator rooks   (PerftBoard.PieceBoard<Color>(Rook  ));
-                const BitBoardIterator queens  (PerftBoard.PieceBoard<Color>(Queen ));
-                const BitBoardIterator kings   (PerftBoard.PieceBoard<Color>(King  ));
+                const BitBoardIterator pawns   (board.PieceBoard<Color>(Pawn  ));
+                const BitBoardIterator knights (board.PieceBoard<Color>(Knight));
+                const BitBoardIterator bishops (board.PieceBoard<Color>(Bishop));
+                const BitBoardIterator rooks   (board.PieceBoard<Color>(Rook  ));
+                const BitBoardIterator queens  (board.PieceBoard<Color>(Queen ));
+                const BitBoardIterator kings   (board.PieceBoard<Color>(King  ));
 
-                nodes += PerftPieceExpansion<Pawn  , Color, Divide>(depth, pin, check, pawns  );
-                nodes += PerftPieceExpansion<Knight, Color, Divide>(depth, pin, check, knights);
-                nodes += PerftPieceExpansion<Bishop, Color, Divide>(depth, pin, check, bishops);
-                nodes += PerftPieceExpansion<Rook  , Color, Divide>(depth, pin, check, rooks  );
-                nodes += PerftPieceExpansion<Queen , Color, Divide>(depth, pin, check, queens );
-                nodes += PerftPieceExpansion<King  , Color, Divide>(depth, pin, check, kings  );
+                nodes += PerftLoop<Pawn  , Color, Divide, Sync>(board, depth, pin, check, pawns  );
+                nodes += PerftLoop<Knight, Color, Divide, Sync>(board, depth, pin, check, knights);
+                nodes += PerftLoop<Bishop, Color, Divide, Sync>(board, depth, pin, check, bishops);
+                nodes += PerftLoop<Rook  , Color, Divide, Sync>(board, depth, pin, check, rooks  );
+                nodes += PerftLoop<Queen , Color, Divide, Sync>(board, depth, pin, check, queens );
+                nodes += PerftLoop<King  , Color, Divide, Sync>(board, depth, pin, check, kings  );
 
                 return nodes;
             }
 
-            template<Piece Piece, ::Color Color, bool Divide>
-            static inline uint64_t PerftPieceExpansion(const uint8_t depth,
-                                                       const PinBitBoard& pin, const CheckBitBoard& check,
-                                                       BitBoardIterator pIterator)
+            template<Piece Piece, ::Color Color, bool Divide, bool Sync = true>
+            static inline uint64_t PerftLoop(Board& board, const uint8_t depth,
+                                             const PinBitBoard& pin, const CheckBitBoard& check,
+                                             BitBoardIterator pIterator)
             {
                 uint64_t nodes = 0;
+                using Call = PerftLayer<Opposite(Color), false, Sync>;
 
                 if (depth == 1) for (Square sq = pIterator.Value(); sq != Square::NASQ; sq = pIterator.Value()) {
-                    const MoveList<Piece, Color> moves (PerftBoard, sq, pin, check);
+                    const MoveList<Piece, Color> moves (board, sq, pin, check);
                     uint8_t count = moves.Count();
 
                     if (moves.Promotion(sq)) nodes += count * 4;
@@ -80,51 +95,107 @@ namespace StockDory::Perft
                             else LogMove        (sq, m, 1);
                         }
                     }
-                }
-
+                } else if (Sync || depth < 6)
                 for (Square sq = pIterator.Value(); sq != Square::NASQ; sq = pIterator.Value()) {
-                    const MoveList<Piece, Color> moves (PerftBoard, sq, pin, check);
+                    const MoveList<Piece, Color> moves (board, sq, pin, check);
 
                     BitBoardIterator mIterator = moves.Iterator();
 
                     for (Square m = mIterator.Value(); m != Square::NASQ; m = mIterator.Value()) {
                         if (moves.Promotion(sq)) {
-                            PreviousState state = PerftBoard.Move<MoveType::NAMT>(sq, m, Queen);
-                            const uint64_t queenNodes = Perft<Opposite(Color), false>(depth - 1);
-                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            PreviousState state = board.Move<STANDARD>(sq, m, Queen);
+                            const uint64_t queenNodes = Call::Perft(board, depth - 1);
+                            board.UndoMove<STANDARD>(state, sq, m);
                             nodes += queenNodes;
 
                             if (Divide) LogMove<Queen >(sq, m, queenNodes);
 
-                            state = PerftBoard.Move<MoveType::NAMT>(sq, m, Rook);
-                            const uint64_t rookNodes = Perft<Opposite(Color), false>(depth - 1);
-                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            state = board.Move<STANDARD>(sq, m, Rook);
+                            const uint64_t rookNodes = Call::Perft(board, depth - 1);
+                            board.UndoMove<STANDARD>(state, sq, m);
                             nodes += rookNodes;
 
                             if (Divide) LogMove<Rook  >(sq, m, rookNodes);
 
-                            state = PerftBoard.Move<MoveType::NAMT>(sq, m, Bishop);
-                            const uint64_t bishopNodes = Perft<Opposite(Color), false>(depth - 1);
-                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            state = board.Move<STANDARD>(sq, m, Bishop);
+                            const uint64_t bishopNodes = Call::Perft(board, depth - 1);
+                            board.UndoMove<STANDARD>(state, sq, m);
                             nodes += bishopNodes;
 
                             if (Divide) LogMove<Bishop>(sq, m, bishopNodes);
 
-                            state = PerftBoard.Move<MoveType::NAMT>(sq, m, Knight);
-                            const uint64_t knightNodes = Perft<Opposite(Color), false>(depth - 1);
-                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            state = board.Move<STANDARD>(sq, m, Knight);
+                            const uint64_t knightNodes = Call::Perft(board, depth - 1);
+                            board.UndoMove<STANDARD>(state, sq, m);
                             nodes += knightNodes;
 
                             if (Divide) LogMove<Knight>(sq, m, knightNodes);
                         } else {
-                            const PreviousState state = PerftBoard.Move<MoveType::NAMT>(sq, m);
-                            const uint64_t perftNodes = Perft<Opposite(Color), false>(depth - 1);
-                            PerftBoard.UndoMove<MoveType::NAMT>(state, sq, m);
+                            const PreviousState state = board.Move<STANDARD>(sq, m);
+                            const uint64_t perftNodes = Call::Perft(board, depth - 1);
+                            board.UndoMove<STANDARD>(state, sq, m);
                             nodes += perftNodes;
 
                             if (Divide) LogMove(sq, m, perftNodes);
                         }
                     }
+                } else {
+                    std::atomic<uint64_t> atomicNodes;
+                    std::vector<Square> psq = pIterator.Values();
+                    concurrency::parallel_for_each(psq.begin(), psq.end(), [&](const Square sq) {
+                        Board parallelBoard = board;
+
+                        MoveList<Piece, Color> moves (parallelBoard, sq, pin, check);
+                        if (moves.Count() < 0) return;
+
+                        uint64_t parallelNodes = 0        ;
+                        uint8_t  nextDepth     = depth - 1;
+
+                        BitBoardIterator mIterator = moves.Iterator();
+
+                        for (Square m = mIterator.Value(); m != NASQ; m = mIterator.Value()) {
+                            if (moves.Promotion(sq)) {
+                                PreviousState state = parallelBoard.Move<STANDARD>(sq, m, Queen);
+                                const uint64_t queenNodes = Call::Perft(parallelBoard, nextDepth);
+                                parallelBoard.UndoMove<STANDARD>(state, sq, m);
+                                parallelNodes += queenNodes;
+
+                                if (Divide) LogMove<Queen >(sq, m, queenNodes);
+
+                                state = parallelBoard.Move<STANDARD>(sq, m, Rook);
+                                const uint64_t rookNodes = Call::Perft(parallelBoard, nextDepth);
+                                parallelBoard.UndoMove<STANDARD>(state, sq, m);
+                                parallelNodes += rookNodes;
+
+                                if (Divide) LogMove<Rook  >(sq, m, rookNodes);
+
+                                state = parallelBoard.Move<STANDARD>(sq, m, Bishop);
+                                const uint64_t bishopNodes = Call::Perft(parallelBoard, nextDepth);
+                                parallelBoard.UndoMove<STANDARD>(state, sq, m);
+                                parallelNodes += bishopNodes;
+
+                                if (Divide) LogMove<Bishop>(sq, m, bishopNodes);
+
+                                state = parallelBoard.Move<STANDARD>(sq, m, Knight);
+                                const uint64_t knightNodes = Call::Perft(parallelBoard, nextDepth);
+                                parallelBoard.UndoMove<STANDARD>(state, sq, m);
+                                parallelNodes += knightNodes;
+
+                                if (Divide) LogMove<Knight>(sq, m, knightNodes);
+                            } else {
+                                const PreviousState state = parallelBoard.Move<STANDARD>(sq, m);
+                                const uint64_t perftNodes = Call::Perft(parallelBoard, nextDepth);
+                                parallelBoard.UndoMove<STANDARD>(state, sq, m);
+                                parallelNodes += perftNodes;
+
+                                if (Divide) LogMove(sq, m, perftNodes);
+                            }
+                        }
+
+                        atomicNodes += parallelNodes;
+                    });
+
+                    nodes += atomicNodes;
                 }
 
                 return nodes;
@@ -157,8 +228,8 @@ namespace StockDory::Perft
                 auto start = std::chrono::high_resolution_clock::now();
                 const uint64_t nodes =
                         PerftBoard.ColorToMove() == White ?
-                        Perft<White, Divide>(depth) :
-                        Perft<Black, Divide>(depth);
+                        Perft<White, Divide, false>(PerftBoard, depth) :
+                        Perft<Black, Divide, false>(PerftBoard, depth);
                 auto stop  = std::chrono::high_resolution_clock::now();
                 auto time = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
 
