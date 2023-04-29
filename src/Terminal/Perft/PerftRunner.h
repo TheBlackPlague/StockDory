@@ -8,8 +8,8 @@
 
 #include <iostream>
 #include <chrono>
-
-#include <ppl.h>
+#include <algorithm>
+#include <execution>
 
 #include "../../Backend/Board.h"
 #include "../../Backend/Util.h"
@@ -142,7 +142,7 @@ namespace StockDory::Perft
                 } else {
                     std::atomic<uint64_t> atomicNodes;
                     std::vector<Square> psq = pIterator.Values();
-                    concurrency::parallel_for_each(psq.begin(), psq.end(), [&](const Square sq) {
+                    std::for_each(std::execution::par, psq.begin(), psq.end(), [&](const Square sq) {
                         Board parallelBoard = board;
 
                         MoveList<Piece, Color> moves (parallelBoard, sq, pin, check);

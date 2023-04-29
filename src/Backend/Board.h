@@ -385,7 +385,7 @@ namespace StockDory
                 if (pieceF == Pawn) {
                     if (to == state.EnPassant) {
                         const auto epPawnSq = static_cast<Square>(state.EnPassant ^ 8);
-                        EmptyNative<T>(        Pawn, Opposite(colorF), epPawnSq);
+                        EmptyNative<T>(           Pawn, Opposite(colorF), epPawnSq);
                         Hash = HashPiece<T>(Hash, Pawn, Opposite(colorF), epPawnSq);
                         state.EnPassantCapture = true;
                     } else if (static_cast<Square>(from ^ 16) == to) {
