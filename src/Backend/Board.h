@@ -36,11 +36,11 @@ namespace StockDory
     {
 
         private:
-            std::array<std::array<BitBoard, 7>, 3> BB;
+            std::array<std::array<BitBoard, 7>, 3> BB {};
 
-            std::array<PieceColor, 64> PieceAndColor;
+            std::array<PieceColor, 64> PieceAndColor {};
 
-            std::array<BitBoard, 3> ColorBB;
+            std::array<BitBoard, 3> ColorBB {};
 
             // [COLOR TO MOVE] [WHITE KING CASTLE] [WHITE QUEEN CASTLE] [BLACK KING CASTLE] [BLACK QUEEN CASTLE]
             // [    4 BITS   ] [      1 BIT      ] [       1 BIT      ] [      1 BIT      ] [       1 BIT      ]
@@ -75,11 +75,9 @@ namespace StockDory
             }};
 
         public:
-            Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
+            constexpr Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "cppcoreguidelines-pro-type-member-init"
-            explicit Board(const std::string& fen)
+            constexpr explicit Board(const std::string& fen)
             {
                 PieceColor none = PieceColor(NAP, NAC);
                 std::fill(std::begin(PieceAndColor), std::end(PieceAndColor), none);
@@ -171,7 +169,6 @@ namespace StockDory
                 }
                 ColorBB[NAC] = ~(ColorBB[White] | ColorBB[Black]);
             }
-#pragma clang diagnostic pop
 
             [[nodiscard]]
             constexpr inline ZobristHash GetHash() const

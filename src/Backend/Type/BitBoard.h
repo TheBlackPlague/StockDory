@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <bit>
 
+#include <vector>
+
 #include "Square.h"
 
 using BitBoard = uint64_t;
@@ -63,6 +65,16 @@ class BitBoardIterator
             BB &= BB - 1ULL;
 
             return static_cast<Square>(i);
+        }
+
+        constexpr inline std::vector<Square> Values()
+        {
+            uint8_t count = Count(BB);
+            std::vector<Square> v (count);
+
+            for (uint8_t i = 0; i < count; i++) v[i] = Value();
+
+            return v;
         }
 
 };
