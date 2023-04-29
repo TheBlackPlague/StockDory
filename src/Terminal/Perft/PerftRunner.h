@@ -34,19 +34,29 @@ namespace StockDory::Perft
                         return PerftRunner::Perft<Color, Divide, Sync>(board, depth);
                     }
 
+                    template<Piece Piece>
+                    static inline uint64_t PerftLoop(Board& board, const uint8_t depth,
+                                                     const PinBitBoard& pin, const CheckBitBoard& check,
+                                                     const BitBoardIterator& iterator)
+                    {
+                        return PerftRunner::PerftLoop<Piece, Color, Divide, Sync>
+                                (board, depth, pin, check, iterator);
+                    }
+
             };
 
             template<::Color Color, bool Divide, bool Sync>
             static inline uint64_t Perft(Board& board, const uint8_t depth)
             {
                 uint64_t nodes = 0;
+                using Call = PerftLayer<Color, Divide, Sync>;
 
                 const PinBitBoard   pin   = board.Pin  <Color, Opposite(Color)>();
                 const CheckBitBoard check = board.Check<       Opposite(Color)>();
 
                 if (check.DoubleCheck) {
                     const BitBoardIterator kings (board.PieceBoard<Color>(King));
-                    nodes += PerftLoop<King, Color, Divide, Sync>(board, depth, pin, check, kings);
+                    nodes += Call::template PerftLoop<King>(board, depth, pin, check, kings);
                     return nodes;
                 }
 
@@ -57,12 +67,12 @@ namespace StockDory::Perft
                 const BitBoardIterator queens  (board.PieceBoard<Color>(Queen ));
                 const BitBoardIterator kings   (board.PieceBoard<Color>(King  ));
 
-                nodes += PerftLoop<Pawn  , Color, Divide, Sync>(board, depth, pin, check, pawns  );
-                nodes += PerftLoop<Knight, Color, Divide, Sync>(board, depth, pin, check, knights);
-                nodes += PerftLoop<Bishop, Color, Divide, Sync>(board, depth, pin, check, bishops);
-                nodes += PerftLoop<Rook  , Color, Divide, Sync>(board, depth, pin, check, rooks  );
-                nodes += PerftLoop<Queen , Color, Divide, Sync>(board, depth, pin, check, queens );
-                nodes += PerftLoop<King  , Color, Divide, Sync>(board, depth, pin, check, kings  );
+                nodes += Call::template PerftLoop<Pawn  >(board, depth, pin, check, pawns  );
+                nodes += Call::template PerftLoop<Knight>(board, depth, pin, check, knights);
+                nodes += Call::template PerftLoop<Bishop>(board, depth, pin, check, bishops);
+                nodes += Call::template PerftLoop<Rook  >(board, depth, pin, check, rooks  );
+                nodes += Call::template PerftLoop<Queen >(board, depth, pin, check, queens );
+                nodes += Call::template PerftLoop<King  >(board, depth, pin, check, kings  );
 
                 return nodes;
             }
