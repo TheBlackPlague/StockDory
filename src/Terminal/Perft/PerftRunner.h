@@ -8,8 +8,8 @@
 
 #include <iostream>
 #include <chrono>
-
-#include <ppl.h>
+#include <algorithm>
+#include <execution>
 
 #include "../../Backend/Board.h"
 #include "../../Backend/Util.h"
@@ -95,7 +95,7 @@ namespace StockDory::Perft
                             else LogMove        (sq, m, 1);
                         }
                     }
-                } else if (Sync || depth < 6)
+                } else if (Sync || depth < 5)
                 for (Square sq = pIterator.Value(); sq != Square::NASQ; sq = pIterator.Value()) {
                     const MoveList<Piece, Color> moves (board, sq, pin, check);
 
@@ -142,7 +142,7 @@ namespace StockDory::Perft
                 } else {
                     std::atomic<uint64_t> atomicNodes;
                     std::vector<Square> psq = pIterator.Values();
-                    concurrency::parallel_for_each(psq.begin(), psq.end(), [&](const Square sq) {
+                    std::for_each(std::execution::par, psq.begin(), psq.end(), [&](const Square sq) {
                         Board parallelBoard = board;
 
                         MoveList<Piece, Color> moves (parallelBoard, sq, pin, check);
@@ -204,9 +204,10 @@ namespace StockDory::Perft
             template<Piece Promotion = NAP>
             static void LogMove(const Square from, const Square to, const uint64_t nodes)
             {
-                std::cout << Util::SquareToString(from) << Util::SquareToString(to);
-                if (Promotion != NAP) std::cout << static_cast<char>(tolower(FirstLetter(Promotion)));
-                std::cout << ": " << nodes << std::endl;
+                std::string logEntry = Util::SquareToString(from) + Util::SquareToString(to);
+                if (Promotion != NAP) logEntry += static_cast<char>(tolower(FirstLetter(Promotion)));
+                logEntry += ": " + std::to_string(nodes) + "\n";
+                std::cout << logEntry;
             }
 
         public:
