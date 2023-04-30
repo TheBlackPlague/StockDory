@@ -3,11 +3,9 @@ project(StockDory)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g -ftime-report")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx512f -mavx512bw")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
 
 set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
-
-add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 
 set(CPM_DOWNLOAD_VERSION 0.38.0)
 
