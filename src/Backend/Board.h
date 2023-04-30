@@ -75,9 +75,9 @@ namespace StockDory
             }};
 
         public:
-            constexpr Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
+            Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
 
-            constexpr explicit Board(const std::string& fen)
+            explicit Board(const std::string& fen)
             {
                 PieceColor none = PieceColor(NAP, NAC);
                 std::fill(std::begin(PieceAndColor), std::end(PieceAndColor), none);

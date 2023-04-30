@@ -67,7 +67,7 @@ class BitBoardIterator
             return static_cast<Square>(i);
         }
 
-        constexpr inline std::vector<Square> Values()
+        inline std::vector<Square> Values()
         {
             uint8_t count = Count(BB);
             std::vector<Square> v (count);
@@ -84,7 +84,7 @@ constexpr inline BitBoardIterator Iterator(const BitBoard bb)
     return BitBoardIterator(bb);
 }
 
-constexpr inline std::string ToString(const BitBoard bb)
+inline std::string ToString(const BitBoard bb)
 {
     std::string s;
 
