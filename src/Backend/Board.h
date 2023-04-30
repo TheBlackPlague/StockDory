@@ -369,19 +369,15 @@ namespace StockDory
                 if (pieceT == Rook && (CastlingRightAndColorToMove & ColorCastleMask[colorT])) {
                     if (to == A1) {
                         CastlingRightAndColorToMove &= ~WhiteQCastleMask;
-//                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
                         Hash = HashCastling<T>(Hash, WhiteQCastleMask);
                     } else if (to == A8) {
                         CastlingRightAndColorToMove &= ~BlackQCastleMask;
-//                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
                         Hash = HashCastling<T>(Hash, BlackQCastleMask);
                     } else if (to == H1) {
                         CastlingRightAndColorToMove &= ~WhiteKCastleMask;
-//                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
                         Hash = HashCastling<T>(Hash, WhiteKCastleMask);
                     } else if (to == H8) {
                         CastlingRightAndColorToMove &= ~BlackKCastleMask;
-//                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
                         Hash = HashCastling<T>(Hash, BlackKCastleMask);
                     }
                 }
@@ -415,24 +411,19 @@ namespace StockDory
                     if        (pieceF == Rook) {
                         if (from == A1) {
                             CastlingRightAndColorToMove &= ~WhiteQCastleMask;
-//                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
                             Hash = HashCastling<T>(Hash, WhiteQCastleMask);
                         } else if (from == A8) {
                             CastlingRightAndColorToMove &= ~BlackQCastleMask;
-//                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
                             Hash = HashCastling<T>(Hash, BlackQCastleMask);
                         } else if (from == H1) {
                             CastlingRightAndColorToMove &= ~WhiteKCastleMask;
-//                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
                             Hash = HashCastling<T>(Hash, WhiteKCastleMask);
                         } else if (from == H8) {
                             CastlingRightAndColorToMove &= ~BlackKCastleMask;
-//                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
                             Hash = HashCastling<T>(Hash, BlackKCastleMask);
                         }
                     } else if (pieceF == King) {
                         CastlingRightAndColorToMove &= ~ColorCastleMask[colorF];
-//                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
                         Hash = HashCastling<T>(Hash, ColorCastleMask[colorF]);
 
                         if (to == C1 || to == C8 || to == G1 || to == G8) {
