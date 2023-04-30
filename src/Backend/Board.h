@@ -48,7 +48,7 @@ namespace StockDory
 
             BitBoard EnPassantTarget;
 
-            ZobristHash Hash;
+            ZobristHash Hash = 0;
 
             constexpr static uint8_t  ColorToMoveMask = 0xF0;
             constexpr static uint8_t     CastlingMask = 0x0F;
@@ -171,7 +171,7 @@ namespace StockDory
             }
 
             [[nodiscard]]
-            constexpr inline ZobristHash GetHash() const
+            constexpr inline ZobristHash Zobrist() const
             {
                 return Hash;
             }
@@ -369,16 +369,20 @@ namespace StockDory
                 if (pieceT == Rook && (CastlingRightAndColorToMove & ColorCastleMask[colorT])) {
                     if (to == A1) {
                         CastlingRightAndColorToMove &= ~WhiteQCastleMask;
-                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+//                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                        Hash = HashCastling<T>(Hash, WhiteQCastleMask);
                     } else if (to == A8) {
                         CastlingRightAndColorToMove &= ~BlackQCastleMask;
-                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+//                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                        Hash = HashCastling<T>(Hash, BlackQCastleMask);
                     } else if (to == H1) {
                         CastlingRightAndColorToMove &= ~WhiteKCastleMask;
-                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+//                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                        Hash = HashCastling<T>(Hash, WhiteKCastleMask);
                     } else if (to == H8) {
                         CastlingRightAndColorToMove &= ~BlackKCastleMask;
-                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+//                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                        Hash = HashCastling<T>(Hash, BlackKCastleMask);
                     }
                 }
 
@@ -390,9 +394,10 @@ namespace StockDory
                         state.EnPassantCapture = true;
                     } else if (static_cast<Square>(from ^ 16) == to) {
                         const auto epSq = static_cast<Square>(to ^ 8);
+                        if (T & PERFT) Hash = HashEnPassant<T>(Hash, epSq);
                         if (AttackTable::Pawn[colorF][epSq] & BB[Opposite(colorF)][Pawn]) {
                             EnPassantTarget = FromSquare(epSq);
-                            Hash = HashEnPassant<T>(Hash, epSq);
+                            if (!(T & PERFT)) Hash = HashEnPassant<T>(Hash, epSq);
                         }
                     } else if (promotion != NAP) {
                         EmptyNative <T>(Pawn     , colorF, from);
@@ -400,7 +405,7 @@ namespace StockDory
                         InsertNative<T>(promotion, colorF, to  );
 
                         Hash = HashPiece<T>(Hash, Pawn     , colorF, from);
-                        Hash = HashPiece<T>(Hash, pieceT   , colorF, to  );
+                        Hash = HashPiece<T>(Hash, pieceT   , colorT, to  );
                         Hash = HashPiece<T>(Hash, promotion, colorF, to  );
 
                         state.PromotedPiece = promotion;
@@ -410,20 +415,25 @@ namespace StockDory
                     if        (pieceF == Rook) {
                         if (from == A1) {
                             CastlingRightAndColorToMove &= ~WhiteQCastleMask;
-                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+//                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                            Hash = HashCastling<T>(Hash, WhiteQCastleMask);
                         } else if (from == A8) {
                             CastlingRightAndColorToMove &= ~BlackQCastleMask;
-                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+//                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                            Hash = HashCastling<T>(Hash, BlackQCastleMask);
                         } else if (from == H1) {
                             CastlingRightAndColorToMove &= ~WhiteKCastleMask;
-                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+//                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                            Hash = HashCastling<T>(Hash, WhiteKCastleMask);
                         } else if (from == H8) {
                             CastlingRightAndColorToMove &= ~BlackKCastleMask;
-                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+//                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                            Hash = HashCastling<T>(Hash, BlackKCastleMask);
                         }
                     } else if (pieceF == King) {
                         CastlingRightAndColorToMove &= ~ColorCastleMask[colorF];
-                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+//                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                        Hash = HashCastling<T>(Hash, ColorCastleMask[colorF]);
 
                         if (to == C1 || to == C8 || to == G1 || to == G8) {
                             state.CastlingFrom = CastleRookSquareStart[colorF][to < from];

@@ -12,20 +12,28 @@ int main(int argc, char* argv[])
 {
     TableSetup();
 
-//    const std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-    if (argc != 3) {
-        std::cerr << "Usage: ./StockDory [FEN string] [Perft depth]" << std::endl;
+    if (argc < 3) {
+        std::cerr << "Usage: ./StockDory [FEN string] [PerftDepth uint] [TTSize uint|null]" << std::endl;
         return 1;  // Return with error code
     }
 
     std::string fen = argv[1];
-    int depth;
+    uint8_t depth;
     try {
-        depth = std::stoi(argv[2]);
+        depth = static_cast<uint8_t>(std::stoi(argv[2]));
     } catch (const std::exception& e) {
         std::cerr << "Invalid Perft depth. Must be an integer." << std::endl;
         return 1;  // Return with error code
+    }
+
+    uint64_t size = 0;
+    if (argc == 4) {
+        try {
+            size = static_cast<uint64_t>(std::stoi(argv[3]));
+        } catch (const std::exception& e) {
+            std::cerr << "Invalid TT size. Must be an integer." << std::endl;
+            return 1;  // Return with error code
+        }
     }
 
     auto board = StockDory::Board(fen);
@@ -35,7 +43,12 @@ int main(int argc, char* argv[])
 
     StockDory::Perft::PerftRunner::SetBoard(board);
 
-    StockDory::Perft::PerftRunner::Perft<false>(depth);
+    if (size != 0) {
+        StockDory::Perft::PerftRunner::SetTranspositionTable(size);
+        StockDory::Perft::PerftRunner::Perft<false, true>(depth);
+    } else {
+        StockDory::Perft::PerftRunner::Perft<false>(depth);
+    }
 
     return 0;
 }
