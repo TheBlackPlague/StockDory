@@ -73,14 +73,14 @@ namespace StockDory::Perft
             static inline uint64_t Perft(Board& board, const uint8_t depth)
             {
                 uint64_t nodes = 0;
-                using Call = PerftLayer<Color, Divide, Sync, TT>;
+                using PLayer = PerftLayer<Color, Divide, Sync, TT>;
 
                 const PinBitBoard   pin   = board.Pin  <Color, Opposite(Color)>();
                 const CheckBitBoard check = board.Check<       Opposite(Color)>();
 
                 if (check.DoubleCheck) {
                     const BitBoardIterator kings (board.PieceBoard<Color>(King));
-                    nodes += Call::template PerftLoop<King>(board, depth, pin, check, kings);
+                    nodes += PLayer::template PerftLoop<King>(board, depth, pin, check, kings);
                     return nodes;
                 }
 
@@ -91,12 +91,12 @@ namespace StockDory::Perft
                 const BitBoardIterator queens  (board.PieceBoard<Color>(Queen ));
                 const BitBoardIterator kings   (board.PieceBoard<Color>(King  ));
 
-                nodes += Call::template PerftLoop<Pawn  >(board, depth, pin, check, pawns  );
-                nodes += Call::template PerftLoop<Knight>(board, depth, pin, check, knights);
-                nodes += Call::template PerftLoop<Bishop>(board, depth, pin, check, bishops);
-                nodes += Call::template PerftLoop<Rook  >(board, depth, pin, check, rooks  );
-                nodes += Call::template PerftLoop<Queen >(board, depth, pin, check, queens );
-                nodes += Call::template PerftLoop<King  >(board, depth, pin, check, kings  );
+                nodes += PLayer::template PerftLoop<Pawn  >(board, depth, pin, check, pawns  );
+                nodes += PLayer::template PerftLoop<Knight>(board, depth, pin, check, knights);
+                nodes += PLayer::template PerftLoop<Bishop>(board, depth, pin, check, bishops);
+                nodes += PLayer::template PerftLoop<Rook  >(board, depth, pin, check, rooks  );
+                nodes += PLayer::template PerftLoop<Queen >(board, depth, pin, check, queens );
+                nodes += PLayer::template PerftLoop<King  >(board, depth, pin, check, kings  );
 
                 return nodes;
             }
