@@ -8,15 +8,13 @@
 #ifndef STOCKDORY_MOVETYPE_H
 #define STOCKDORY_MOVETYPE_H
 
-enum MoveType : uint64_t
-{
+using MoveType = uint64_t;
 
-    STANDARD =                      0x000F,
-    ZOBRIST  = STANDARD |           0x00F0,
-    HCE      = STANDARD | ZOBRIST | 0x0F00,
-    NNUE     = STANDARD | ZOBRIST | 0xF000,
-
-};
+constexpr MoveType STANDARD = 0x0000000F;
+constexpr MoveType ZOBRIST  = 0x000000F0;
+constexpr MoveType PERFT    = 0x00000F00;
+constexpr MoveType HCE      = 0x0000F000;
+constexpr MoveType NNUE     = 0x000F0000;
 
 #endif //STOCKDORY_MOVETYPE_H
 

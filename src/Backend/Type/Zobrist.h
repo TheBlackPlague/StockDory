@@ -86,28 +86,28 @@ constexpr StockDory::Zobrist::ZobristKeyTable ZobristKeyTable;
 template<MoveType T>
 constexpr inline ZobristHash HashPiece(const ZobristHash hash, const Piece p, const Color c, const Square sq)
 {
-    if (T & MoveType::ZOBRIST) return hash ^ ZobristKeyTable.PieceKey[c][p][sq];
+    if (T & ZOBRIST) return hash ^ ZobristKeyTable.PieceKey[c][p][sq];
     return hash;
 }
 
 template<MoveType T>
 constexpr inline ZobristHash HashCastling(const ZobristHash hash, const uint8_t castlingRight)
 {
-    if (T & MoveType::ZOBRIST) return hash ^ ZobristKeyTable.CastlingKey[castlingRight];
+    if (T & ZOBRIST) return hash ^ ZobristKeyTable.CastlingKey[castlingRight];
     return hash;
 }
 
 template<MoveType T>
 constexpr inline ZobristHash HashEnPassant(const ZobristHash hash, const Square enPassantSquare)
 {
-    if (T & MoveType::ZOBRIST) return hash ^ ZobristKeyTable.EnPassantKey[enPassantSquare];
+    if (T & ZOBRIST) return hash ^ ZobristKeyTable.EnPassantKey[enPassantSquare];
     return hash;
 }
 
 template<MoveType T>
 constexpr inline ZobristHash HashColorFlip(const ZobristHash hash)
 {
-    if (T & MoveType::ZOBRIST) return hash ^ ZobristKeyTable.ColorToMoveKey;
+    if (T & ZOBRIST) return hash ^ ZobristKeyTable.ColorToMoveKey;
     return hash;
 }
 
