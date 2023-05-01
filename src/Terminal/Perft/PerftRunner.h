@@ -18,7 +18,7 @@
 
 #include "PerftEntry.h"
 
-using PEntry = StockDory::Perft::PerftEntry<5>;
+using PEntry = StockDory::Perft::PerftEntry<9>;
 
 namespace StockDory::Perft
 {

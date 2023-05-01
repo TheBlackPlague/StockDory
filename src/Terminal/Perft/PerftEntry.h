@@ -7,7 +7,7 @@
 #define STOCKDORY_PERFTENTRY_H
 
 #include <bit>
-#include <mutex>
+#include <shared_mutex>
 
 #include "../../Backend/TranspositionTable.h"
 #include "../../Backend/Type/Zobrist.h"
@@ -24,11 +24,11 @@ namespace StockDory::Perft
         ZobristHash Hash = 0;
         std::array<uint64_t, Depth> Internal {};
         uint64_t Utilization = 0;
-        std::mutex threadLock;
+        std::shared_mutex ThreadLock;
 
         inline std::pair<bool, uint64_t> Nodes(const ZobristHash hash, const uint8_t depth)
         {
-            std::unique_lock lock(threadLock);
+            std::lock_guard lock(ThreadLock);
             return {Hash == hash && (Utilization & (1ULL << (depth - 1))), Internal[depth - 1]};
         }
 
@@ -37,7 +37,7 @@ namespace StockDory::Perft
             const uint8_t  idx  = depth - 1  ;
             const uint64_t mask = 1ULL << idx;
 
-            std::unique_lock lock(threadLock);
+            std::lock_guard lock(ThreadLock);
             if (Utilization == 0) Hash = hash;
             if (hash != Hash) return;
             Utilization |= mask;
