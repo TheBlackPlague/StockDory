@@ -390,10 +390,14 @@ namespace StockDory
                         state.EnPassantCapture = true;
                     } else if (static_cast<Square>(from ^ 16) == to) {
                         const auto epSq = static_cast<Square>(to ^ 8);
-                        if (T & PERFT) Hash = HashEnPassant<T>(Hash, epSq);
-                        if (AttackTable::Pawn[colorF][epSq] & BB[Opposite(colorF)][Pawn]) {
+                        if (T & PERFT) {
                             EnPassantTarget = FromSquare(epSq);
-                            if (!(T & PERFT)) Hash = HashEnPassant<T>(Hash, epSq);
+                            Hash = HashEnPassant<T>(Hash, epSq);
+                        } else {
+                            if (AttackTable::Pawn[colorF][epSq] & BB[Opposite(colorF)][Pawn]) {
+                                EnPassantTarget = FromSquare(epSq);
+                                Hash = HashEnPassant<T>(Hash, epSq);
+                            }
                         }
                     } else if (promotion != NAP) {
                         EmptyNative <T>(Pawn     , colorF, from);

@@ -24,7 +24,7 @@ namespace StockDory::Zobrist
     {
 
         private:
-            ZobristHash Seed = 0x7F6E5D4C3B2A1908;
+            ZobristHash Seed = 0x7F6EAD4C3B2A1908;
 
         public:
             [[nodiscard]]

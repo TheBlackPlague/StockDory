@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
     uint64_t size = 0;
     if (argc == 4) {
         try {
-            size = static_cast<uint64_t>(std::stoi(argv[3]));
+            size = static_cast<uint64_t>(std::stoull(argv[3]));
         } catch (const std::exception& e) {
             std::cerr << "Invalid TT size. Must be an integer." << std::endl;
             return 1;  // Return with error code

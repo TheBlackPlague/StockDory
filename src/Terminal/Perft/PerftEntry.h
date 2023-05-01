@@ -26,32 +26,22 @@ namespace StockDory::Perft
         uint64_t Utilization = 0;
         std::mutex threadLock;
 
-        [[nodiscard]]
         inline std::pair<bool, uint64_t> Nodes(const ZobristHash hash, const uint8_t depth)
         {
             std::unique_lock lock(threadLock);
-            if (hash == Hash) {
-                const uint8_t idx = depth - 1;
-                return {Utilization & (1ULL << idx), Internal[idx]};
-            }
-
-            return {false, 0};
+            return {Hash == hash && (Utilization & (1ULL << (depth - 1))), Internal[depth - 1]};
         }
 
         inline void Insert(const ZobristHash hash, const uint8_t depth, const uint64_t nodes)
         {
+            const uint8_t  idx  = depth - 1  ;
+            const uint64_t mask = 1ULL << idx;
+
             std::unique_lock lock(threadLock);
-            const uint8_t idx = depth - 1;
-            if (Utilization) {
-                if (hash == Hash) {
-                    Internal[idx] = nodes;
-                    Utilization |= (1ULL << (idx));
-                }
-            } else {
-                Hash = hash;
-                Internal[idx] = nodes;
-                Utilization |= (1ULL << (idx));
-            }
+            if (Utilization == 0) Hash = hash;
+            if (hash != Hash) return;
+            Utilization |= mask;
+            Internal[idx] = nodes;
         }
 
     };
