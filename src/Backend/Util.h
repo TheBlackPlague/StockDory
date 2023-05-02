@@ -8,6 +8,7 @@
 
 #include <sstream>
 #include <vector>
+#include <iomanip>
 
 #include "Type/Square.h"
 
@@ -33,6 +34,14 @@ namespace StockDory
                 s += Rank(sq);
 
                 return s;
+            }
+
+            static inline std::string ToHex(const uint64_t value)
+            {
+                std::stringstream stream;
+                stream << std::setfill('0') << std::setw(sizeof(uint64_t) * 2);
+                stream << std::uppercase << std::hex << value;
+                return stream.str();
             }
 
     };

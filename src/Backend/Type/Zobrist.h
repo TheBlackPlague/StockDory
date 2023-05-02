@@ -3,6 +3,8 @@
 // Licensed under LGPL-3.0.
 //
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-braces"
 #ifndef STOCKDORY_ZOBRIST_H
 #define STOCKDORY_ZOBRIST_H
 
@@ -19,25 +21,6 @@ using ZobristHash = uint64_t;
 
 namespace StockDory::Zobrist
 {
-
-//    class RNG
-//    {
-//
-//        private:
-//            ZobristHash Seed = 0x7F6EAD4C3B2A1908;
-//
-//        public:
-//            [[nodiscard]]
-//            constexpr inline ZobristHash Next()
-//            {
-//                Seed ^= Seed >> 12;
-//                Seed ^= Seed << 25;
-//                Seed ^= Seed >> 27;
-//
-//                return Seed * 0x2545F4914F6CDD1DULL;
-//            }
-//
-//    };
 
     class ZobristKeyTable
     {
@@ -411,33 +394,6 @@ namespace StockDory::Zobrist
 
             ZobristHash ColorToMoveKey = 0x547E5B66033ED5B7;
 
-//            constexpr ZobristKeyTable()
-//            {
-//                RNG rng = RNG();
-//
-//                for (size_t c = 0; c < 3; c++) for (size_t p = 0; p < 7; p++) for (size_t sq = 0; sq < 64; sq++) {
-//                    if (c > 1 || p > 5) PieceKey[c][p][sq] = 0         ;
-//                    else                PieceKey[c][p][sq] = rng.Next();
-//                }
-//
-//                for (size_t i = 0; i < 16; i++) {
-//                    CastlingKey[i] = 0;
-//
-//                    BitBoardIterator iterator (i);
-//                    for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
-//                        ZobristHash key = CastlingKey[1ULL << sq];
-//                        CastlingKey[i] ^= key ? key : rng.Next();
-//                    }
-//                }
-//
-//                for (size_t i = 0; i < 65; i++) {
-//                    if (i == 64) EnPassantKey[i] = 0         ;
-//                    else         EnPassantKey[i] = rng.Next();
-//                }
-//
-//                ColorToMoveKey = rng.Next();
-//            }
-
     };
 
 }
@@ -473,3 +429,5 @@ constexpr inline ZobristHash HashColorFlip(const ZobristHash hash)
 }
 
 #endif //STOCKDORY_ZOBRIST_H
+
+#pragma clang diagnostic pop

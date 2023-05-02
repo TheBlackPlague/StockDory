@@ -41,14 +41,14 @@ int main(int argc, char* argv[])
     StockDory::ScreenManager::DrawBoard(board);
     StockDory::ScreenManager::Refresh();
 
-    StockDory::Perft::PerftRunner::SetBoard(board);
-
-    if (size != 0) {
-        StockDory::Perft::PerftRunner::SetTranspositionTable(size);
-        StockDory::Perft::PerftRunner::Perft<false, true>(depth);
-    } else {
-        StockDory::Perft::PerftRunner::Perft<false>(depth);
-    }
+//    StockDory::Perft::PerftRunner::SetBoard(board);
+//
+//    if (size != 0) {
+//        StockDory::Perft::PerftRunner::SetTranspositionTable(size);
+//        StockDory::Perft::PerftRunner::Perft<false, true>(depth);
+//    } else {
+//        StockDory::Perft::PerftRunner::Perft<false>(depth);
+//    }
 
     return 0;
 }

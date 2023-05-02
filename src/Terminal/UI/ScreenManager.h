@@ -47,7 +47,8 @@ namespace StockDory
                 const UIColor LightSq = UIColor(251, 173, 108);
                 const UIColor  DarkSq = UIColor(211, 133, 046);
 
-                const std::string Empty = "  ";
+                const std::string Empty   = "  ";
+                const std::string Padding = "       ";
 
                 std::vector<Element> vBoxContainer;
 
@@ -60,13 +61,13 @@ namespace StockDory
                             std::vector<Element> hBoxContainer;
 
                             // Horizontal padding:
-                            hBoxContainer.push_back(text(" " + Empty));
+                            hBoxContainer.push_back(text(Padding + Empty + " "));
 
                             for (uint8_t h = 0; h <= Width; h += BoxSize) {
                                 // Horizontal padding:
                                 if (h == Width) {
                                     for (uint8_t j = 0; j < BoxSize - 1; j++) {
-                                        Element emptyPadding = text(Empty);
+                                        Element emptyPadding = text(Padding);
                                         if (j == BoxSize - 2) emptyPadding = text(" ");
                                         hBoxContainer.push_back(emptyPadding);
                                     }
@@ -100,7 +101,7 @@ namespace StockDory
                             if (i == BoxSize - 1) continue;
 
                             // Horizontal padding:
-                            hBoxContainer.push_back(text(" " + Empty));
+                            hBoxContainer.push_back(text(Padding + Empty));
 
                             for (uint8_t h = 0; h < Width; h += BoxSize) {
                                 const uint8_t file = h / BoxSize;
@@ -124,8 +125,9 @@ namespace StockDory
                         }
 
                         // Draw vertical labels.
-                        if (i != BoxSize / 2) hBoxContainer.push_back(text(" " + Empty));
-                        else hBoxContainer.push_back(text(" " + std::to_string(rank + 1) + " "));
+                        Element rankLabel = text(Padding + Empty);
+                        if (i == BoxSize / 2) rankLabel = text(Padding + std::to_string(rank + 1) + " ");
+                        hBoxContainer.push_back(rankLabel);
 
                         for (uint8_t h = 0; h <= Width; h += BoxSize) {
                             // Horizontal padding:
@@ -171,6 +173,12 @@ namespace StockDory
                     light = !light;
                 }
 
+                vBoxContainer.push_back(separator());
+                Element fen     = text("FEN: "  + board.Fen()) | center;
+                Element hashHex = text("Hash: " + StockDory::Util::ToHex(board.Zobrist())) | center;
+                vBoxContainer.push_back(fen);
+                vBoxContainer.push_back(hashHex);
+
                 BoardUI = vbox(vBoxContainer);
             }
 
@@ -178,7 +186,7 @@ namespace StockDory
             {
                 auto ui = hbox({
                     BoardUI | flex,
-                    separator()
+//                    separator()
                 });
 
                 auto windowOnScreen = window(text(Title), ui);

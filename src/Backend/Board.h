@@ -171,6 +171,95 @@ namespace StockDory
             }
 
             [[nodiscard]]
+            inline std::string Fen() const
+            {
+                std::array<std::string, 8> fenRank;
+
+                for (uint8_t v = 0; v < 8; v++) {
+                    std::stringstream rankStr;
+                    uint8_t e = 0;
+                    for (uint8_t h = 0; h < 8; h++) {
+                        const PieceColor pc = PieceAndColor[v * 8 + h];
+
+                        if (pc.Piece() == NAP) {
+                            e++;
+
+                            if (h == 7) {
+                                rankStr << static_cast<uint16_t>(e);
+                                e = 0;
+                            }
+                            continue;
+                        }
+
+                        if (e != 0) {
+                            rankStr << static_cast<uint16_t>(e);
+                            e = 0;
+                        }
+
+                        char p;
+
+                        switch (pc.Piece()) {
+                            case Pawn:
+                                p = 'p';
+                                break;
+                            case Knight:
+                                p = 'n';
+                                break;
+                            case Bishop:
+                                p = 'b';
+                                break;
+                            case Rook:
+                                p = 'r';
+                                break;
+                            case Queen:
+                                p = 'q';
+                                break;
+                            case King:
+                                p = 'k';
+                                break;
+                            case NAP:
+                                break;
+                        }
+
+                        if (pc.Color() == White) p = static_cast<char>(toupper(p));
+
+                        rankStr << p;
+                    }
+
+                    fenRank[v] = rankStr.str();
+                }
+
+                std::stringstream fen;
+                for (uint8_t v = 0; v < 8; v++) {
+                    fen << fenRank[7 - v];
+                    if (v != 7) fen << '/';
+                }
+
+                fen << ' ';
+                fen << ((CastlingRightAndColorToMove & ColorToMoveMask) == White ? 'w' : 'b');
+                fen << ' ';
+
+                if (CastlingRightAndColorToMove & CastlingMask) {
+                    if (CastlingRightAndColorToMove & WhiteKCastleMask) fen << 'K';
+                    if (CastlingRightAndColorToMove & WhiteQCastleMask) fen << 'Q';
+                    if (CastlingRightAndColorToMove & BlackKCastleMask) fen << 'k';
+                    if (CastlingRightAndColorToMove & BlackQCastleMask) fen << 'q';
+                } else fen << '-';
+
+                fen << ' ';
+                if (EnPassantSquare() != NASQ) fen << Util::SquareToString(ToSquare(EnPassantTarget));
+                else                           fen << '-';
+
+                // Implement half and full move clocks.
+                fen << ' ';
+                fen << '0';
+                fen << ' ';
+                fen << '1';
+
+                return fen.str();
+            }
+
+            [[nodiscard]]
             constexpr inline ZobristHash Zobrist() const
             {
                 return Hash;
@@ -369,19 +458,10 @@ namespace StockDory
                 const Color colorT = state.CapturedPiece.Color();
 
                 if (pieceT == Rook && (CastlingRightAndColorToMove & ColorCastleMask[colorT])) {
-                    if (to == A1) {
-                        CastlingRightAndColorToMove &= ~WhiteQCastleMask;
-//                        Hash = HashCastling<T>(Hash, WhiteQCastleMask);
-                    } else if (to == A8) {
-                        CastlingRightAndColorToMove &= ~BlackQCastleMask;
-//                        Hash = HashCastling<T>(Hash, BlackQCastleMask);
-                    } else if (to == H1) {
-                        CastlingRightAndColorToMove &= ~WhiteKCastleMask;
-//                        Hash = HashCastling<T>(Hash, WhiteKCastleMask);
-                    } else if (to == H8) {
-                        CastlingRightAndColorToMove &= ~BlackKCastleMask;
-//                        Hash = HashCastling<T>(Hash, BlackKCastleMask);
-                    }
+                    if      (to == A1) CastlingRightAndColorToMove &= ~WhiteQCastleMask;
+                    else if (to == A8) CastlingRightAndColorToMove &= ~BlackQCastleMask;
+                    else if (to == H1) CastlingRightAndColorToMove &= ~WhiteKCastleMask;
+                    else if (to == H8) CastlingRightAndColorToMove &= ~BlackKCastleMask;
                 }
 
                 if (pieceF == Pawn) {
@@ -415,22 +495,12 @@ namespace StockDory
                     }
                 } else if ((CastlingRightAndColorToMove & ColorCastleMask[colorF])) {
                     if        (pieceF == Rook) {
-                        if (from == A1) {
-                            CastlingRightAndColorToMove &= ~WhiteQCastleMask;
-//                            Hash = HashCastling<T>(Hash, WhiteQCastleMask);
-                        } else if (from == A8) {
-                            CastlingRightAndColorToMove &= ~BlackQCastleMask;
-//                            Hash = HashCastling<T>(Hash, BlackQCastleMask);
-                        } else if (from == H1) {
-                            CastlingRightAndColorToMove &= ~WhiteKCastleMask;
-//                            Hash = HashCastling<T>(Hash, WhiteKCastleMask);
-                        } else if (from == H8) {
-                            CastlingRightAndColorToMove &= ~BlackKCastleMask;
-//                            Hash = HashCastling<T>(Hash, BlackKCastleMask);
-                        }
+                        if      (from == A1) CastlingRightAndColorToMove &= ~WhiteQCastleMask;
+                        else if (from == A8) CastlingRightAndColorToMove &= ~BlackQCastleMask;
+                        else if (from == H1) CastlingRightAndColorToMove &= ~WhiteKCastleMask;
+                        else if (from == H8) CastlingRightAndColorToMove &= ~BlackKCastleMask;
                     } else if (pieceF == King) {
                         CastlingRightAndColorToMove &= ~ColorCastleMask[colorF];
-//                        Hash = HashCastling<T>(Hash, ColorCastleMask[colorF]);
 
                         if (to == C1 || to == C8 || to == G1 || to == G8) {
                             state.CastlingFrom = CastleRookSquareStart[colorF][to < from];
