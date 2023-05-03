@@ -38,6 +38,8 @@ int main(int argc, char* argv[])
 
     auto board = StockDory::Board(fen);
 
+    StockDory::Evaluation::ResetNetworkState(board);
+
     StockDory::ScreenManager::DrawBoard(board);
     StockDory::ScreenManager::Refresh();
 

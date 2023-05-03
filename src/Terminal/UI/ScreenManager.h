@@ -9,7 +9,11 @@
 #include <ftxui/screen/screen.hpp>
 #include <ftxui/dom/elements.hpp>
 
+#include "../../External/strutil.h"
+
 #include "../../Backend/Board.h"
+
+#include "../../Engine/Evaluation.h"
 
 using namespace ftxui;
 using UIColor = ftxui::Color;
@@ -174,10 +178,15 @@ namespace StockDory
                 }
 
                 vBoxContainer.push_back(separator());
-                Element fen     = text("FEN: "  + board.Fen()) | center;
-                Element hashHex = text("Hash: " + StockDory::Util::ToHex(board.Zobrist())) | center;
+
+                int32_t evaluation = StockDory::Evaluation::Evaluate(board);
+
+                Element fen         = text("FEN: "  + board.Fen()) | center;
+                Element hashHex     = text("Hash: " + StockDory::Util::ToHex(board.Zobrist())) | center;
+                Element evalDisplay = text("Evaluation: " + strutil::to_string(evaluation)) | center;
                 vBoxContainer.push_back(fen);
                 vBoxContainer.push_back(hashHex);
+                vBoxContainer.push_back(evalDisplay);
 
                 BoardUI = vbox(vBoxContainer);
             }

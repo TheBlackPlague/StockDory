@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.25)
 project(StockDory)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_FLAGS "-march=native")
 set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g -ftime-report")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
 
@@ -30,11 +31,21 @@ include(${CPM_DOWNLOAD_LOCATION})
 CPMAddPackage("gh:ArthurSonzogni/ftxui#v4.0.0")
 CPMAddPackage("gh:TheBlackPlague/MantaRay#master")
 
+include(BinaryResource.cmake)
+
+file(GLOB NNUEBinary
+        "src/Engine/Model/*.nnue")
+
+BinaryToHeader(${NNUEBinary} "${CMAKE_CURRENT_BINARY_DIR}/Model/NeuralNetworkBinary.h" "NeuralNetworkBinary")
+
 file(GLOB StockDoryBackendType
         "src/Backend/Type/*.h"
         "src/Backend/Template/*.h"
         "src/Backend/Move/*.h"
         "src/Backend/*.h")
+
+file(GLOB StockDoryEngineType
+        "src/Engine/*.h")
 
 file(GLOB StockDoryExternalType
         "src/External/*.h")
@@ -44,6 +55,8 @@ file(GLOB StockDoryFrontendType
         "src/Terminal/Perft/*.h")
 
 add_executable(StockDory src/Terminal/main.cpp
-        ${StockDoryBackendType} ${StockDoryExternalType} ${StockDoryFrontendType})
+        ${StockDoryBackendType} ${StockDoryEngineType} ${StockDoryExternalType} ${StockDoryFrontendType})
+
+target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 target_link_libraries(StockDory ftxui::screen ftxui::dom ftxui::component MantaRay)
