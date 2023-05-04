@@ -179,6 +179,7 @@ namespace StockDory
 
                 vBoxContainer.push_back(separator());
 
+                StockDory::Evaluation::ResetNetworkState(board);
                 int32_t evaluation = StockDory::Evaluation::Evaluate(board);
 
                 Element fen         = text("FEN: "  + board.Fen()) | center;

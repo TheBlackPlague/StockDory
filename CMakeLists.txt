@@ -52,7 +52,8 @@ file(GLOB StockDoryExternalType
 
 file(GLOB StockDoryFrontendType
         "src/Terminal/UI/*.h"
-        "src/Terminal/Perft/*.h")
+        "src/Terminal/Perft/*.h"
+        "src/Terminal/UCI/*.h")
 
 add_executable(StockDory src/Terminal/main.cpp
         ${StockDoryBackendType} ${StockDoryEngineType} ${StockDoryExternalType} ${StockDoryFrontendType})
