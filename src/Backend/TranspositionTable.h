@@ -47,6 +47,12 @@ namespace StockDory
                 return Internal[index & IndexMask];
             }
 
+            [[nodiscard]]
+            constexpr inline uint64_t Size() const
+            {
+                return Internal.size();
+            }
+
     };
 
 } // StockDory

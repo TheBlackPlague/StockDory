@@ -18,6 +18,8 @@
 
 #include "PerftEntry.h"
 
+//using PEntry = StockDory::Perft::PerftEntry<9>;
+
 namespace StockDory::Perft
 {
 
@@ -26,7 +28,7 @@ namespace StockDory::Perft
 
         private:
             static Board PerftBoard;
-            static TranspositionTable<PerftEntry<5>> TranspositionTable;
+//            static TranspositionTable<PEntry> TranspositionTable;
 
             template<::Color Color, bool Divide, bool Sync = false, bool TT = false>
             struct PerftLayer
@@ -75,28 +77,41 @@ namespace StockDory::Perft
                 uint64_t nodes = 0;
                 using PLayer = PerftLayer<Color, Divide, Sync, TT>;
 
+//                if (TT) {
+//                    const ZobristHash hash = board.Zobrist();
+//                    PEntry& entry = TranspositionTable[hash];
+//                    std::pair<bool, uint64_t> result = entry.Nodes(hash, depth);
+//
+//                    if (result.first) return result.second;
+//                }
+
                 const PinBitBoard   pin   = board.Pin  <Color, Opposite(Color)>();
                 const CheckBitBoard check = board.Check<       Opposite(Color)>();
 
                 if (check.DoubleCheck) {
                     const BitBoardIterator kings (board.PieceBoard<Color>(King));
                     nodes += PLayer::template PerftLoop<King>(board, depth, pin, check, kings);
-                    return nodes;
+                } else {
+                    const BitBoardIterator pawns   (board.PieceBoard<Color>(Pawn  ));
+                    const BitBoardIterator knights (board.PieceBoard<Color>(Knight));
+                    const BitBoardIterator bishops (board.PieceBoard<Color>(Bishop));
+                    const BitBoardIterator rooks   (board.PieceBoard<Color>(Rook  ));
+                    const BitBoardIterator queens  (board.PieceBoard<Color>(Queen ));
+                    const BitBoardIterator kings   (board.PieceBoard<Color>(King  ));
+
+                    nodes += PLayer::template PerftLoop<Pawn  >(board, depth, pin, check, pawns  );
+                    nodes += PLayer::template PerftLoop<Knight>(board, depth, pin, check, knights);
+                    nodes += PLayer::template PerftLoop<Bishop>(board, depth, pin, check, bishops);
+                    nodes += PLayer::template PerftLoop<Rook  >(board, depth, pin, check, rooks  );
+                    nodes += PLayer::template PerftLoop<Queen >(board, depth, pin, check, queens );
+                    nodes += PLayer::template PerftLoop<King  >(board, depth, pin, check, kings  );
                 }
 
-                const BitBoardIterator pawns   (board.PieceBoard<Color>(Pawn  ));
-                const BitBoardIterator knights (board.PieceBoard<Color>(Knight));
-                const BitBoardIterator bishops (board.PieceBoard<Color>(Bishop));
-                const BitBoardIterator rooks   (board.PieceBoard<Color>(Rook  ));
-                const BitBoardIterator queens  (board.PieceBoard<Color>(Queen ));
-                const BitBoardIterator kings   (board.PieceBoard<Color>(King  ));
-
-                nodes += PLayer::template PerftLoop<Pawn  >(board, depth, pin, check, pawns  );
-                nodes += PLayer::template PerftLoop<Knight>(board, depth, pin, check, knights);
-                nodes += PLayer::template PerftLoop<Bishop>(board, depth, pin, check, bishops);
-                nodes += PLayer::template PerftLoop<Rook  >(board, depth, pin, check, rooks  );
-                nodes += PLayer::template PerftLoop<Queen >(board, depth, pin, check, queens );
-                nodes += PLayer::template PerftLoop<King  >(board, depth, pin, check, kings  );
+//                if (TT) {
+//                    const ZobristHash hash = board.Zobrist();
+//                    PEntry& entry = TranspositionTable[hash];
+//                    entry.Insert(hash, depth, nodes);
+//                }
 
                 return nodes;
             }
@@ -109,14 +124,6 @@ namespace StockDory::Perft
                 uint64_t nodes = 0;
                 using PLayer = PerftLayer<Opposite(Color), false, Sync, TT>;
                 using BLayer = BoardLayer<TT ? (PERFT | ZOBRIST) : STANDARD>;
-
-                if (TT) {
-                    const ZobristHash hash = board.Zobrist();
-                    PerftEntry<5>& entry = TranspositionTable[hash];
-
-                    const std::pair<bool, uint64_t> entryResult = entry.Nodes(hash, depth);
-                    if (entryResult.first) return entryResult.second;
-                }
 
                 if (depth == 1) for (Square sq = pIterator.Value(); sq != Square::NASQ; sq = pIterator.Value()) {
                     const MoveList<Piece, Color> moves (board, sq, pin, check);
@@ -241,12 +248,6 @@ namespace StockDory::Perft
                     nodes += atomicNodes;
                 }
 
-                if (TT) {
-                    const ZobristHash hash = board.Zobrist();
-                    PerftEntry<5>& entry = TranspositionTable[hash];
-                    entry.Insert(hash, depth, nodes);
-                }
-
                 return nodes;
             }
 
@@ -270,10 +271,13 @@ namespace StockDory::Perft
                 PerftBoard = board;
             }
 
-            static void SetTranspositionTable(const uint64_t size)
-            {
-                TranspositionTable = StockDory::TranspositionTable<PerftEntry<5>>(size);
-            }
+//            static void SetTranspositionTable(const uint64_t bytes)
+//            {
+//                std::cout << "Allocating table using defined bytes (" << bytes << ")\n";
+//                TranspositionTable = StockDory::TranspositionTable<PEntry>(bytes);
+//                std::cout << "Table: " << TranspositionTable.Size() << " entries\n";
+//                std::cout << "Table: " << TranspositionTable.Size() * sizeof(PEntry) << " bytes\n";
+//            }
 
             template <bool Divide, bool TT = false>
             static void Perft(const uint8_t depth)
@@ -296,8 +300,7 @@ namespace StockDory::Perft
 } // Perft
 
 StockDory::Board StockDory::Perft::PerftRunner::PerftBoard = StockDory::Board();
-StockDory::TranspositionTable<StockDory::Perft::PerftEntry<5>>
-        StockDory::Perft::PerftRunner::TranspositionTable =
-        StockDory::TranspositionTable<StockDory::Perft::PerftEntry<5>>(0);
+//StockDory::TranspositionTable<PEntry> StockDory::Perft::PerftRunner::TranspositionTable =
+//        StockDory::TranspositionTable<PEntry>(0);
 
 #endif //STOCKDORY_PERFTRUNNER_H
