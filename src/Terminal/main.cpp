@@ -5,15 +5,12 @@
 
 #include <iostream>
 
-#include "../Backend/Move/TableSetup.h"
 #include "../Backend/Information.h"
 
 #include "UCI/UCIInterface.h"
 
 int main()
 {
-    TableSetup();
-
     std::cout << Title << " " << Version << std::endl;
     std::cout << "Provided by " << Author << " under the " << License << " license." << std::endl;
 
