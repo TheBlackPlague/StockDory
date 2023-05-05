@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.15)
 project(StockDory)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -45,6 +45,7 @@ file(GLOB StockDoryBackendType
         "src/Backend/*.h")
 
 file(GLOB StockDoryEngineType
+        "src/Engine/Move/*.h"
         "src/Engine/*.h")
 
 file(GLOB StockDoryExternalType
