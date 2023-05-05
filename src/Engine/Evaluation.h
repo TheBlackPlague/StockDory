@@ -3,8 +3,6 @@
 // Licensed under LGPL-3.0.
 //
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmacro-redefined"
 #ifndef STOCKDORY_EVALUATION_H
 #define STOCKDORY_EVALUATION_H
 
@@ -63,5 +61,3 @@ StockDory::Evaluation::NNUE StockDory::Evaluation::NeuralNetwork = []() {
 }();
 
 #endif //STOCKDORY_EVALUATION_H
-
-#pragma clang diagnostic pop
