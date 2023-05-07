@@ -20,42 +20,40 @@ struct Move
         uint16_t Internal;
 
         constexpr static uint16_t SquareMask = 0x003F;
-        constexpr static uint16_t NullMask   = 0x8000;
 
     public:
-        constexpr Move() {
+        constexpr Move()
+        {
             Internal = 0;
         }
 
-        template<Piece promotion = NAP, bool Null = false>
-        constexpr explicit Move(const Square from, const Square to)
+        constexpr explicit Move(const Square from, const Square to, const Piece promotion = NAP)
         {
-            if (Null) Internal = NullMask;
-            else      Internal = from | (to << 6) | (promotion << 12);
+            Internal = from | (to << 6) | (promotion << 12);
         }
 
         [[nodiscard]]
-        constexpr Square From() const
+        constexpr inline Square From() const
         {
             return static_cast<Square>(Internal & SquareMask);
         }
 
         [[nodiscard]]
-        constexpr Square To() const
+        constexpr inline Square To() const
         {
             return static_cast<Square>((Internal >> 6) & SquareMask);
         }
 
         [[nodiscard]]
-        constexpr Piece Promotion() const
+        constexpr inline Piece Promotion() const
         {
             return static_cast<Piece>(Internal >> 12);
         }
 
         [[nodiscard]]
-        constexpr bool IsNull() const
+        constexpr inline bool operator==(const Move other) const
         {
-            return Internal & NullMask;
+            return Internal == other.Internal;
         }
 
 };

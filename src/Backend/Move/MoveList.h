@@ -58,21 +58,6 @@ namespace StockDory
                 if (Piece == Piece::King  ) King  (board, sq            );
             }
 
-            constexpr MoveList(const Board& board, const Square sq)
-            {
-                const PinBitBoard   pin   = board.Pin  <Color, Opposite(Color)>();
-                const CheckBitBoard check = board.Check<Color                    >();
-
-                InternalContainer = BBDefault;
-
-                if (Piece == Piece::Pawn  ) Pawn  (board, sq, pin, check);
-                if (Piece == Piece::Knight) Knight(board, sq, pin, check);
-                if (Piece == Piece::Bishop) Bishop(board, sq, pin, check);
-                if (Piece == Piece::Rook  ) Rook  (board, sq, pin, check);
-                if (Piece == Piece::Queen ) Queen (board, sq, pin, check);
-                if (Piece == Piece::King  ) King  (board, sq            );
-            }
-
             [[nodiscard]]
             constexpr inline uint8_t Count() const
             {
@@ -83,6 +68,13 @@ namespace StockDory
             constexpr inline BitBoardIterator Iterator() const
             {
                 return BitBoardIterator(InternalContainer);
+            }
+
+            constexpr inline MoveList<Piece, Color> Mask(const BitBoard mask) const
+            {
+                MoveList<Piece, Color> result = *this;
+                result.InternalContainer &= mask;
+                return result;
             }
 
     private:

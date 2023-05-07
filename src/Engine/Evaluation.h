@@ -51,6 +51,12 @@ namespace StockDory
                 return NeuralNetwork.Evaluate(board.ColorToMove());
             }
 
+            template<Color Color>
+            static inline int32_t Evaluate()
+            {
+                return NeuralNetwork.Evaluate(Color);
+            }
+
     };
 
 } // StockDory

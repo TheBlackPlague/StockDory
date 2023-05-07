@@ -38,11 +38,14 @@ namespace StockDory
                 const uint64_t size = IndexMask + 1;
 
                 Internal = std::vector<T>(size);
-
-                // std::fill(std::execution::par, Internal.begin(), Internal.end(), T());
             }
 
             constexpr inline T& operator [](const ZobristHash index)
+            {
+                return Internal[index & IndexMask];
+            }
+
+            constexpr inline const T& operator [](const ZobristHash index) const
             {
                 return Internal[index & IndexMask];
             }

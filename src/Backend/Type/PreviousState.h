@@ -28,12 +28,12 @@ struct PreviousState
         ZobristHash Hash;
 
         constexpr PreviousState(const PieceColor movedPiece , const PieceColor capturedPiece              ,
-                                const Square     EnPassantSq, const uint8_t    castlingRightAndColorToMove,
+                                const Square     enPassant, const uint8_t    castlingRightAndColorToMove,
                                 const ZobristHash hash)
         {
             MovedPiece                  = movedPiece;
             CapturedPiece               = capturedPiece;
-            EnPassant                   = EnPassantSq;
+            EnPassant                   = enPassant;
             CastlingRightAndColorToMove = castlingRightAndColorToMove;
 
             EnPassantCapture = false;
@@ -46,6 +46,18 @@ struct PreviousState
 
 };
 
+struct PreviousStateNull
+{
+
+    public:
+        Square EnPassant;
+
+        constexpr PreviousStateNull(const Square enPassant)
+        {
+            EnPassant = enPassant;
+        }
+
+};
 
 #endif //STOCKDORY_PREVIOUSSTATE_H
 

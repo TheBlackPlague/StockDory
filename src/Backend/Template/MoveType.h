@@ -13,8 +13,8 @@ using MoveType = uint64_t;
 constexpr MoveType STANDARD = 0x0000000F;
 constexpr MoveType ZOBRIST  = 0x000000F0;
 constexpr MoveType PERFT    = 0x00000F00;
-constexpr MoveType HCE      = 0x0000F000;
-constexpr MoveType NNUE     = 0x000F0000;
+
+constexpr MoveType NNUE     = 0x0000F000 | ZOBRIST;
 
 #endif //STOCKDORY_MOVETYPE_H
 

@@ -332,6 +332,30 @@ namespace StockDory
                 return ToSquare(EnPassantTarget);
             }
 
+            template<Color We>
+            [[nodiscard]]
+            constexpr inline bool Checked() const
+            {
+                constexpr Color by = Opposite(We);
+
+                const Square king = ToSquare(BB[We][King]);
+
+                if (AttackTable::Pawn[We][king] & BB[by][Pawn]) return true;
+
+                if (AttackTable::Knight[king] & BB[by][Knight]) return true;
+
+                const BitBoard occupied = ~ColorBB[NAC];
+                const BitBoard queen    = BB[by][Queen];
+
+                if (AttackTable::Sliding[BlackMagicFactory::MagicIndex(Bishop, king, occupied)] &
+                    (queen | BB[by][Bishop])) return true;
+
+                if (AttackTable::Sliding[BlackMagicFactory::MagicIndex(Rook  , king, occupied)] &
+                    (queen | BB[by][Rook  ])) return true;
+
+                return AttackTable::King[king] & BB[by][King];
+            }
+
             template<Color By>
             [[nodiscard]]
             constexpr inline CheckBitBoard Check() const
@@ -437,12 +461,36 @@ namespace StockDory
                 return pin;
             }
 
+            constexpr inline PreviousStateNull Move()
+            {
+                auto state = PreviousStateNull(EnPassantSquare());
+
+                Hash = HashEnPassant<ZOBRIST>(Hash, EnPassantSquare());
+                EnPassantTarget = BBDefault;
+
+                CastlingRightAndColorToMove ^= ColorFlipMask;
+                Hash = HashColorFlip<ZOBRIST>(Hash);
+
+                return state;
+            }
+
+            constexpr inline void UndoMove(const PreviousStateNull& state)
+            {
+                if (state.EnPassant != NASQ) {
+                    EnPassantTarget = FromSquare(state.EnPassant);
+                    Hash = HashEnPassant<ZOBRIST>(Hash, state.EnPassant);
+                }
+
+                CastlingRightAndColorToMove ^= ColorFlipMask;
+                Hash = HashColorFlip<ZOBRIST>(Hash);
+            }
+
             template<MoveType T>
             constexpr inline PreviousState Move(const Square from, const Square to, const Piece promotion = NAP)
             {
-                PreviousState state = PreviousState(PieceAndColor[from], PieceAndColor[to],
-                                                    EnPassantSquare(), CastlingRightAndColorToMove,
-                                                    Hash);
+                auto state = PreviousState(PieceAndColor[from], PieceAndColor[to],
+                                           EnPassantSquare(), CastlingRightAndColorToMove,
+                                           Hash);
 
                 Hash = HashEnPassant<T>(Hash, EnPassantSquare());
                 EnPassantTarget = BBDefault;
