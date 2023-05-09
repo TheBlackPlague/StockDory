@@ -4,6 +4,7 @@
 //
 
 #include <iostream>
+#include <chrono>
 
 #include "../Backend/Information.h"
 
@@ -20,7 +21,11 @@ int main()
 
     StockDory::Search search(board);
 
-    search.IterativeDeepening(6);
+    auto start = std::chrono::high_resolution_clock::now();
+    search.IterativeDeepening(18);
+    auto stop  = std::chrono::high_resolution_clock::now();
+
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
 
     std::pair<int32_t, Move> result = search.Result();
     int32_t evaluation = result.first ;
@@ -29,7 +34,9 @@ int main()
     std::cout << "Best Move: ";
     std::cout << StockDory::Util::SquareToString(best.From()) << StockDory::Util::SquareToString(best.To()) << std::endl;
     std::cout << "Evaluation: " << evaluation << std::endl;
-    std::cout << "Searched " << search.SearchedNodes() << " nodes." << std::endl;
+    std::cout << "PV: " << search.PvLine() << std::endl;
+    std::cout << "Searched " << search.SearchedNodes() << " nodes in ";
+    std::cout << time << "ms." << std::endl;
 
     return 0;
 }

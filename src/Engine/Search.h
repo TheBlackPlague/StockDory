@@ -74,9 +74,31 @@ namespace StockDory
                 return Nodes;
             }
 
+            [[nodiscard]]
             inline std::pair<int32_t, Move> Result() const
             {
                 return { Evaluation, BestMove };
+            }
+
+            [[nodiscard]]
+            inline std::string PvLine() const
+            {
+                std::stringstream line;
+                uint8_t ply = PvTable.Count();
+
+                for (uint8_t i = 0; i < ply; i++) {
+                    Move move = PvTable[i];
+                    Square from      = move.From     ();
+                    Square to        = move.To       ();
+                    Piece  promotion = move.Promotion();
+
+                    line << Util::SquareToString(from) << Util::SquareToString(to);
+                    if (promotion != NAP) line << tolower(FirstLetter(promotion));
+
+                    if (i != ply - 1) line << " ";
+                }
+
+                return line.str();
             }
 
         private:
@@ -160,38 +182,38 @@ namespace StockDory
                 }
                 //endregion
 
-//                //region Transposition Table Lookup
-//                const ZobristHash hash = Board.Zobrist();
-//                const EngineEntry& storedEntry = TTable[hash];
-//                bool valid  = storedEntry.Type != Invalid;
-//                Move ttMove = Move();
-//                bool ttHit  = false;
-//
-//                if (valid && storedEntry.Hash == hash) {
-//                    ttHit  = true            ;
-//                    ttMove = storedEntry.Move;
-//
-//                    if (!Pv && storedEntry.Depth >= depth) {
-//                        switch (storedEntry.Type) {
-//                            case Exact:
-//                                return storedEntry.Evaluation;
-//                            case BetaCutoff:
-//                                alpha = std::max(alpha, storedEntry.Evaluation);
-//                                break;
-//                            case AlphaUnchanged:
-//                                beta  = std::min(beta , storedEntry.Evaluation);
-//                                break;
-//                            case Invalid:
-//                                break;
-//                        }
-//
-//                        if (alpha >= beta) return storedEntry.Evaluation;
-//                    }
-//                }
-//                //endregion
+                //region Transposition Table Lookup
+                const ZobristHash hash = Board.Zobrist();
+                const EngineEntry& storedEntry = TTable[hash];
+                bool valid  = storedEntry.Type != Invalid;
+                Move ttMove = Move();
+                bool ttHit  = false;
 
-//                const int32_t staticEvaluation = ttHit ? storedEntry.Evaluation : Evaluation::Evaluate<Color>();
-                const int32_t staticEvaluation = Evaluation::Evaluate<Color>();
+                if (valid && storedEntry.Hash == hash) {
+                    ttHit  = true            ;
+                    ttMove = storedEntry.Move;
+
+                    if (!Pv && storedEntry.Depth >= depth) {
+                        switch (storedEntry.Type) {
+                            case Exact:
+                                return storedEntry.Evaluation;
+                            case BetaCutoff:
+                                alpha = std::max(alpha, storedEntry.Evaluation);
+                                break;
+                            case AlphaUnchanged:
+                                beta  = std::min(beta , storedEntry.Evaluation);
+                                break;
+                            case Invalid:
+                                break;
+                        }
+
+                        if (alpha >= beta) return storedEntry.Evaluation;
+                    }
+                }
+                //endregion
+
+                const int32_t staticEvaluation = ttHit ? storedEntry.Evaluation : Evaluation::Evaluate<Color>();
+//                const int32_t staticEvaluation = Evaluation::Evaluate<Color>();
                 Stack[ply].StaticEvaluation = staticEvaluation;
                 const bool checked = Board.Checked<Color>();
                 bool improving = false;
@@ -218,7 +240,7 @@ namespace StockDory
                 }
 
                 //region IIR
-//                if (depth > IIRDepthThreshold && !false) depth -= IIRDepthReduction;
+                if (depth > IIRDepthThreshold && !ttHit) depth -= IIRDepthReduction;
                 //endregion
 
                 //region MoveList
@@ -329,16 +351,16 @@ namespace StockDory
                 }
                 //endregion
 
-//                //region Transposition Table Insertion
-//                auto entry = EngineEntry {
-//                    .Hash       = hash,
-//                    .Depth      = static_cast<uint8_t>(depth),
-//                    .Evaluation = bestEvaluation,
-//                    .Move       = bestMove,
-//                    .Type       = ttEntryType
-//                };
-//                InsertEntry(hash, entry);
-//                //endregion
+                //region Transposition Table Insertion
+                auto entry = EngineEntry {
+                    .Hash       = hash,
+                    .Depth      = static_cast<uint8_t>(depth),
+                    .Evaluation = bestEvaluation,
+                    .Move       = bestMove,
+                    .Type       = ttEntryType
+                };
+                InsertEntry(hash, entry);
+                //endregion
 
                 return bestEvaluation;
             }
@@ -356,18 +378,18 @@ namespace StockDory
                 if (Pv) SelectiveDepth = std::max(SelectiveDepth, ply);
                 //endregion
 
-//                //region Transposition Table Lookup
-//                if (!Pv) {
-//                    const ZobristHash  hash  = Board.Zobrist();
-//                    const EngineEntry& entry = TTable[hash];
-//
-//                    if (entry.Hash == hash           &&
-//                       (entry.Type == Exact          ||
-//                       (entry.Type == BetaCutoff     && entry.Evaluation >= beta ) ||
-//                       (entry.Type == AlphaUnchanged && entry.Evaluation <= alpha)))
-//                        return entry.Evaluation;
-//                }
-//                //endregion
+                //region Transposition Table Lookup
+                if (!Pv) {
+                    const ZobristHash  hash  = Board.Zobrist();
+                    const EngineEntry& entry = TTable[hash];
+
+                    if (entry.Hash == hash           &&
+                       (entry.Type == Exact          ||
+                       (entry.Type == BetaCutoff     && entry.Evaluation >= beta ) ||
+                       (entry.Type == AlphaUnchanged && entry.Evaluation <= alpha)))
+                        return entry.Evaluation;
+                }
+                //endregion
 
                 //region Static Evaluation
                 const int32_t staticEvaluation = Evaluation::Evaluate<Color>();
