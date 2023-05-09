@@ -20,11 +20,16 @@ int main()
 
     StockDory::Search search(board);
 
-    Move best = search.IterativeDeepening(1);
+    search.IterativeDeepening(6);
 
+    std::pair<int32_t, Move> result = search.Result();
+    int32_t evaluation = result.first ;
+    Move    best =       result.second;
+
+    std::cout << "Best Move: ";
     std::cout << StockDory::Util::SquareToString(best.From()) << StockDory::Util::SquareToString(best.To()) << std::endl;
-
-//    StockDory::UCIInterface::Launch();
+    std::cout << "Evaluation: " << evaluation << std::endl;
+    std::cout << "Searched " << search.SearchedNodes() << " nodes." << std::endl;
 
     return 0;
 }

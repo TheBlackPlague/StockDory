@@ -19,7 +19,7 @@ namespace StockDory
     {
 
         private:
-            std::array<std::array<std::array<int32_t, 64>, 6>, 2> Internal;
+            std::array<std::array<std::array<int32_t, 64>, 6>, 2> Internal = {};
 
         public:
             [[nodiscard]]

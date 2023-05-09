@@ -96,7 +96,8 @@ namespace StockDory
             {
                 if (!UciPrompted || SearchRunning) return;
 
-                int32_t evaluation = StockDory::Evaluation::Evaluate(MainBoard);
+                MainBoard.LoadForEvaluation();
+                int32_t evaluation = StockDory::Evaluation::Evaluate(MainBoard.ColorToMove());
                 std::cout << "FEN: " << MainBoard.Fen() << std::endl;
                 std::cout << "Hash: " << Util::ToHex(MainBoard.Zobrist()) << std::endl;
                 std::cout << "Evaluation: " << evaluation << std::endl;

@@ -54,7 +54,7 @@ namespace StockDory
                 if (Promotion != NAP          ) return Priority - 8 + Promotion;
 
                 if (CaptureOnly || board[move.To()].Piece() != NAP)
-                    return MvvLva[Piece][board[move.To()].Piece()] * 10000;
+                     return MvvLva[board[move.To()].Piece()][Piece] * 10000;
 
                 if (move == KillerOne) return 900000;
                 if (move == KillerTwo) return 800000;

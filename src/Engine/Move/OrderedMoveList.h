@@ -65,7 +65,9 @@ namespace StockDory
                 for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
                     const MoveList<Piece, Color> moves (board, sq, pin, check);
                     BitBoardIterator moveIterator = CaptureOnly ?
-                            (moves.Mask(~board[NAC])).Iterator() :
+                            (Piece == Pawn ?
+                             moves.Mask(~board[NAC] | board.EnPassant()) :
+                             moves.Mask(~board[NAC])).Iterator() :
                              moves                         .Iterator() ;
 
                     for (Square m = moveIterator.Value(); m != NASQ; m = moveIterator.Value()) {
