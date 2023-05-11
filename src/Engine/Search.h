@@ -87,14 +87,7 @@ namespace StockDory
                 uint8_t ply = PvTable.Count();
 
                 for (uint8_t i = 0; i < ply; i++) {
-                    Move move = PvTable[i];
-                    Square from      = move.From     ();
-                    Square to        = move.To       ();
-                    Piece  promotion = move.Promotion();
-
-                    line << Util::SquareToString(from) << Util::SquareToString(to);
-                    if (promotion != NAP) line << tolower(FirstLetter(promotion));
-
+                    line << PvTable[i].ToString();
                     if (i != ply - 1) line << " ";
                 }
 
@@ -182,38 +175,38 @@ namespace StockDory
                 }
                 //endregion
 
-                //region Transposition Table Lookup
-                const ZobristHash hash = Board.Zobrist();
-                const EngineEntry& storedEntry = TTable[hash];
-                bool valid  = storedEntry.Type != Invalid;
-                Move ttMove = Move();
-                bool ttHit  = false;
+//                //region Transposition Table Lookup
+//                const ZobristHash hash = Board.Zobrist();
+//                const EngineEntry& storedEntry = TTable[hash];
+//                bool valid  = storedEntry.Type != Invalid;
+//                Move ttMove = Move();
+//                bool ttHit  = false;
+//
+//                if (valid && storedEntry.Hash == hash) {
+//                    ttHit  = true            ;
+//                    ttMove = storedEntry.Move;
+//
+//                    if (!Pv && storedEntry.Depth >= depth) {
+//                        switch (storedEntry.Type) {
+//                            case Exact:
+//                                return storedEntry.Evaluation;
+//                            case BetaCutoff:
+//                                alpha = std::max(alpha, storedEntry.Evaluation);
+//                                break;
+//                            case AlphaUnchanged:
+//                                beta  = std::min(beta , storedEntry.Evaluation);
+//                                break;
+//                            case Invalid:
+//                                break;
+//                        }
+//
+//                        if (alpha >= beta) return storedEntry.Evaluation;
+//                    }
+//                }
+//                //endregion
 
-                if (valid && storedEntry.Hash == hash) {
-                    ttHit  = true            ;
-                    ttMove = storedEntry.Move;
-
-                    if (!Pv && storedEntry.Depth >= depth) {
-                        switch (storedEntry.Type) {
-                            case Exact:
-                                return storedEntry.Evaluation;
-                            case BetaCutoff:
-                                alpha = std::max(alpha, storedEntry.Evaluation);
-                                break;
-                            case AlphaUnchanged:
-                                beta  = std::min(beta , storedEntry.Evaluation);
-                                break;
-                            case Invalid:
-                                break;
-                        }
-
-                        if (alpha >= beta) return storedEntry.Evaluation;
-                    }
-                }
-                //endregion
-
-                const int32_t staticEvaluation = ttHit ? storedEntry.Evaluation : Evaluation::Evaluate<Color>();
-//                const int32_t staticEvaluation = Evaluation::Evaluate<Color>();
+//                const int32_t staticEvaluation = ttHit ? storedEntry.Evaluation : Evaluation::Evaluate<Color>();
+                const int32_t staticEvaluation = Evaluation::Evaluate<Color>();
                 Stack[ply].StaticEvaluation = staticEvaluation;
                 const bool checked = Board.Checked<Color>();
                 bool improving = false;
@@ -234,14 +227,14 @@ namespace StockDory
                     if (NMP<Color, Root>(ply, depth, beta)) return beta;
                     //endregion
                 } else if (checked) {
-                    //region Check Extension
-                    depth += CheckExtension;
-                    //endregion
+//                    //region Check Extension
+//                    depth += CheckExtension;
+//                    //endregion
                 }
 
-                //region IIR
-                if (depth > IIRDepthThreshold && !ttHit) depth -= IIRDepthReduction;
-                //endregion
+//                //region IIR
+//                if (depth > IIRDepthThreshold && !ttHit) depth -= IIRDepthReduction;
+//                //endregion
 
                 //region MoveList
                 using MoveList = StockDory::OrderedMoveList<Color>;
@@ -339,7 +332,7 @@ namespace StockDory
 
                         HTable.Get(Board[move.From()].Piece(), Color, move.To()) += historyBonus;
 
-                        for (int q = 1; q < quietMoveCount; q++) {
+                        for (uint8_t q = 1; q < quietMoveCount; q++) {
                             const Move other = moves.UnsortedAccess(i - q);
                             HTable.Get(Board[other.From()].Piece(), Color, other.To()) -= historyBonus;
                         }
@@ -351,16 +344,16 @@ namespace StockDory
                 }
                 //endregion
 
-                //region Transposition Table Insertion
-                auto entry = EngineEntry {
-                    .Hash       = hash,
-                    .Depth      = static_cast<uint8_t>(depth),
-                    .Evaluation = bestEvaluation,
-                    .Move       = bestMove,
-                    .Type       = ttEntryType
-                };
-                InsertEntry(hash, entry);
-                //endregion
+//                //region Transposition Table Insertion
+//                auto entry = EngineEntry {
+//                    .Hash       = hash,
+//                    .Depth      = static_cast<uint8_t>(depth),
+//                    .Evaluation = bestEvaluation,
+//                    .Move       = bestMove,
+//                    .Type       = ttEntryType
+//                };
+//                InsertEntry(hash, entry);
+//                //endregion
 
                 return bestEvaluation;
             }
@@ -378,18 +371,18 @@ namespace StockDory
                 if (Pv) SelectiveDepth = std::max(SelectiveDepth, ply);
                 //endregion
 
-                //region Transposition Table Lookup
-                if (!Pv) {
-                    const ZobristHash  hash  = Board.Zobrist();
-                    const EngineEntry& entry = TTable[hash];
-
-                    if (entry.Hash == hash           &&
-                       (entry.Type == Exact          ||
-                       (entry.Type == BetaCutoff     && entry.Evaluation >= beta ) ||
-                       (entry.Type == AlphaUnchanged && entry.Evaluation <= alpha)))
-                        return entry.Evaluation;
-                }
-                //endregion
+//                //region Transposition Table Lookup
+//                if (!Pv) {
+//                    const ZobristHash  hash  = Board.Zobrist();
+//                    const EngineEntry& entry = TTable[hash];
+//
+//                    if (entry.Hash == hash           &&
+//                       (entry.Type == Exact          ||
+//                       (entry.Type == BetaCutoff     && entry.Evaluation >= beta ) ||
+//                       (entry.Type == AlphaUnchanged && entry.Evaluation <= alpha)))
+//                        return entry.Evaluation;
+//                }
+//                //endregion
 
                 //region Static Evaluation
                 const int32_t staticEvaluation = Evaluation::Evaluate<Color>();

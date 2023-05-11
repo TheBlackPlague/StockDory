@@ -10,6 +10,7 @@
 
 #include "Square.h"
 #include "Piece.h"
+#include "../Util.h"
 
 struct Move
 {
@@ -54,6 +55,22 @@ struct Move
         constexpr inline bool operator==(const Move other) const
         {
             return Internal == other.Internal;
+        }
+
+        std::string ToString() const
+        {
+            std::stringstream s;
+
+            Square from      = From     ();
+            Square to        = To       ();
+            Piece  promotion = Promotion();
+
+            s << StockDory::Util::SquareToString(from) << StockDory::Util::SquareToString(to);
+
+            if (promotion != NAP)
+                s << static_cast<char>(tolower(FirstLetter(promotion)));
+
+            return s.str();
         }
 
 };

@@ -19,20 +19,18 @@ int main()
 
     StockDory::Board board;
 
+    const uint8_t depth = 18;
     StockDory::Search search(board);
 
     auto start = std::chrono::high_resolution_clock::now();
-    search.IterativeDeepening(18);
+    search.IterativeDeepening(depth);
     auto stop  = std::chrono::high_resolution_clock::now();
 
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
 
     std::pair<int32_t, Move> result = search.Result();
     int32_t evaluation = result.first ;
-    Move    best =       result.second;
 
-    std::cout << "Best Move: ";
-    std::cout << StockDory::Util::SquareToString(best.From()) << StockDory::Util::SquareToString(best.To()) << std::endl;
     std::cout << "Evaluation: " << evaluation << std::endl;
     std::cout << "PV: " << search.PvLine() << std::endl;
     std::cout << "Searched " << search.SearchedNodes() << " nodes in ";
