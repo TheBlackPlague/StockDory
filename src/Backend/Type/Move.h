@@ -23,6 +23,33 @@ struct Move
         constexpr static uint16_t SquareMask = 0x003F;
 
     public:
+        static inline Move FromString(const std::string& str)
+        {
+            Square from = StockDory::Util::StringToSquare(str.substr(0, 2));
+            Square to   = StockDory::Util::StringToSquare(str.substr(2, 2));
+
+            Piece promotion = NAP;
+
+            if (str.size() == 5) {
+                switch (str[4]) {
+                    case 'q':
+                        promotion = Queen ;
+                        break;
+                    case 'r':
+                        promotion = Rook  ;
+                        break;
+                    case 'b':
+                        promotion = Bishop;
+                        break;
+                    case 'n':
+                        promotion = Knight;
+                        break;
+                }
+            }
+
+            return Move(from, to, promotion);
+        }
+
         constexpr Move()
         {
             Internal = 0;
@@ -57,7 +84,8 @@ struct Move
             return Internal == other.Internal;
         }
 
-        std::string ToString() const
+        [[nodiscard]]
+        inline std::string ToString() const
         {
             std::stringstream s;
 
