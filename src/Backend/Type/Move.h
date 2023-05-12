@@ -10,6 +10,7 @@
 
 #include "Square.h"
 #include "Piece.h"
+#include "../Util.h"
 
 struct Move
 {
@@ -20,42 +21,84 @@ struct Move
         uint16_t Internal;
 
         constexpr static uint16_t SquareMask = 0x003F;
-        constexpr static uint16_t NullMask   = 0x8000;
 
     public:
-        constexpr Move() {
+        static inline Move FromString(const std::string& str)
+        {
+            Square from = StockDory::Util::StringToSquare(str.substr(0, 2));
+            Square to   = StockDory::Util::StringToSquare(str.substr(2, 2));
+
+            Piece promotion = NAP;
+
+            if (str.size() == 5) {
+                switch (str[4]) {
+                    case 'q':
+                        promotion = Queen ;
+                        break;
+                    case 'r':
+                        promotion = Rook  ;
+                        break;
+                    case 'b':
+                        promotion = Bishop;
+                        break;
+                    case 'n':
+                        promotion = Knight;
+                        break;
+                }
+            }
+
+            return Move(from, to, promotion);
+        }
+
+        constexpr Move()
+        {
             Internal = 0;
         }
 
-        template<Piece promotion = NAP, bool Null = false>
-        constexpr explicit Move(const Square from, const Square to)
+        constexpr explicit Move(const Square from, const Square to, const Piece promotion = NAP)
         {
-            if (Null) Internal = NullMask;
-            else      Internal = from | (to << 6) | (promotion << 12);
+            Internal = from | (to << 6) | (promotion << 12);
         }
 
         [[nodiscard]]
-        constexpr Square From() const
+        constexpr inline Square From() const
         {
             return static_cast<Square>(Internal & SquareMask);
         }
 
         [[nodiscard]]
-        constexpr Square To() const
+        constexpr inline Square To() const
         {
             return static_cast<Square>((Internal >> 6) & SquareMask);
         }
 
         [[nodiscard]]
-        constexpr Piece Promotion() const
+        constexpr inline Piece Promotion() const
         {
             return static_cast<Piece>(Internal >> 12);
         }
 
         [[nodiscard]]
-        constexpr bool IsNull() const
+        constexpr inline bool operator==(const Move other) const
         {
-            return Internal & NullMask;
+            return Internal == other.Internal;
+        }
+
+        [[nodiscard]]
+        inline std::string ToString() const
+        {
+            std::stringstream s;
+
+            Square from      = From     ();
+            Square to        = To       ();
+            Piece  promotion = Promotion();
+
+            s << StockDory::Util::SquareToString(from) << StockDory::Util::SquareToString(to);
+
+            if (promotion != NAP)
+                s << static_cast<char>(tolower(FirstLetter(promotion)));
+
+            return s.str();
         }
 
 };

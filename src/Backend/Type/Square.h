@@ -9,6 +9,8 @@
 #define STOCKDORY_SQUARE_H
 
 #include <cstdint>
+#include <array>
+#include <string>
 
 enum Square : uint8_t
 {

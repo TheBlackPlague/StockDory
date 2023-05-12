@@ -27,6 +27,8 @@
 
 #include "../External/strutil.h"
 
+#include "../Engine/Evaluation.h"
+
 #include "Util.h"
 
 namespace StockDory
@@ -130,9 +132,11 @@ namespace StockDory
                         }
 
                         uint8_t idx = v * 8 + h;
-                        Set<true>(BB[color][piece], static_cast<Square>(idx));
+                        auto sq = static_cast<Square>(idx);
+                        Set<true>(BB[color][piece], sq);
                         PieceAndColor[idx] = PieceColor(piece, color);
-                        Hash = HashPiece<ZOBRIST>(Hash, piece, color, static_cast<Square>(idx));
+                        if (piece == NAP) std::cout << "ERROR" << std::endl;
+                        Hash = HashPiece<ZOBRIST>(Hash, piece, color, sq);
 
                         h++;
                     }
@@ -168,6 +172,18 @@ namespace StockDory
                     ColorBB[Black] |= BB[Black][p];
                 }
                 ColorBB[NAC] = ~(ColorBB[White] | ColorBB[Black]);
+            }
+
+            inline void LoadForEvaluation() const
+            {
+                Evaluation::ResetNetworkState();
+
+                for (Square sq = A1; sq < NASQ; sq = Next(sq)) {
+                    PieceColor pc = PieceAndColor[sq];
+                    if (pc.Piece() == NAP || pc.Color() == NAC) continue;
+
+                    Evaluation::Activate(pc.Piece(), pc.Color(), sq);
+                }
             }
 
             [[nodiscard]]
@@ -332,6 +348,30 @@ namespace StockDory
                 return ToSquare(EnPassantTarget);
             }
 
+            template<Color We>
+            [[nodiscard]]
+            constexpr inline bool Checked() const
+            {
+                constexpr Color by = Opposite(We);
+
+                const Square king = ToSquare(BB[We][King]);
+
+                if (AttackTable::Pawn[We][king] & BB[by][Pawn]) return true;
+
+                if (AttackTable::Knight[king] & BB[by][Knight]) return true;
+
+                const BitBoard occupied = ~ColorBB[NAC];
+                const BitBoard queen    = BB[by][Queen];
+
+                if (AttackTable::Sliding[BlackMagicFactory::MagicIndex(Bishop, king, occupied)] &
+                    (queen | BB[by][Bishop])) return true;
+
+                if (AttackTable::Sliding[BlackMagicFactory::MagicIndex(Rook  , king, occupied)] &
+                    (queen | BB[by][Rook  ])) return true;
+
+                return AttackTable::King[king] & BB[by][King];
+            }
+
             template<Color By>
             [[nodiscard]]
             constexpr inline CheckBitBoard Check() const
@@ -437,12 +477,38 @@ namespace StockDory
                 return pin;
             }
 
+            constexpr inline PreviousStateNull Move()
+            {
+                auto state = PreviousStateNull(EnPassantSquare());
+
+                Hash = HashEnPassant<ZOBRIST>(Hash, EnPassantSquare());
+                EnPassantTarget = BBDefault;
+
+                CastlingRightAndColorToMove ^= ColorFlipMask;
+                Hash = HashColorFlip<ZOBRIST>(Hash);
+
+                return state;
+            }
+
+            constexpr inline void UndoMove(const PreviousStateNull& state)
+            {
+                if (state.EnPassant != NASQ) {
+                    EnPassantTarget = FromSquare(state.EnPassant);
+                    Hash = HashEnPassant<ZOBRIST>(Hash, state.EnPassant);
+                }
+
+                CastlingRightAndColorToMove ^= ColorFlipMask;
+                Hash = HashColorFlip<ZOBRIST>(Hash);
+            }
+
             template<MoveType T>
             constexpr inline PreviousState Move(const Square from, const Square to, const Piece promotion = NAP)
             {
-                PreviousState state = PreviousState(PieceAndColor[from], PieceAndColor[to],
-                                                    EnPassantSquare(), CastlingRightAndColorToMove,
-                                                    Hash);
+                if (T & NNUE) Evaluation::PreMove();
+
+                auto state = PreviousState(PieceAndColor[from], PieceAndColor[to],
+                                           EnPassantSquare(), CastlingRightAndColorToMove,
+                                           Hash);
 
                 Hash = HashEnPassant<T>(Hash, EnPassantSquare());
                 EnPassantTarget = BBDefault;
@@ -450,7 +516,7 @@ namespace StockDory
                 CastlingRightAndColorToMove ^= ColorFlipMask;
                 Hash = HashColorFlip<T>(Hash);
 
-                HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
 
                 const Piece pieceF = state.MovedPiece   .Piece();
                 const Color colorF = state.MovedPiece   .Color();
@@ -466,9 +532,14 @@ namespace StockDory
 
                 if (pieceF == Pawn) {
                     if (to == state.EnPassant) {
+                        const Color opposite = Opposite(colorF);
+
                         const auto epPawnSq = static_cast<Square>(state.EnPassant ^ 8);
-                        EmptyNative<T>(           Pawn, Opposite(colorF), epPawnSq);
-                        Hash = HashPiece<T>(Hash, Pawn, Opposite(colorF), epPawnSq);
+                        EmptyNative     <T>(      Pawn, opposite, epPawnSq);
+                        Hash = HashPiece<T>(Hash, Pawn, opposite, epPawnSq);
+
+                        if (T & NNUE) Evaluation::Deactivate(Pawn, opposite, epPawnSq);
+
                         state.EnPassantCapture = true;
                     } else if (static_cast<Square>(from ^ 16) == to) {
                         const auto epSq = static_cast<Square>(to ^ 8);
@@ -482,15 +553,25 @@ namespace StockDory
                             }
                         }
                     } else if (promotion != NAP) {
+                        state.PromotedPiece = promotion;
+
                         EmptyNative <T>(Pawn     , colorF, from);
                         EmptyNative <T>(pieceT   , colorT, to  );
                         InsertNative<T>(promotion, colorF, to  );
+
+                        if (T & NNUE) {
+                            Evaluation::Deactivate(Pawn     , colorF, from);
+                            Evaluation::Activate  (promotion, colorF, to  );
+
+                            if (pieceT != NAP) Evaluation::Deactivate(pieceT, colorT, to);
+                        }
 
                         Hash = HashPiece<T>(Hash, Pawn     , colorF, from);
                         Hash = HashPiece<T>(Hash, pieceT   , colorT, to  );
                         Hash = HashPiece<T>(Hash, promotion, colorF, to  );
 
-                        state.PromotedPiece = promotion;
+                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+
                         return state;
                     }
                 } else if ((CastlingRightAndColorToMove & ColorCastleMask[colorF])) {
@@ -511,10 +592,18 @@ namespace StockDory
                             InsertNative<T>(King, colorF, to                );
                             InsertNative<T>(Rook, colorF, state.CastlingTo  );
 
+                            if (T & NNUE) {
+                                Evaluation::Transition(King, colorF, from, to);
+                                Evaluation::Transition(Rook, colorF,
+                                                       state.CastlingFrom, state.CastlingTo);
+                            }
+
                             Hash = HashPiece<T>(Hash, King, colorF, from              );
                             Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingFrom);
                             Hash = HashPiece<T>(Hash, King, colorF, to                );
                             Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingTo  );
+
+                            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
 
                             return state;
                         }
@@ -522,6 +611,13 @@ namespace StockDory
                 }
 
                 MoveNative<T>(pieceF, colorF, from, pieceT, colorT, to);
+
+                if (T & NNUE) {
+                    Evaluation::Transition(pieceF, colorF, from, to);
+
+                    if (pieceT != NAP) Evaluation::Deactivate(pieceT, colorT, to);
+                }
+
                 Hash = HashPiece<T>(Hash, pieceF, colorF, from);
                 Hash = HashPiece<T>(Hash, pieceT, colorT, to  );
                 Hash = HashPiece<T>(Hash, pieceF, colorF, to  );
@@ -534,6 +630,8 @@ namespace StockDory
             template<MoveType T>
             constexpr inline void UndoMove(const PreviousState& state, const Square from, const Square to)
             {
+                if (T & NNUE) Evaluation::PreUndoMove();
+
                 CastlingRightAndColorToMove = state.CastlingRightAndColorToMove;
                 if (T & ZOBRIST) Hash = state.Hash;
 

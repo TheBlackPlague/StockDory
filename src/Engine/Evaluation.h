@@ -12,8 +12,6 @@
 #include "../Backend/Type/PieceColor.h"
 #include "../Backend/Type/Square.h"
 
-#include "../Backend/Board.h"
-
 #include "Model/NeuralNetworkBinary.h"
 
 namespace StockDory
@@ -26,36 +24,56 @@ namespace StockDory
         using NNUE = MantaRay::PerspectiveNetwork<int16_t, int32_t, ActivationFunction, 768, 256, 1, 512, 400, 255, 64>;
 
         private:
-            static NNUE NeuralNetwork;
+            static NNUE NN;
 
         public:
-            static inline void ResetNetworkState(const Board& board)
+            static inline void ResetNetworkState()
             {
-                NeuralNetwork.  ResetAccumulator();
-                NeuralNetwork.RefreshAccumulator();
-
-                for (Square sq = A1; sq < NASQ; sq = Next(sq)) {
-                    PieceColor pc = board[sq];
-                    if (pc.Piece() == NAP || pc.Color() == NAC) continue;
-
-                    NeuralNetwork.EfficientlyUpdateAccumulator<MantaRay::AccumulatorOperation::Activate>(
-                            pc.Piece(),
-                            pc.Color(),
-                            sq
-                    );
-                }
+                NN.  ResetAccumulator();
+                NN.RefreshAccumulator();
             }
 
-            static inline int32_t Evaluate(const Board& board)
+            static inline void PreMove()
             {
-                return NeuralNetwork.Evaluate(board.ColorToMove());
+                NN.PushAccumulator();
+            }
+
+            static inline void PreUndoMove()
+            {
+                NN.PullAccumulator();
+            }
+
+            static inline void Activate  (const Piece piece, const Color color, const Square sq)
+            {
+                NN.EfficientlyUpdateAccumulator<MantaRay::AccumulatorOperation::Activate  >(piece, color, sq);
+            }
+
+            static inline void Deactivate(const Piece piece, const Color color, const Square sq)
+            {
+                NN.EfficientlyUpdateAccumulator<MantaRay::AccumulatorOperation::Deactivate>(piece, color, sq);
+            }
+
+            static inline void Transition(const Piece piece, const Color color, const Square from, const Square to)
+            {
+                NN.EfficientlyUpdateAccumulator(piece, color, from, to);
+            }
+
+            static inline int32_t Evaluate(Color color)
+            {
+                return NN.Evaluate(color);
+            }
+
+            template<Color Color>
+            static inline int32_t Evaluate()
+            {
+                return NN.Evaluate(Color);
             }
 
     };
 
 } // StockDory
 
-StockDory::Evaluation::NNUE StockDory::Evaluation::NeuralNetwork = []() {
+StockDory::Evaluation::NNUE StockDory::Evaluation::NN = []() {
     MantaRay::BinaryMemoryStream stream(_NeuralNetworkBinaryData, _NeuralNetworkBinarySize);
     return NNUE(stream);
 }();

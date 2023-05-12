@@ -179,8 +179,8 @@ namespace StockDory
 
                 vBoxContainer.push_back(separator());
 
-                StockDory::Evaluation::ResetNetworkState(board);
-                int32_t evaluation = StockDory::Evaluation::Evaluate(board);
+                board.LoadForEvaluation();
+                int32_t evaluation = StockDory::Evaluation::Evaluate(board.ColorToMove());
 
                 Element fen         = text("FEN: "  + board.Fen()) | center;
                 Element hashHex     = text("Hash: " + StockDory::Util::ToHex(board.Zobrist())) | center;
