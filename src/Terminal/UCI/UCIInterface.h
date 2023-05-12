@@ -23,48 +23,48 @@
 namespace StockDory
 {
 
-    class UCISearchLogger
-    {
-
-        public:
-            static void LogDepthIteration(const uint8_t depth, const int32_t evaluation, const uint64_t nodes,
-                                          const StockDory::TimeControl::Milliseconds time, const std::string& pv)
-            {
-                std::stringstream output;
-
-                int64_t displayedTime = time.count();
-                displayedTime = std::max(displayedTime, static_cast<int64_t>(1));
-
-                const auto nps = static_cast<uint64_t>(static_cast<double>(nodes) /
-                        (static_cast<double>(displayedTime) / static_cast<double>(1000)));
-
-                output << "info ";
-                output << "depth " << static_cast<uint16_t>(depth) << " ";
-                output << "score cp " << evaluation << " ";
-                output << "nodes " << nodes << " ";
-                output << "time " << displayedTime << " ";
-                output << "nps " << nps << " ";
-                output << "pv " << pv;
-
-                std::cout << output.str() << std::endl;
-            }
-
-            static void LogBestMove(const Move& move)
-            {
-                std::stringstream output;
-                output << "bestmove " << move.ToString();
-
-                std::cout << output.str() << std::endl;
-            }
-
-    };
-
     class UCIInterface
     {
 
         using Arguments     = std::vector<std::string>;
         using Handler       = std::function<void(const Arguments&)>;
         using HandlerSwitch = std::unordered_map<std::string, Handler>;
+
+        class UCISearchLogger
+        {
+
+            public:
+                static void LogDepthIteration(const uint8_t depth, const int32_t evaluation, const uint64_t nodes,
+                                              const StockDory::TimeControl::Milliseconds time, const std::string& pv)
+                {
+                    std::stringstream output;
+
+                    int64_t displayedTime = time.count();
+                    displayedTime = std::max(displayedTime, static_cast<int64_t>(1));
+
+                    const auto nps = static_cast<uint64_t>(static_cast<double>(nodes) /
+                            (static_cast<double>(displayedTime) / static_cast<double>(1000)));
+
+                    output << "info ";
+                    output << "depth " << static_cast<uint16_t>(depth) << " ";
+                    output << "score cp " << evaluation << " ";
+                    output << "nodes " << nodes << " ";
+                    output << "time " << displayedTime << " ";
+                    output << "nps " << nps << " ";
+                    output << "pv " << pv;
+
+                    std::cout << output.str() << std::endl;
+                }
+
+                static void LogBestMove(const Move& move)
+                {
+                    std::stringstream output;
+                    output << "bestmove " << move.ToString();
+
+                    std::cout << output.str() << std::endl;
+                }
+
+        };
 
         private:
             static bool Running;
