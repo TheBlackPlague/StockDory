@@ -23,6 +23,20 @@
 namespace StockDory
 {
 
+    class NoLogger
+    {
+
+        public:
+            static void LogDepthIteration([[maybe_unused]] const uint8_t depth,
+                                          [[maybe_unused]] const int32_t evaluation,
+                                          [[maybe_unused]] const uint64_t nodes,
+                                          [[maybe_unused]] const StockDory::TimeControl::Milliseconds time,
+                                          [[maybe_unused]] const std::string& pv) {}
+
+            static void LogBestMove([[maybe_unused]] const Move& move) {}
+
+    };
+
     template<class Logger>
     class Search
     {
@@ -80,6 +94,12 @@ namespace StockDory
                 } catch (SearchOutOfTimeException&) {}
 
                 Logger::LogBestMove(BestMove);
+            }
+
+            [[nodiscard]]
+            inline uint64_t NodesSearched() const
+            {
+                return Nodes;
             }
 
             [[nodiscard]]
