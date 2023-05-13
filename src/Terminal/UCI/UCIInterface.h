@@ -186,7 +186,9 @@ namespace StockDory
             {
                 if (!UciPrompted || SearchRunning) return;
 
-                using MS  = StockDory::TimeControl::Milliseconds;
+                if (SearchThread.joinable()) SearchThread.join();
+
+                using MS = StockDory::TimeControl::Milliseconds;
 
                 uint8_t     depth       = MaxDepth / 2;
                 TimeControl timeControl               ;
@@ -207,8 +209,6 @@ namespace StockDory
                     timeControl = TimeControl(MainBoard, timeData);
                 }
 
-                std::cout << "Parsed depth: " << static_cast<uint16_t>(depth) << std::endl;
-
                 SearchRunning = true;
                 SearchThread = std::thread(
                     [](const TimeControl timeControl, const uint8_t depth) {
@@ -218,6 +218,8 @@ namespace StockDory
                     },
                     timeControl, depth
                 );
+
+                SearchThread.detach();
             }
 
     };
