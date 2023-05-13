@@ -46,13 +46,12 @@ namespace StockDory
 
             // [COLOR TO MOVE] [WHITE KING CASTLE] [WHITE QUEEN CASTLE] [BLACK KING CASTLE] [BLACK QUEEN CASTLE]
             // [    4 BITS   ] [      1 BIT      ] [       1 BIT      ] [      1 BIT      ] [       1 BIT      ]
-            uint8_t CastlingRightAndColorToMove;
+            uint8_t CastlingRightAndColorToMove = 0;
 
-            BitBoard EnPassantTarget;
+            BitBoard EnPassantTarget = BBDefault;
 
             ZobristHash Hash = 0;
 
-            constexpr static uint8_t  ColorToMoveMask = 0xF0;
             constexpr static uint8_t     CastlingMask = 0x0F;
             constexpr static uint8_t WhiteKCastleMask = 0x08;
             constexpr static uint8_t WhiteQCastleMask = 0x04;
@@ -161,8 +160,11 @@ namespace StockDory
                 std::string& epData = splitFen[3];
                 if (epData.length() == 2) {
                     Square epSq = Util::StringToSquare(epData);
-                    EnPassantTarget = FromSquare(epSq);
-                    Hash = HashEnPassant<ZOBRIST>(Hash, epSq);
+
+                    if (AttackTable::Pawn[Opposite(ColorToMove())][epSq] & BB[ColorToMove()][Pawn]) {
+                        EnPassantTarget = FromSquare(epSq);
+                        Hash = HashEnPassant<ZOBRIST>(Hash, epSq);
+                    }
                 }
 
                 ColorBB[Color::White] = BBDefault;
@@ -252,7 +254,7 @@ namespace StockDory
                 }
 
                 fen << ' ';
-                fen << ((CastlingRightAndColorToMove & ColorToMoveMask) == White ? 'w' : 'b');
+                fen << (ColorToMove() == White ? 'w' : 'b');
                 fen << ' ';
 
                 if (CastlingRightAndColorToMove & CastlingMask) {
@@ -313,7 +315,7 @@ namespace StockDory
             [[nodiscard]]
             constexpr inline Color ColorToMove() const
             {
-                return static_cast<Color>(CastlingRightAndColorToMove & ColorToMoveMask);
+                return static_cast<Color>(CastlingRightAndColorToMove >> 4);
             }
 
             template<Color Color>
