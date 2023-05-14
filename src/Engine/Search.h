@@ -247,7 +247,6 @@ namespace StockDory
                 //endregion
 
                 const int32_t staticEvaluation = ttHit ? storedEntry.Evaluation : Evaluation::Evaluate<Color>();
-//                const int32_t staticEvaluation = Evaluation::Evaluate<Color>();
                 Stack[ply].StaticEvaluation = staticEvaluation;
                 const bool checked = Board.Checked<Color>();
                 bool improving = false;
@@ -311,8 +310,6 @@ namespace StockDory
                     if (!Pv && lmp && bestEvaluation > -Infinity && quietMoveCount > lmpQuietThreshold)
                         break;
                     //endregion
-
-                    constexpr MoveType MT = NNUE | ZOBRIST;
 
                     const PreviousState state = EngineMove<true>(move);
 
