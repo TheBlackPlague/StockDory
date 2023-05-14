@@ -39,8 +39,9 @@ namespace StockDory
                     std::cout << static_cast<uint16_t>(BenchLength) << "): ";
                     std::cout << Positions[i] << std::endl;
 
-                    const Board board(Positions[i]);
-                    Search<NoLogger> search(board, infinite);
+                    const Board             board   (Positions[i]);
+                    const RepetitionHistory history (board.Zobrist());
+                    Search<NoLogger> search(board, infinite, history);
 
                     const TP start = std::chrono::high_resolution_clock::now();
                     search.IterativeDeepening(BenchDepth);

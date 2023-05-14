@@ -18,6 +18,7 @@
 #include "EngineParameter.h"
 #include "LogarithmicReductionTable.h"
 #include "SEE.h"
+#include "RepetitionHistory.h"
 #include "TimeControl.h"
 
 namespace StockDory
@@ -42,7 +43,7 @@ namespace StockDory
     {
 
         private:
-            class SearchOutOfTimeException : public std::exception {};
+            class SearchStopException : public std::exception {};
 
             struct SearchStackEntry
             {
@@ -51,8 +52,10 @@ namespace StockDory
 
             };
 
-            Board       Board      ;
-            TimeControl TC         ;
+            Board       Board;
+            TimeControl TC   ;
+
+            RepetitionHistory Repetition = RepetitionHistory(0);
 
             PrincipleVariationTable PvTable = PrincipleVariationTable();
                         KillerTable  KTable = KillerTable            ();
@@ -67,10 +70,17 @@ namespace StockDory
             int32_t Evaluation = -Infinity;
             Move    BestMove   = Move()   ;
 
+            bool Stop = false;
+
         public:
-            explicit Search(const StockDory::Board board, const StockDory::TimeControl tc) {
-                Board = board      ;
-                TC    = tc         ;
+            Search() = default;
+
+            explicit Search(const StockDory::Board board, const StockDory::TimeControl tc,
+                            const RepetitionHistory repetition)
+            {
+                Board      = board     ;
+                TC         = tc        ;
+                Repetition = repetition;
             }
 
             void IterativeDeepening(const int16_t depth)
@@ -91,7 +101,7 @@ namespace StockDory
                         Logger::LogDepthIteration(currentDepth, Evaluation, Nodes, TC.SinceBeginning(), PvLine());
                         currentDepth++;
                     }
-                } catch (SearchOutOfTimeException&) {}
+                } catch (SearchStopException&) {}
 
                 Logger::LogBestMove(BestMove);
             }
@@ -116,6 +126,11 @@ namespace StockDory
                 return line.str();
             }
 
+            inline void ForceStop()
+            {
+                Stop = true;
+            }
+
         private:
             template<Color Color>
             int32_t Aspiration(const int16_t depth)
@@ -132,8 +147,8 @@ namespace StockDory
 
                 uint8_t research = 0;
                 while (true) {
-                    //region Out of Time
-                    if (TC.Finished()) throw SearchOutOfTimeException();
+                    //region Out of Time & Force Stop
+                    if (Stop || TC.Finished()) throw SearchStopException();
                     //endregion
 
                     //region Reset Window
@@ -162,8 +177,8 @@ namespace StockDory
             template<Color Color, bool Pv, bool Root>
             int32_t AlphaBeta(const uint8_t ply, int16_t depth, int32_t alpha, int32_t beta)
             {
-                //region Out of Time
-                if (Pv && depth > 7 && TC.Finished()) throw SearchOutOfTimeException();
+                //region Out of Time & Force Stop
+                if (Stop || ((Nodes & 4095) && TC.Finished())) throw SearchStopException();
                 //endregion
 
                 constexpr enum Color OColor = Opposite(Color);
@@ -180,10 +195,13 @@ namespace StockDory
                 if (depth <= 0) return Q<Color, Pv>(ply, 15, alpha, beta);
                 //endregion
 
+                //region Zobrist Hash
+                const ZobristHash hash = Board.Zobrist();
+                //endregion
+
                 //region Mate Pruning & Draw Detection
                 if (!Root) {
-                    // TODO: Repetition Check
-                    // TODO: Fifty Move Rule Check
+                    if (Repetition.Found(hash)) return 0;
 
                     const uint8_t pieceCount = Count(~Board[NAC]);
 
@@ -200,7 +218,6 @@ namespace StockDory
                 //endregion
 
                 //region Transposition Table Lookup
-                const ZobristHash hash = Board.Zobrist();
                 const EngineEntry& storedEntry = TTable[hash];
                 bool valid  = storedEntry.Type != Invalid;
                 Move ttMove = Move();
@@ -297,8 +314,7 @@ namespace StockDory
 
                     constexpr MoveType MT = NNUE | ZOBRIST;
 
-                    PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion());
-                    Nodes++;
+                    const PreviousState state = EngineMove<true>(move);
 
                     int32_t evaluation = 0;
                     if (i == 0) evaluation = -AlphaBeta<OColor, Pv, false>
@@ -324,7 +340,7 @@ namespace StockDory
                         //endregion
                     }
 
-                    Board.UndoMove<MT>(state, move.From(), move.To());
+                    EngineUndoMove<true>(state, move);
 
                     //region Handle Evaluation
                     if (evaluation <= bestEvaluation) continue;
@@ -489,6 +505,29 @@ namespace StockDory
                 if (evaluation <= alpha || evaluation >= beta) return evaluation;
 
                 return  -AlphaBeta<OColor,  true, false>(ply + 1, depth - 1, -beta     , -alpha);
+            }
+
+            template<bool UpdateHistory>
+            inline PreviousState EngineMove(const Move move)
+            {
+                constexpr MoveType MT = NNUE | ZOBRIST;
+
+                const PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion());
+                Nodes++;
+
+                if (UpdateHistory) Repetition.Push(Board.Zobrist());
+
+                return state;
+            }
+
+            template<bool UpdateHistory>
+            inline void EngineUndoMove(const PreviousState state, const Move move)
+            {
+                constexpr MoveType MT = NNUE | ZOBRIST;
+
+                Board.UndoMove<MT>(state, move.From(), move.To());
+
+                if (UpdateHistory) Repetition.Pull();
             }
 
             static inline bool RFP(const int16_t depth, const int32_t staticEvaluation,

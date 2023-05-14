@@ -20,6 +20,8 @@
 
 #include "../../Engine/Search.h"
 
+#include "UCISearchThread.h"
+
 namespace StockDory
 {
 
@@ -30,54 +32,17 @@ namespace StockDory
         using Handler       = std::function<void(const Arguments&)>;
         using HandlerSwitch = std::unordered_map<std::string, Handler>;
 
-        class UCISearchLogger
-        {
-
-            public:
-                static void LogDepthIteration(const uint8_t depth, const int32_t evaluation, const uint64_t nodes,
-                                              const StockDory::TimeControl::Milliseconds time, const std::string& pv)
-                {
-                    std::stringstream output;
-
-                    int64_t displayedTime = time.count();
-                    displayedTime = std::max(displayedTime, static_cast<int64_t>(1));
-
-                    const auto nps = static_cast<uint64_t>(static_cast<double>(nodes) /
-                            (static_cast<double>(displayedTime) / static_cast<double>(1000)));
-
-                    output << "info ";
-                    output << "depth " << static_cast<uint16_t>(depth) << " ";
-                    output << "score cp " << evaluation << " ";
-                    output << "nodes " << nodes << " ";
-                    output << "time " << displayedTime << " ";
-                    output << "nps " << nps << " ";
-                    output << "pv " << pv;
-
-                    std::cout << output.str() << std::endl;
-                }
-
-                static void LogBestMove(const Move& move)
-                {
-                    std::stringstream output;
-                    output << "bestmove " << move.ToString();
-
-                    std::cout << output.str() << std::endl;
-                }
-
-        };
-
         private:
             static bool Running;
-
-            static std::atomic<bool> SearchRunning;
 
             static bool UciPrompted;
 
             static HandlerSwitch BasicCommandHandler;
 
-            static Board MainBoard;
+            static Board             MainBoard  ;
+            static RepetitionHistory MainHistory;
 
-            static std::thread SearchThread;
+            static UCISearchThread SearchThread;
 
         public:
             static void Launch()
@@ -97,6 +62,7 @@ namespace StockDory
                 BasicCommandHandler.emplace("info"    , [](const Arguments&     ) { Info          (    ); });
                 BasicCommandHandler.emplace("position", [](const Arguments& args) { HandlePosition(args); });
                 BasicCommandHandler.emplace("go"      , [](const Arguments& args) { HandleGo      (args); });
+                BasicCommandHandler.emplace("stop"    , [](const Arguments&     ) { HandleStop    (    ); });
             }
 
             static void HandleInput(const std::string& input)
@@ -130,14 +96,13 @@ namespace StockDory
 
             static void Quit()
             {
-                if (SearchThread.joinable()) SearchThread.join();
-
+                SearchThread.Stop();
                 Running = false;
             }
 
             static void Info()
             {
-                if (!UciPrompted || SearchRunning) return;
+                if (!UciPrompted || SearchThread.IsRunning()) return;
 
                 MainBoard.LoadForEvaluation();
                 const int32_t evaluation = StockDory::Evaluation::Evaluate(MainBoard.ColorToMove());
@@ -154,10 +119,12 @@ namespace StockDory
                 if (strutil::compare_ignore_case(args[0], "fen")) {
                     const Arguments   fenToken = {args.begin() + 1, args.begin() + 7};
                     const std::string fen      = strutil::join(fenToken, " ");
-                    MainBoard = Board(fen);
+                    MainBoard   = Board(fen);
+                    MainHistory = RepetitionHistory(MainBoard.Zobrist());
                     moveStrIndex = 8;
                 } else if (strutil::compare_ignore_case(args[0], "startpos")) {
-                    MainBoard = Board();
+                    MainBoard   = Board();
+                    MainHistory = RepetitionHistory(MainBoard.Zobrist());
                 } else return;
 
                 if (args.size() >= moveStrIndex &&
@@ -167,6 +134,7 @@ namespace StockDory
                     for (const std::string& moveStr : movesToken) {
                         const Move move = Move::FromString(moveStr);
                         MainBoard.Move<ZOBRIST | NNUE>(move.From(), move.To(), move.Promotion());
+                        MainHistory.Push(MainBoard.Zobrist());
                     }
                 }
             }
@@ -184,9 +152,7 @@ namespace StockDory
 
             static void HandleGo(const Arguments& args)
             {
-                if (!UciPrompted || SearchRunning) return;
-
-                if (SearchThread.joinable()) SearchThread.join();
+                if (!UciPrompted || SearchThread.IsRunning()) return;
 
                 using MS = StockDory::TimeControl::Milliseconds;
 
@@ -209,17 +175,15 @@ namespace StockDory
                     timeControl = TimeControl(MainBoard, timeData);
                 }
 
-                SearchRunning = true;
-                SearchThread = std::thread(
-                    [](const TimeControl timeControl, const uint8_t depth) {
-                        Search<UCISearchLogger> search(MainBoard, timeControl);
-                        search.IterativeDeepening(depth);
-                        SearchRunning = false;
-                    },
-                    timeControl, depth
-                );
+                SearchThread = UCISearchThread(MainBoard, timeControl, MainHistory);
+                SearchThread.Start(depth);
+            }
 
-                SearchThread.detach();
+            static void HandleStop()
+            {
+                if (!UciPrompted || !SearchThread.IsRunning()) return;
+
+                SearchThread.Stop();
             }
 
     };
@@ -228,15 +192,15 @@ namespace StockDory
 
 bool StockDory::UCIInterface::Running = true;
 
-std::atomic<bool> StockDory::UCIInterface::SearchRunning = false;
-
 bool StockDory::UCIInterface::UciPrompted = false;
 
 StockDory::UCIInterface::HandlerSwitch StockDory::UCIInterface::BasicCommandHandler =
         StockDory::UCIInterface::HandlerSwitch();
 
-StockDory::Board StockDory::UCIInterface::MainBoard = StockDory::Board();
+StockDory::Board             StockDory::UCIInterface::MainBoard   = StockDory::Board();
+StockDory::RepetitionHistory StockDory::UCIInterface::MainHistory =
+        StockDory::RepetitionHistory(MainBoard.Zobrist());
 
-std::thread StockDory::UCIInterface::SearchThread = std::thread();
+StockDory::UCISearchThread StockDory::UCIInterface::SearchThread = StockDory::UCISearchThread();
 
 #endif //STOCKDORY_UCIINTERFACE_H
