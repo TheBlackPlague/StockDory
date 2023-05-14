@@ -29,6 +29,8 @@ namespace StockDory
                 Milliseconds WhiteIncrement;
                 Milliseconds BlackIncrement;
 
+                uint16_t MovesToGo;
+
             };
 
         private:
@@ -36,7 +38,8 @@ namespace StockDory
 
             Milliseconds Time = ZeroTime;
 
-            constexpr static uint8_t Partition = 20;
+            constexpr static uint8_t TPartition = 20;
+            constexpr static uint8_t IPartition = 2 ;
 
         public:
             TimeControl() = default;
@@ -48,11 +51,21 @@ namespace StockDory
 
             explicit TimeControl(const Board& board, const TimeData& timeData)
             {
-                Time =  board.ColorToMove() == White ? timeData.WhiteTime      : timeData.BlackTime     ;
+                const Color color = board.ColorToMove();
 
-                Time /= Partition;
+                const Milliseconds oT = color == White ? timeData.WhiteTime : timeData.BlackTime;
+                const Milliseconds tT = color == White ? timeData.BlackTime : timeData.WhiteTime;
 
-                Time += board.ColorToMove() == White ? timeData.WhiteIncrement : timeData.BlackIncrement;
+                const Milliseconds oI = color == White ? timeData.WhiteIncrement : timeData.BlackIncrement;
+
+                Time += oT / TPartition;
+
+                if (timeData.MovesToGo > 0)
+                    Time = std::max(Time, (oT / timeData.MovesToGo) - Milliseconds(100));
+
+                Time += oI / IPartition;
+
+                if (oT - Milliseconds(1000) > tT) Time += (oT - tT) / TPartition;
             }
 
             inline void Start()

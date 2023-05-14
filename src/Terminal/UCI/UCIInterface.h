@@ -170,6 +170,8 @@ namespace StockDory
                         .BlackTime      = MS(TokenToValue<uint64_t>(args, "btime", 0)),
                         .WhiteIncrement = MS(TokenToValue<uint64_t>(args, "winc" , 0)),
                         .BlackIncrement = MS(TokenToValue<uint64_t>(args, "binc" , 0)),
+
+                        .MovesToGo = TokenToValue<uint16_t>(args, "movestogo", 0)
                     };
 
                     timeControl = TimeControl(MainBoard, timeData);
