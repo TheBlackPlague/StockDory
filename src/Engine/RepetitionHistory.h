@@ -44,7 +44,7 @@ namespace StockDory
                 uint8_t count = 0;
                 for (uint16_t i = CurrentIndex - 1; i != 0xFFFF; i--) {
                     if (Internal[i] == hash) count++;
-                    if (count >= 2) return true;
+                    if (count > 2) return true;
                 }
 
                 return false;
