@@ -177,6 +177,7 @@ namespace StockDory
                     timeControl = TimeControl(MainBoard, timeData);
                 }
 
+                SearchThread.Stop();
                 SearchThread = UCISearchThread(MainBoard, timeControl, MainHistory);
                 SearchThread.Start(depth);
             }
