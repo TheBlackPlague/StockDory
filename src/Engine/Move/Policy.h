@@ -22,9 +22,9 @@ namespace StockDory
         private:
             constexpr static std::array<std::array<uint16_t, 7>, 7> MvvLva = {{
                 { 2005, 2004, 2003, 2002, 2001, 2000, 0000 },
+                { 3005, 3004, 3003, 3002, 3001, 3000, 0000 },
                 { 4005, 4004, 4003, 4002, 4001, 4000, 0000 },
                 { 5005, 5004, 5003, 5002, 5001, 5000, 0000 },
-                { 3005, 3004, 3003, 3002, 3001, 3000, 0000 },
                 { 6005, 6004, 6003, 6002, 6001, 6000, 0000 },
                 { 7005, 7004, 7003, 7002, 7001, 7000, 0000 },
                 { 0000, 0000, 0000, 0000, 0000, 0000, 0000 }
@@ -34,9 +34,9 @@ namespace StockDory
 
             constexpr static std::array<int32_t, 5> PromotionPriority = {
                 0               ,
-                Priority - 8 + 2,
                 Priority - 8 + 3,
                 Priority - 8 + 1,
+                Priority - 8 + 2,
                 Priority - 8 + 4
             };
 
@@ -59,7 +59,7 @@ namespace StockDory
             {
                 if (move == TranspositionTable) return Priority - 1;
 
-                if (Promotion != NAP          ) return PromotionPriority[Promotion];
+                if (Promotion != NAP)  return PromotionPriority[Promotion];
 
                 if (CaptureOnly || board[move.To()].Piece() != NAP)
                      return MvvLva[board[move.To()].Piece()][Piece] * 10000;
