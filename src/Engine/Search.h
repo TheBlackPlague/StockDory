@@ -29,8 +29,10 @@ namespace StockDory
 
         public:
             static void LogDepthIteration([[maybe_unused]] const uint8_t depth,
+                                          [[maybe_unused]] const uint8_t selectiveDepth,
                                           [[maybe_unused]] const int32_t evaluation,
                                           [[maybe_unused]] const uint64_t nodes,
+                                          [[maybe_unused]] const uint64_t ttNodes,
                                           [[maybe_unused]] const StockDory::TimeControl::Milliseconds time,
                                           [[maybe_unused]] const std::string& pv) {}
 
@@ -65,7 +67,8 @@ namespace StockDory
 
             uint8_t SelectiveDepth = 0;
 
-            uint64_t Nodes = 0;
+            uint64_t   Nodes = 0;
+            uint64_t TTNodes = 0;
 
             int32_t Evaluation = -Infinity;
             Move    BestMove   = Move()   ;
@@ -98,7 +101,10 @@ namespace StockDory
 
                         BestMove = PvTable[0];
 
-                        Logger::LogDepthIteration(currentDepth, Evaluation, Nodes, TC.SinceBeginning(), PvLine());
+                        Logger::LogDepthIteration(currentDepth, SelectiveDepth,
+                                                  Evaluation,
+                                                  Nodes, TTNodes,
+                                                  TC.SinceBeginning(), PvLine());
                         currentDepth++;
                     }
                 } catch (SearchStopException&) {}
@@ -222,17 +228,17 @@ namespace StockDory
 
                 //region Transposition Table Lookup
                 const EngineEntry& storedEntry = TTable[hash];
-                bool valid  = storedEntry.Type != Invalid;
                 Move ttMove = Move();
                 bool ttHit  = false;
 
-                if (valid && storedEntry.Hash == hash) {
+                if (storedEntry.Type != Invalid && storedEntry.Hash == hash) {
                     ttHit  = true            ;
                     ttMove = storedEntry.Move;
 
                     if (!Pv && storedEntry.Depth >= depth) {
                         switch (storedEntry.Type) {
                             case Exact:
+                                TTNodes++;
                                 return storedEntry.Evaluation;
                             case BetaCutoff:
                                 alpha = std::max(alpha, storedEntry.Evaluation);
@@ -244,7 +250,10 @@ namespace StockDory
                                 break;
                         }
 
-                        if (alpha >= beta) return storedEntry.Evaluation;
+                        if (alpha >= beta) {
+                            TTNodes++;
+                            return storedEntry.Evaluation;
+                        }
                     }
                 }
                 //endregion

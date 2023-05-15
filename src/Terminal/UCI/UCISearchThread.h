@@ -17,7 +17,8 @@ namespace StockDory
     {
 
         public:
-            static void LogDepthIteration(const uint8_t depth, const int32_t evaluation, const uint64_t nodes,
+            static void LogDepthIteration(const uint8_t depth, const uint8_t selectiveDepth, const int32_t evaluation,
+                                          const uint64_t nodes, const uint64_t ttNodes,
                                           const StockDory::TimeControl::Milliseconds time, const std::string& pv)
             {
                 std::stringstream output;
@@ -30,8 +31,10 @@ namespace StockDory
 
                 output << "info ";
                 output << "depth " << static_cast<uint16_t>(depth) << " ";
+                output << "seldepth " << static_cast<uint16_t>(selectiveDepth) << " ";
                 output << "score cp " << evaluation << " ";
                 output << "nodes " << nodes << " ";
+                output << "ttNodes " << ttNodes << " ";
                 output << "time " << displayedTime << " ";
                 output << "nps " << nps << " ";
                 output << "pv " << pv;
