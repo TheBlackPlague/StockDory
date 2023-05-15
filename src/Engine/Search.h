@@ -201,15 +201,18 @@ namespace StockDory
 
                 //region Mate Pruning & Draw Detection
                 if (!Root) {
-                    if (Repetition.Found(hash)) return 0;
+                    if (Repetition.Found(hash)) {
+                        alpha = Draw;
+                        if (alpha >= beta) return alpha;
+                    }
 
                     const uint8_t pieceCount = Count(~Board[NAC]);
 
-                    if (pieceCount == 2) return 0;
+                    if (pieceCount == 2) return Draw;
 
                     const bool knightLeft = Board.PieceBoard<White>(Knight) | Board.PieceBoard<Black>(Knight);
                     const bool bishopLeft = Board.PieceBoard<White>(Bishop) | Board.PieceBoard<Black>(Bishop);
-                    if (pieceCount == 3 && (knightLeft || bishopLeft)) return 0;
+                    if (pieceCount == 3 && (knightLeft || bishopLeft)) return Draw;
 
                     alpha = std::max(alpha, -Mate + ply    );
                     beta  = std::min(beta ,  Mate - ply - 1);
