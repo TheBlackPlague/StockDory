@@ -161,7 +161,7 @@ namespace StockDory
                 return temp;
             }();
 
-            constexpr static inline uint32_t MagicIndex(Piece p, Square sq, BitBoard occupied)
+            constexpr static inline uint32_t MagicIndex(const Piece p, const Square sq, const BitBoard occupied)
             {
                 const std::array<std::pair<MagicPair, int32_t>, 64>& pieceMagic = Magic[p - 2];
 
