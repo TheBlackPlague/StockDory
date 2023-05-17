@@ -1,6 +1,6 @@
-all: compile
+all: openbench
 
-compile:
+openbench:
 	rm -rf ReleaseBuild
 	rm -rf StockDory
 	cmake -B ReleaseBuild -DCMAKE_BUILD_TYPE=Release
