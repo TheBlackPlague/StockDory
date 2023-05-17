@@ -51,9 +51,10 @@ namespace StockDory
                     time  += std::chrono::duration_cast<MS>(stop - start);
                 }
 
-                std::cout << "Nodes searched: " << nodes << std::endl;
-                std::cout << "NPS: " << static_cast<uint64_t>(static_cast<double>(nodes) /
-                         (static_cast<double>(time.count()) / static_cast<double>(1000 ))) << std::endl;
+                const auto nps =       static_cast<uint64_t>(static_cast<double>(nodes) /
+                        (static_cast<double>(time.count()) / static_cast<double>(1000 )));
+
+                std::cout << nodes << " nodes " << nps << " nps" << std::endl;
             }
 
     };
