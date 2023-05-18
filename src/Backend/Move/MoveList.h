@@ -122,7 +122,7 @@ namespace StockDory
 
                 InternalContainer &= check.Check;
 
-                const BitBoard enPassant  = board.EnPassant() & pawnAttack;
+                const BitBoard enPassant = board.EnPassant() & pawnAttack;
 
                 InternalContainer |= enPassant;
 
@@ -267,8 +267,10 @@ namespace StockDory
                 const BitBoard queen =              board.PieceBoard(Piece::Queen, Opposite(Color));
                 const Square   king  = ToSquare(board.PieceBoard(Piece::King ,             Color));
 
-                return !(AttackTable::Sliding[BlackMagicFactory::MagicIndex(Piece::Rook, king, occupied)] &
-                        (queen | board.PieceBoard(Piece::Rook, Opposite(Color))));
+                return !((AttackTable::Sliding[BlackMagicFactory::MagicIndex(Piece::Rook  , king, occupied)] &
+                         (queen | board.PieceBoard(Piece::Rook  , Opposite(Color)))) ||
+                         (AttackTable::Sliding[BlackMagicFactory::MagicIndex(Piece::Bishop, king, occupied)] &
+                         (queen | board.PieceBoard(Piece::Bishop, Opposite(Color)))));
             }
 
     };

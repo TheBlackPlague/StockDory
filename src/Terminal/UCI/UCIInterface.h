@@ -21,6 +21,7 @@
 #include "../../Engine/Search.h"
 
 #include "UCISearchThread.h"
+#include "../Perft/PerftRunner.h"
 
 namespace StockDory
 {
@@ -59,7 +60,7 @@ namespace StockDory
                 BasicCommandHandler.emplace("uci"     , [](const Arguments&     ) { Uci           (    ); });
                 BasicCommandHandler.emplace("quit"    , [](const Arguments&     ) { Quit          (    ); });
                 BasicCommandHandler.emplace("isready" , [](const Arguments&     ) { IsReady       (    ); });
-                BasicCommandHandler.emplace("info"    , [](const Arguments&     ) { Info          (    ); });
+                BasicCommandHandler.emplace("info"    , [](const Arguments& args) { Info          (args); });
                 BasicCommandHandler.emplace("position", [](const Arguments& args) { HandlePosition(args); });
                 BasicCommandHandler.emplace("go"      , [](const Arguments& args) { HandleGo      (args); });
                 BasicCommandHandler.emplace("stop"    , [](const Arguments&     ) { HandleStop    (    ); });
@@ -100,7 +101,7 @@ namespace StockDory
                 Running = false;
             }
 
-            static void Info()
+            static void Info(const Arguments& args)
             {
                 if (!UciPrompted || SearchThread.IsRunning()) return;
 
@@ -109,6 +110,21 @@ namespace StockDory
                 std::cout << "FEN: " << MainBoard.Fen() << std::endl;
                 std::cout << "Hash: " << Util::ToHex(MainBoard.Zobrist()) << std::endl;
                 std::cout << "Evaluation: " << evaluation << std::endl;
+
+                if (strutil::compare_ignore_case(args[0], "moves")) {
+                    std::cout << "Moves: " << std::endl;
+                    if (MainBoard.ColorToMove() == White) {
+                        OrderedMoveList<White> moves(MainBoard, 0,
+                                                     KillerTable(), HistoryTable(), Move());
+
+                        for (uint8_t i = 0; i < moves.Count(); i++) std::cout << moves[i].ToString() << std::endl;
+                    } else {
+                        OrderedMoveList<Black> moves(MainBoard, 0,
+                                                     KillerTable(), HistoryTable(), Move());
+
+                        for (uint8_t i = 0; i < moves.Count(); i++) std::cout << moves[i].ToString() << std::endl;
+                    }
+                }
             }
 
             static void HandlePosition(const Arguments& args)
@@ -153,6 +169,13 @@ namespace StockDory
             static void HandleGo(const Arguments& args)
             {
                 if (!UciPrompted || SearchThread.IsRunning()) return;
+
+                if (args.size() > 1 && strutil::compare_ignore_case(args[0], "perft")) {
+                    const auto depth = static_cast<uint8_t>(std::stoull(args[1]));
+                    StockDory::PerftRunner::SetBoard(MainBoard);
+                    StockDory::PerftRunner::Perft<true>(depth);
+                    return;
+                }
 
                 using MS = StockDory::TimeControl::Milliseconds;
 
