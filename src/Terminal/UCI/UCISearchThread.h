@@ -34,7 +34,7 @@ namespace StockDory
                 output << "seldepth " << static_cast<uint16_t>(selectiveDepth) << " ";
                 output << "score cp " << evaluation << " ";
                 output << "nodes " << nodes << " ";
-                output << "ttNodes " << ttNodes << " ";
+                output << "ttnodes " << ttNodes << " ";
                 output << "time " << displayedTime << " ";
                 output << "nps " << nps << " ";
                 output << "pv " << pv;
