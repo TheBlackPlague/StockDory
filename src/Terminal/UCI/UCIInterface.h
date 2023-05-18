@@ -111,7 +111,7 @@ namespace StockDory
                 std::cout << "Hash: " << Util::ToHex(MainBoard.Zobrist()) << std::endl;
                 std::cout << "Evaluation: " << evaluation << std::endl;
 
-                if (strutil::compare_ignore_case(args[0], "moves")) {
+                if (!args.empty() && strutil::compare_ignore_case(args[0], "moves")) {
                     std::cout << "Moves: " << std::endl;
                     if (MainBoard.ColorToMove() == White) {
                         OrderedMoveList<White> moves(MainBoard, 0,
