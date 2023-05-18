@@ -80,11 +80,13 @@ namespace StockDory
             {
                 if (UciPrompted) return;
 
-                std::cout << "id name "     << Title                ;
-                std::cout << " "            << Version  << std::endl;
-                std::cout << "id author "   << Author   << std::endl;
-                std::cout << "id license "  << License  << std::endl;
-                std::cout << "uciok"                    << std::endl;
+                std::stringstream ss;
+                ss << "id name " << Title << " " << Version << "\n";
+                ss << "id author " << Author << "\n";
+                ss << "id license " << License << "\n";
+                ss << "uciok";
+
+                std::cout << ss.str() << std::endl;
                 UciPrompted = true;
             }
 
@@ -107,24 +109,28 @@ namespace StockDory
 
                 MainBoard.LoadForEvaluation();
                 const int32_t evaluation = StockDory::Evaluation::Evaluate(MainBoard.ColorToMove());
-                std::cout << "FEN: " << MainBoard.Fen() << std::endl;
-                std::cout << "Hash: " << Util::ToHex(MainBoard.Zobrist()) << std::endl;
-                std::cout << "Evaluation: " << evaluation << std::endl;
+
+                std::stringstream ss;
+                ss << "FEN: " << MainBoard.Fen() << "\n";
+                ss << "Hash: " << Util::ToHex(MainBoard.Zobrist()) << "\n";
+                ss << "Evaluation: " << evaluation;
 
                 if (!args.empty() && strutil::compare_ignore_case(args[0], "moves")) {
-                    std::cout << "Moves: " << std::endl;
+                    ss << "\nMoves: ";
                     if (MainBoard.ColorToMove() == White) {
                         OrderedMoveList<White> moves(MainBoard, 0,
                                                      KillerTable(), HistoryTable(), Move());
 
-                        for (uint8_t i = 0; i < moves.Count(); i++) std::cout << moves[i].ToString() << std::endl;
+                        for (uint8_t i = 0; i < moves.Count(); i++) ss << "\n" << moves[i].ToString();
                     } else {
                         OrderedMoveList<Black> moves(MainBoard, 0,
                                                      KillerTable(), HistoryTable(), Move());
 
-                        for (uint8_t i = 0; i < moves.Count(); i++) std::cout << moves[i].ToString() << std::endl;
+                        for (uint8_t i = 0; i < moves.Count(); i++) ss << "\n" << moves[i].ToString();
                     }
                 }
+
+                std::cout << ss.str() << std::endl;
             }
 
             static void HandlePosition(const Arguments& args)
