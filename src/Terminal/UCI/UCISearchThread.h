@@ -32,7 +32,13 @@ namespace StockDory
                 output << "info ";
                 output << "depth " << static_cast<uint16_t>(depth) << " ";
                 output << "seldepth " << static_cast<uint16_t>(selectiveDepth) << " ";
-                output << "score cp " << evaluation << " ";
+                output << "score ";
+
+                if (abs(evaluation) > Infinity - MaxDepth)
+                    output << "mate " << (evaluation > 0 ? Infinity - evaluation : -Infinity - evaluation) / 2 << " ";
+                else
+                    output << "cp " << evaluation << " ";
+
                 output << "nodes " << nodes << " ";
                 output << "ttnodes " << ttNodes << " ";
                 output << "time " << displayedTime << " ";
