@@ -35,6 +35,11 @@ namespace StockDory
             {
                 Count = bytes / sizeof(T);
 
+                Clear();
+            }
+
+            void Clear()
+            {
                 Internal = std::vector<T>(Count);
             }
 
