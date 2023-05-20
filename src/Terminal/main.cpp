@@ -16,7 +16,7 @@ void DisplayTitle()
     ss << Title << " " << Version << "\n";
     ss << "Provided by " << Author << " under the " << License << " license.";
 
-    std::cout << ss.str() << std::endl;
+    std::cerr << ss.str() << std::endl;
 }
 
 int main(int argc, char* argv[])
