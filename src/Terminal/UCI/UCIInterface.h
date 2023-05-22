@@ -57,13 +57,14 @@ namespace StockDory
         private:
             static void RegisterBasicCommands()
             {
-                BasicCommandHandler.emplace("uci"     , [](const Arguments&     ) { Uci           (    ); });
-                BasicCommandHandler.emplace("quit"    , [](const Arguments&     ) { Quit          (    ); });
-                BasicCommandHandler.emplace("isready" , [](const Arguments&     ) { IsReady       (    ); });
-                BasicCommandHandler.emplace("info"    , [](const Arguments& args) { Info          (args); });
-                BasicCommandHandler.emplace("position", [](const Arguments& args) { HandlePosition(args); });
-                BasicCommandHandler.emplace("go"      , [](const Arguments& args) { HandleGo      (args); });
-                BasicCommandHandler.emplace("stop"    , [](const Arguments&     ) { HandleStop    (    ); });
+                BasicCommandHandler.emplace("uci"       , [](const Arguments&     ) { Uci           (    ); });
+                BasicCommandHandler.emplace("quit"      , [](const Arguments&     ) { Quit          (    ); });
+                BasicCommandHandler.emplace("ucinewgame", [](const Arguments&     ) { UciNewGame    (    ); });
+                BasicCommandHandler.emplace("isready"   , [](const Arguments&     ) { IsReady       (    ); });
+                BasicCommandHandler.emplace("info"      , [](const Arguments& args) { Info          (args); });
+                BasicCommandHandler.emplace("position"  , [](const Arguments& args) { HandlePosition(args); });
+                BasicCommandHandler.emplace("go"        , [](const Arguments& args) { HandleGo      (args); });
+                BasicCommandHandler.emplace("stop"      , [](const Arguments&     ) { HandleStop    (    ); });
             }
 
             static void HandleInput(const std::string& input)
@@ -88,6 +89,15 @@ namespace StockDory
 
                 std::cout << ss.str() << std::endl;
                 UciPrompted = true;
+            }
+
+            static void UciNewGame()
+            {
+                if (!UciPrompted) return;
+
+                MainBoard = Board();
+                MainHistory = RepetitionHistory(MainBoard.Zobrist());
+                TTable.Clear();
             }
 
             static void IsReady()
