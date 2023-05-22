@@ -190,7 +190,7 @@ namespace StockDory
                 constexpr enum Color OColor = Opposite(Color);
 
                 //region PV Table Ply Initialization
-                if (Pv) PvTable.InitializePly(ply);
+                PvTable.InitializePly(ply);
                 //endregion
 
                 //region Selected Depth Change
