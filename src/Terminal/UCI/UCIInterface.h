@@ -21,6 +21,7 @@
 #include "../../Engine/Search.h"
 
 #include "UCISearchThread.h"
+#include "UCIOption.h"
 //#include "../Perft/PerftRunner.h"
 
 namespace StockDory
@@ -29,16 +30,18 @@ namespace StockDory
     class UCIInterface
     {
 
-        using Arguments     = std::vector<std::string>;
-        using Handler       = std::function<void(const Arguments&)>;
-        using HandlerSwitch = std::unordered_map<std::string, Handler>;
+        using Arguments      = std::vector<std::string>;
+        using CommandHandler = std::function<void(const Arguments&)>;
+        using CommandSwitch  = std::unordered_map<std::string, CommandHandler>;
+        using OptionSwitch   = std::unordered_map<std::string, std::shared_ptr<UCIOptionBase>>;
 
         private:
             static bool Running;
 
             static bool UciPrompted;
 
-            static HandlerSwitch BasicCommandHandler;
+            static CommandSwitch UCICommandSwitch;
+            static OptionSwitch  UCIOptionSwitch;
 
             static Board             MainBoard  ;
             static RepetitionHistory MainHistory;
@@ -48,33 +51,64 @@ namespace StockDory
         public:
             static void Launch()
             {
-                RegisterBasicCommands();
+                RegisterOptions();
+                RegisterCommands();
 
                 std::string input;
                 while (Running && std::getline(std::cin, input)) HandleInput(input);
             }
 
         private:
-            static void RegisterBasicCommands()
+            static void RegisterCommands()
             {
-                BasicCommandHandler.emplace("uci"       , [](const Arguments&     ) { Uci           (    ); });
-                BasicCommandHandler.emplace("quit"      , [](const Arguments&     ) { Quit          (    ); });
-                BasicCommandHandler.emplace("ucinewgame", [](const Arguments&     ) { UciNewGame    (    ); });
-                BasicCommandHandler.emplace("isready"   , [](const Arguments&     ) { IsReady       (    ); });
-                BasicCommandHandler.emplace("info"      , [](const Arguments& args) { Info          (args); });
-                BasicCommandHandler.emplace("position"  , [](const Arguments& args) { HandlePosition(args); });
-                BasicCommandHandler.emplace("go"        , [](const Arguments& args) { HandleGo      (args); });
-                BasicCommandHandler.emplace("stop"      , [](const Arguments&     ) { HandleStop    (    ); });
+                UCICommandSwitch.emplace("uci"       , [](const Arguments&     ) { Uci           (    ); });
+                UCICommandSwitch.emplace("setoption" , [](const Arguments& args) { SetOption     (args); });
+                UCICommandSwitch.emplace("quit"      , [](const Arguments&     ) { Quit          (    ); });
+                UCICommandSwitch.emplace("ucinewgame", [](const Arguments&     ) { UciNewGame    (    ); });
+                UCICommandSwitch.emplace("isready"   , [](const Arguments&     ) { IsReady       (    ); });
+                UCICommandSwitch.emplace("info"      , [](const Arguments& args) { Info          (args); });
+                UCICommandSwitch.emplace("position"  , [](const Arguments& args) { HandlePosition(args); });
+                UCICommandSwitch.emplace("go"        , [](const Arguments& args) { HandleGo      (args); });
+                UCICommandSwitch.emplace("stop"      , [](const Arguments&     ) { HandleStop    (    ); });
+            }
+
+            static void RegisterOptions()
+            {
+                std::shared_ptr <UCIOption<uint64_t>> hash =
+                std::make_shared<UCIOption<uint64_t>>
+                ("Hash", 16, 1, 16384, [](const uint64_t& value) {
+                    if        (value < 1    ) {
+                        std::cerr << "ERROR: Hash must be at least 1 MB" << std::endl;
+                        return;
+                    } else if (value > 16384) {
+                        std::cerr << "ERROR: Hash must be at most 16 GB" << std::endl;
+                        return;
+                    }
+
+                    TTable.Resize(value * MB);
+                });
+
+                std::shared_ptr <UCIOption<uint8_t >> threads =
+                std::make_shared<UCIOption<uint8_t >>
+                ("Threads", 1, 1, 128, [](const  uint8_t& value) {
+                    if (value != 1) {
+                        std::cerr << "ERROR: Multithreading is not supported yet" << std::endl;
+                        return;
+                    }
+                });
+
+                UCIOptionSwitch.emplace(hash   ->GetName(), hash   );
+                UCIOptionSwitch.emplace(threads->GetName(), threads);
             }
 
             static void HandleInput(const std::string& input)
             {
                 const Arguments tokens = strutil::split(input, ' ');
                 const std::string command = strutil::to_lower(tokens[0]);
-                if (!BasicCommandHandler.contains(command)) return;
+                if (!UCICommandSwitch.contains(command)) return;
 
                 const Arguments args = {tokens.begin() + 1, tokens.end()};
-                BasicCommandHandler[command](args);
+                UCICommandSwitch[command](args);
             }
 
             static void Uci()
@@ -85,10 +119,26 @@ namespace StockDory
                 ss << "id name " << Title << " " << Version << "\n";
                 ss << "id author " << Author << "\n";
                 ss << "id license " << License << "\n";
+
+                for (const auto& [_, option] : UCIOptionSwitch)
+                    ss << option->Log() << "\n";
+
                 ss << "uciok";
 
                 std::cout << ss.str() << std::endl;
                 UciPrompted = true;
+            }
+
+            static void SetOption(const Arguments& args)
+            {
+                if (!UciPrompted || args.size() < 4) return;
+
+                if (!UCIOptionSwitch.contains(args[1])) return;
+
+                const std::vector<std::string> parameterLeading = {args.begin() + 3, args.end()};
+                const std::string parameter = strutil::join(parameterLeading, "");
+
+                UCIOptionSwitch[args[1]]->Set(parameter);
             }
 
             static void UciNewGame()
@@ -236,8 +286,11 @@ bool StockDory::UCIInterface::Running = true;
 
 bool StockDory::UCIInterface::UciPrompted = false;
 
-StockDory::UCIInterface::HandlerSwitch StockDory::UCIInterface::BasicCommandHandler =
-        StockDory::UCIInterface::HandlerSwitch();
+StockDory::UCIInterface::CommandSwitch StockDory::UCIInterface::UCICommandSwitch =
+        StockDory::UCIInterface::CommandSwitch();
+
+StockDory::UCIInterface::OptionSwitch StockDory::UCIInterface::UCIOptionSwitch =
+        StockDory::UCIInterface::OptionSwitch();
 
 StockDory::Board             StockDory::UCIInterface::MainBoard   = StockDory::Board();
 StockDory::RepetitionHistory StockDory::UCIInterface::MainHistory =
