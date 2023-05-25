@@ -207,10 +207,7 @@ namespace StockDory
 
                 //region Mate Pruning & Draw Detection
                 if (!Root) {
-                    if (Repetition.Found(hash)) {
-                        alpha = Draw;
-                        if (alpha >= beta) return alpha;
-                    }
+                    if (Repetition.Found(hash)) return Draw;
 
                     const uint8_t pieceCount = Count(~Board[NAC]);
 
