@@ -145,6 +145,8 @@ namespace StockDory
             {
                 if (!UciPrompted) return;
 
+                SearchThread.Stop();
+
                 MainBoard = Board();
                 MainHistory = RepetitionHistory(MainBoard.Zobrist());
                 TTable.Clear();
