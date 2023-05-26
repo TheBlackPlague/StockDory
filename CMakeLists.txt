@@ -30,6 +30,7 @@ include(${CPM_DOWNLOAD_LOCATION})
 
 CPMAddPackage("gh:ArthurSonzogni/ftxui#v4.0.0")
 CPMAddPackage("gh:TheBlackPlague/MantaRay#master")
+CPMAddPackage("gh:DeveloperPaul123/thread-pool#master")
 
 include(BinaryResource.cmake)
 
@@ -62,4 +63,4 @@ add_executable(StockDory src/Terminal/main.cpp
 
 target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
-target_link_libraries(StockDory ftxui::screen ftxui::dom ftxui::component MantaRay)
+target_link_libraries(StockDory ftxui::screen ftxui::dom ftxui::component MantaRay dp::thread-pool)

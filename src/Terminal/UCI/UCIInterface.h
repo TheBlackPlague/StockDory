@@ -20,7 +20,7 @@
 
 #include "../../Engine/Search.h"
 
-#include "UCISearchThread.h"
+#include "UCISearch.h"
 #include "UCIOption.h"
 //#include "../Perft/PerftRunner.h"
 
@@ -46,7 +46,7 @@ namespace StockDory
             static Board             MainBoard  ;
             static RepetitionHistory MainHistory;
 
-            static UCISearchThread SearchThread;
+            static UCISearch Search;
 
         public:
             static void Launch()
@@ -145,7 +145,7 @@ namespace StockDory
             {
                 if (!UciPrompted) return;
 
-                SearchThread.Stop();
+                Search.Stop();
 
                 MainBoard = Board();
                 MainHistory = RepetitionHistory(MainBoard.Zobrist());
@@ -161,13 +161,13 @@ namespace StockDory
 
             static void Quit()
             {
-                SearchThread.Stop();
+                Search.Stop();
                 Running = false;
             }
 
             static void Info(const Arguments& args)
             {
-                if (!UciPrompted || SearchThread.IsRunning()) return;
+                if (!UciPrompted || Search.IsRunning()) return;
 
                 MainBoard.LoadForEvaluation();
                 const int32_t evaluation = StockDory::Evaluation::Evaluate(MainBoard.ColorToMove());
@@ -236,7 +236,7 @@ namespace StockDory
 
             static void HandleGo(const Arguments& args)
             {
-                if (!UciPrompted || SearchThread.IsRunning()) return;
+                if (!UciPrompted || Search.IsRunning()) return;
 
 //                if (args.size() > 1 && strutil::compare_ignore_case(args[0], "perft")) {
 //                    const auto depth = static_cast<uint8_t>(std::stoull(args[1]));
@@ -268,16 +268,16 @@ namespace StockDory
                     timeControl = TimeControl(MainBoard, timeData);
                 }
 
-                SearchThread.Stop();
-                SearchThread = UCISearchThread(MainBoard, timeControl, MainHistory);
-                SearchThread.Start(depth);
+                Search.Stop();
+                Search = UCISearch(MainBoard, timeControl, MainHistory);
+                Search.Start(depth);
             }
 
             static void HandleStop()
             {
-                if (!UciPrompted || !SearchThread.IsRunning()) return;
+                if (!UciPrompted || !Search.IsRunning()) return;
 
-                SearchThread.Stop();
+                Search.Stop();
             }
 
     };
@@ -298,6 +298,6 @@ StockDory::Board             StockDory::UCIInterface::MainBoard   = StockDory::B
 StockDory::RepetitionHistory StockDory::UCIInterface::MainHistory =
         StockDory::RepetitionHistory(MainBoard.Zobrist());
 
-StockDory::UCISearchThread StockDory::UCIInterface::SearchThread = StockDory::UCISearchThread();
+StockDory::UCISearch StockDory::UCIInterface::Search = StockDory::UCISearch();
 
 #endif //STOCKDORY_UCIINTERFACE_H

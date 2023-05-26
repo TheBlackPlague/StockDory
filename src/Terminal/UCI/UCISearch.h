@@ -3,10 +3,10 @@
 // Licensed under LGPL-3.0.
 //
 
-#ifndef STOCKDORY_UCISEARCHTHREAD_H
-#define STOCKDORY_UCISEARCHTHREAD_H
+#ifndef STOCKDORY_UCISEARCH_H
+#define STOCKDORY_UCISEARCH_H
 
-#include <thread>
+#include "../../Backend/ThreadPool.h"
 
 #include "../../Engine/Search.h"
 
@@ -60,7 +60,7 @@ namespace StockDory
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnusedValue"
-    class UCISearchThread
+    class UCISearch
     {
 
         using Search = Search<UCISearchLogger>;
@@ -68,24 +68,20 @@ namespace StockDory
         private:
             Search EngineSearch;
 
-            std::thread Thread;
-
             bool Running = false;
 
         public:
-            UCISearchThread() = default;
+            UCISearch() = default;
 
-            explicit UCISearchThread(const Board& board, const StockDory::TimeControl& timeControl,
-                                     const RepetitionHistory& repetitionHistory)
+            explicit UCISearch(const Board& board, const StockDory::TimeControl& timeControl,
+                               const RepetitionHistory& repetitionHistory)
             {
                 EngineSearch = Search(board, timeControl, repetitionHistory);
             }
 
             void Start(const uint8_t depth)
             {
-                if (Thread.joinable()) Thread.join();
-
-                Thread = std::thread(
+                ThreadPool.enqueue_detach(
                     [this](const uint8_t depth) {
                         Running = true;
                         EngineSearch.IterativeDeepening(depth);
@@ -98,7 +94,6 @@ namespace StockDory
             void Stop()
             {
                 EngineSearch.ForceStop();
-                if (Thread.joinable()) Thread.join();
             }
 
             [[nodiscard]]
@@ -112,4 +107,4 @@ namespace StockDory
 
 } // StockDory
 
-#endif //STOCKDORY_UCISEARCHTHREAD_H
+#endif //STOCKDORY_UCISEARCH_H
