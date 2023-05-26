@@ -217,7 +217,7 @@ namespace StockDory
 
                     for (const std::string& moveStr : movesToken) {
                         const Move move = Move::FromString(moveStr);
-                        MainBoard.Move<ZOBRIST | NNUE>(move.From(), move.To(), move.Promotion());
+                        MainBoard.Move<ZOBRIST>(move.From(), move.To(), move.Promotion());
                         MainHistory.Push(MainBoard.Zobrist());
                     }
                 }
