@@ -35,7 +35,8 @@ namespace StockDory
                 MS time (0);
 
                 for (uint8_t i = 0; i < BenchLength; i++) {
-                    std::cout << "Position (" << static_cast<uint16_t>(i + 1) << "/";
+                    std::cout << "Position (" << std::setw(2) << std::setfill('0')
+                              << static_cast<uint16_t>(i + 1) << "/";
                     std::cout << static_cast<uint16_t>(BenchLength) << "): ";
                     std::cout << Positions[i] << std::endl;
 
