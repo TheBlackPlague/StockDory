@@ -255,8 +255,12 @@ namespace StockDory
                 }
                 //endregion
 
-                const int32_t staticEvaluation = ttHit ? storedEntry.Evaluation : Evaluation::Evaluate<Color>();
+                //region Static Evaluation
+                const int32_t staticEvaluation = ttHit ?
+                        StaticEvaluationTT<Color>(storedEntry) : Evaluation::Evaluate<Color>();
                 Stack[ply].StaticEvaluation = staticEvaluation;
+                //endregion
+
                 const bool checked = Board.Checked<Color>();
                 bool improving = false;
 
@@ -554,7 +558,21 @@ namespace StockDory
                     TTable[hash] = entry;
             }
 
+            template<Color Color>
+            static inline int32_t StaticEvaluationTT(const EngineEntry& entry)
+            {
+                if (entry.Type == Exact) return entry.Evaluation;
 
+                const int32_t staticEvaluation = Evaluation::Evaluate<Color>();
+
+                if (staticEvaluation > entry.Evaluation && entry.Type == BetaCutoff    )
+                    return staticEvaluation;
+
+                if (staticEvaluation < entry.Evaluation && entry.Type == AlphaUnchanged)
+                    return staticEvaluation;
+
+                return entry.Evaluation;
+            }
 
     };
 
