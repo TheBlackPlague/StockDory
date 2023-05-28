@@ -30,7 +30,15 @@ include(${CPM_DOWNLOAD_LOCATION})
 
 CPMAddPackage("gh:ArthurSonzogni/ftxui#v4.0.0")
 CPMAddPackage("gh:TheBlackPlague/MantaRay#master")
-CPMAddPackage("gh:DeveloperPaul123/thread-pool#master")
+CPMAddPackage(
+        NAME thread-pool
+        GITHUB_REPOSITORY DeveloperPaul123/thread-pool
+        GIT_TAG 0.5.1
+        OPTIONS
+        "TP_BUILD_TESTS OFF"
+        "TP_BUILD_BENCHMARKS OFF"
+        "TP_BUILD_EXAMPLES OFF"
+)
 
 include(BinaryResource.cmake)
 
