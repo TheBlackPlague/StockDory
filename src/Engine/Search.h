@@ -565,11 +565,8 @@ namespace StockDory
 
                 const int32_t staticEvaluation = Evaluation::Evaluate<Color>();
 
-                if (staticEvaluation > entry.Evaluation && entry.Type == BetaCutoff    )
-                    return staticEvaluation;
-
-                if (staticEvaluation < entry.Evaluation && entry.Type == AlphaUnchanged)
-                    return staticEvaluation;
+                if ((staticEvaluation > entry.Evaluation && entry.Type == BetaCutoff    ) ||
+                    (staticEvaluation < entry.Evaluation && entry.Type == AlphaUnchanged)) return staticEvaluation;
 
                 return entry.Evaluation;
             }
