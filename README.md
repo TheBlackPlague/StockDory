@@ -1,9 +1,11 @@
 <h1 align="center">
-    <img src=".readme/Logo.png" alt="StockDory" width=650>
+    <img src=".readme/Logo.png" alt="StockDory" width=600>
 </h1>
-<h2 align="center">
+
+<h3 align="center">
     Strong Neural Network Chess Engine
-</h2>
+</h3>
+
 <p align="center">
 <a href="https://www.runpod.io/">
 <img
