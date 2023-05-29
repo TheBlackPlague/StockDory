@@ -451,15 +451,12 @@ namespace StockDory
                     if (seeEvaluation > beta) return seeEvaluation;
                     //endregion
 
-                    constexpr MoveType MT = NNUE | ZOBRIST;
-
-                    PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion());
-                    Nodes++;
+                    const PreviousState state = EngineMove<false>(move);
 
                     int32_t evaluation =
                             -Q<OColor, Pv>(ply + 1, depth - 1, -beta, -alpha);
 
-                    Board.UndoMove<MT>(state, move.From(), move.To());
+                    EngineUndoMove<false>(state, move);
 
                     //region Handle Evaluation
                     if (evaluation <= bestEvaluation) continue;
@@ -521,7 +518,11 @@ namespace StockDory
                 const PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion());
                 Nodes++;
 
-                if (UpdateHistory) Repetition.Push(Board.Zobrist());
+                const ZobristHash hash = Board.Zobrist();
+
+                TTable.Prefetch(hash);
+
+                if (UpdateHistory) Repetition.Push(hash);
 
                 return state;
             }
