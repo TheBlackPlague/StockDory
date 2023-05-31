@@ -16,7 +16,7 @@ jobs:
       matrix:
         version: [ 0.1-ALPHA ]
         simd: [ sse, sse2, sse3, sse4.1, avx, avx2, avx512bw ]
-        os: [ ubuntu-22.04 , windows-latest ]
+        os: [ ubuntu-22.04 , windows-latest, macos-latest ]
         include:
           - os: windows-latest
             extension: .exe
@@ -80,7 +80,7 @@ jobs:
         mv ${{ github.workspace }}/build/StockDory${{ matrix.extension }} ${{ github.workspace }}/StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.simd }}${{ matrix.extension }}
 
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.simd }}
         path: ${{ github.workspace }}/StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.simd }}${{ matrix.extension }}
