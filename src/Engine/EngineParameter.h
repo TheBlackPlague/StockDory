@@ -51,6 +51,8 @@ constexpr size_t MB = 1024 * 1024;
 
 constexpr uint8_t ReplacementThreshold = 3;
 
+constexpr Move NoMove = Move();
+
 StockDory::TranspositionTable<StockDory::EngineEntry> TTable =
         StockDory::TranspositionTable<StockDory::EngineEntry>(16 * MB);
 

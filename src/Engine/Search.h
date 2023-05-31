@@ -71,7 +71,7 @@ namespace StockDory
             uint64_t TTNodes = 0;
 
             int32_t Evaluation = -Infinity;
-            Move    BestMove   = Move()   ;
+            Move    BestMove   = NoMove   ;
 
             bool Stop = false;
 
@@ -225,8 +225,8 @@ namespace StockDory
 
                 //region Transposition Table Lookup
                 const EngineEntry& storedEntry = TTable[hash];
-                Move ttMove = Move();
-                bool ttHit  = false;
+                Move ttMove = NoMove;
+                bool ttHit  = false ;
 
                 if (storedEntry.Type != Invalid && storedEntry.Hash == hash) {
                     ttHit  = true            ;
@@ -300,7 +300,7 @@ namespace StockDory
 
                 //region Fail-soft Alpha Beta Negamax
                 int32_t bestEvaluation = -Infinity;
-                Move bestMove = Move();
+                Move bestMove = NoMove;
                 EngineEntryType ttEntryType = AlphaUnchanged;
 
                 const uint8_t lmpQuietThreshold = LMPQuietThresholdBase + depth * depth;
@@ -356,7 +356,12 @@ namespace StockDory
                     if (evaluation <= bestEvaluation) continue;
 
                     bestEvaluation = evaluation;
-                    bestMove       = move      ;
+
+                    if (evaluation <= alpha         ) continue;
+
+                    alpha       = evaluation;
+                    bestMove    = move      ;
+                    ttEntryType = Exact     ;
 
                     if (Pv) {
                         PvTable.Insert(ply, move);
@@ -367,12 +372,7 @@ namespace StockDory
                         PvTable.Update(ply);
                     }
 
-                    if (evaluation <= alpha) continue;
-
-                    alpha       = evaluation;
-                    ttEntryType = Exact     ;
-
-                    if (evaluation < beta) continue;
+                    if (evaluation < beta           ) continue;
 
                     if (quiet) {
                         if (KTable.Get<1>(ply) != move) {
@@ -412,7 +412,6 @@ namespace StockDory
             int32_t Q(const uint8_t ply, const int16_t depth, int32_t alpha, int32_t beta)
             {
                 constexpr enum Color OColor     = Opposite(Color);
-                constexpr      Move  BaseTTMove = Move    (        );
 
                 //region Selective Depth Change
                 if (Pv) SelectiveDepth = std::max(SelectiveDepth, ply);
@@ -440,7 +439,7 @@ namespace StockDory
 
                 //region MoveList
                 using MoveList = StockDory::OrderedMoveList<Color, true>;
-                MoveList moves (Board, ply, KTable, HTable, BaseTTMove);
+                MoveList moves (Board, ply, KTable, HTable, NoMove);
                 //endregion
 
                 //region Fail-soft Alpha Beta Negamax
