@@ -88,6 +88,17 @@ namespace StockDory
 
                     InternalContainer |= (enPassant & pin.Diagonal) | (normal & pin.Diagonal & check.Check);
 
+                    if (enPassant) {
+                        const Square epTarget  = board.EnPassantSquare();
+                        const auto   epPieceSq = static_cast<Square>(
+                                Color == White ?
+                                epTarget - 8 :
+                                epTarget + 8
+                        );
+                        if (!EnPassantLegal(board, sq, epPieceSq, epTarget))
+                            InternalContainer &= ~enPassant;
+                    }
+
                     return;
                 } else if (Get(pin.Straight, sq)) {
                     const BitBoard sqBoard = FromSquare(sq);
