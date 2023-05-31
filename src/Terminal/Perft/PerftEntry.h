@@ -12,7 +12,7 @@
 #include "../../Backend/TranspositionTable.h"
 #include "../../Backend/Type/Zobrist.h"
 
-namespace StockDory::Perft
+namespace StockDory
 {
 
     template<uint8_t Depth>

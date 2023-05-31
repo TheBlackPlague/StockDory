@@ -13,6 +13,7 @@
 
 constexpr int32_t Infinity = 1000000     ;
 constexpr int32_t Mate     = Infinity - 1;
+constexpr int32_t Draw     = 0           ;
 
 constexpr uint8_t MaxDepth = 128;
 constexpr uint8_t MaxMove  = 218;
@@ -50,7 +51,9 @@ constexpr size_t MB = 1024 * 1024;
 
 constexpr uint8_t ReplacementThreshold = 3;
 
+constexpr Move NoMove = Move();
+
 StockDory::TranspositionTable<StockDory::EngineEntry> TTable =
-        StockDory::TranspositionTable<StockDory::EngineEntry>(MB * 16);
+        StockDory::TranspositionTable<StockDory::EngineEntry>(16 * MB);
 
 #endif //STOCKDORY_ENGINEPARAMETER_H

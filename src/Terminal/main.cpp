@@ -10,10 +10,18 @@
 #include "UCI/UCIInterface.h"
 #include "BenchHash.h"
 
+void DisplayTitle()
+{
+    std::stringstream ss;
+    ss << Title << " " << Version << "\n";
+    ss << "Provided by " << Author << " under the " << License << " license.";
+
+    std::cerr << ss.str() << std::endl;
+}
+
 int main(int argc, char* argv[])
 {
-    std::cout << Title << " " << Version << std::endl;
-    std::cout << "Provided by " << Author << " under the " << License << " license." << std::endl;
+    DisplayTitle();
 
     if (argc > 1 && strutil::compare_ignore_case(argv[1], "bench")) {
         StockDory::BenchHash::Run();

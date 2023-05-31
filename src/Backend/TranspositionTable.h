@@ -10,7 +10,11 @@
 #include <algorithm>
 #include <execution>
 
+#include <xmmintrin.h>
+
 #include "Type/Zobrist.h"
+
+#include "../External/fastrange.h"
 
 namespace StockDory
 {
@@ -21,37 +25,43 @@ namespace StockDory
 
         private:
             std::vector<T> Internal;
-            uint64_t IndexMask = 0;
+            uint64_t Count = 0;
 
         public:
-            explicit constexpr TranspositionTable(const uint64_t bytes)
+            explicit TranspositionTable(const uint64_t bytes)
             {
                 Resize(bytes);
             }
 
-            constexpr void Resize(const uint64_t bytes)
+            void Resize(const uint64_t bytes)
             {
-                for (uint64_t i = 0x1; (i + 1) * sizeof(T) <= bytes; i = i << 1 | 0x1) {
-                    IndexMask = i;
-                }
+                Count = bytes / sizeof(T);
 
-                const uint64_t size = IndexMask + 1;
-
-                Internal = std::vector<T>(size);
+                Clear();
             }
 
-            constexpr inline T& operator [](const ZobristHash index)
+            void Clear()
             {
-                return Internal[index & IndexMask];
+                Internal = std::vector<T>(Count);
             }
 
-            constexpr inline const T& operator [](const ZobristHash index) const
+            inline T& operator [](const ZobristHash hash)
             {
-                return Internal[index & IndexMask];
+                return Internal[fastrange64(hash, Count)];
+            }
+
+            inline const T& operator [](const ZobristHash hash) const
+            {
+                return Internal[fastrange64(hash, Count)];
+            }
+
+            inline void Prefetch(const ZobristHash hash) const
+            {
+                _mm_prefetch(reinterpret_cast<const char*>(&Internal[fastrange64(hash, Count)]), _MM_HINT_T0);
             }
 
             [[nodiscard]]
-            constexpr inline uint64_t Size() const
+            inline uint64_t Size() const
             {
                 return Internal.size();
             }

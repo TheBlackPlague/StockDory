@@ -35,12 +35,14 @@ namespace StockDory
                 MS time (0);
 
                 for (uint8_t i = 0; i < BenchLength; i++) {
-                    std::cout << "Position (" << static_cast<uint16_t>(i + 1) << "/";
+                    std::cout << "Position (" << std::setw(2) << std::setfill('0')
+                              << static_cast<uint16_t>(i + 1) << "/";
                     std::cout << static_cast<uint16_t>(BenchLength) << "): ";
                     std::cout << Positions[i] << std::endl;
 
-                    const Board board(Positions[i]);
-                    Search<NoLogger> search(board, infinite);
+                    const Board             board   (Positions[i]);
+                    const RepetitionHistory history (board.Zobrist());
+                    Search<NoLogger> search(board, infinite, history);
 
                     const TP start = std::chrono::high_resolution_clock::now();
                     search.IterativeDeepening(BenchDepth);
@@ -50,9 +52,10 @@ namespace StockDory
                     time  += std::chrono::duration_cast<MS>(stop - start);
                 }
 
-                std::cout << "Nodes searched: " << nodes << std::endl;
-                std::cout << "NPS: " << static_cast<uint64_t>(static_cast<double>(nodes) /
-                         (static_cast<double>(time.count()) / static_cast<double>(1000 ))) << std::endl;
+                const auto nps =       static_cast<uint64_t>(static_cast<double>(nodes) /
+                        (static_cast<double>(time.count()) / static_cast<double>(1000 )));
+
+                std::cout << nodes << " nodes " << nps << " nps" << std::endl;
             }
 
     };

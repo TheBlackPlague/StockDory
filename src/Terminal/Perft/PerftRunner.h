@@ -20,7 +20,7 @@
 
 //using PEntry = StockDory::Perft::PerftEntry<9>;
 
-namespace StockDory::Perft
+namespace StockDory
 {
 
     class PerftRunner
@@ -299,7 +299,7 @@ namespace StockDory::Perft
 
 } // Perft
 
-StockDory::Board StockDory::Perft::PerftRunner::PerftBoard = StockDory::Board();
+StockDory::Board StockDory::PerftRunner::PerftBoard = StockDory::Board();
 //StockDory::TranspositionTable<PEntry> StockDory::Perft::PerftRunner::TranspositionTable =
 //        StockDory::TranspositionTable<PEntry>(0);
 

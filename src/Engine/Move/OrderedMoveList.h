@@ -47,10 +47,9 @@ namespace StockDory
                     AddMoveLoop<King  >(board, hTable, policy, pin, check);
                 } else {
                     AddMoveLoop<Pawn  >(board, hTable, policy, pin, check);
-                    AddMoveLoop<Rook  >(board, hTable, policy, pin, check);
                     AddMoveLoop<Knight>(board, hTable, policy, pin, check);
                     AddMoveLoop<Bishop>(board, hTable, policy, pin, check);
-//                    AddMoveLoop<Rook  >(board, hTable, policy, pin, check);
+                    AddMoveLoop<Rook  >(board, hTable, policy, pin, check);
                     AddMoveLoop<Queen >(board, hTable, policy, pin, check);
                     AddMoveLoop<King  >(board, hTable, policy, pin, check);
                 }
@@ -73,14 +72,10 @@ namespace StockDory
 
                     for (Square m = moveIterator.Value(); m != NASQ; m = moveIterator.Value()) {
                         if (moves.Promotion(sq)) {
-                            Internal[Size++] = CreateOrdered<Piece, Rook  >(board, hTable, policy, sq, m);
-                            Internal[Size++] = CreateOrdered<Piece, Knight>(board, hTable, policy, sq, m);
-                            Internal[Size++] = CreateOrdered<Piece, Bishop>(board, hTable, policy, sq, m);
                             Internal[Size++] = CreateOrdered<Piece, Queen >(board, hTable, policy, sq, m);
-//                            Internal[Size++] = CreateOrdered<Piece, Queen >(board, hTable, policy, sq, m);
-//                            Internal[Size++] = CreateOrdered<Piece, Rook  >(board, hTable, policy, sq, m);
-//                            Internal[Size++] = CreateOrdered<Piece, Bishop>(board, hTable, policy, sq, m);
-//                            Internal[Size++] = CreateOrdered<Piece, Knight>(board, hTable, policy, sq, m);
+                            Internal[Size++] = CreateOrdered<Piece, Knight>(board, hTable, policy, sq, m);
+                            Internal[Size++] = CreateOrdered<Piece, Rook  >(board, hTable, policy, sq, m);
+                            Internal[Size++] = CreateOrdered<Piece, Bishop>(board, hTable, policy, sq, m);
                         } else {
                             Internal[Size++] = CreateOrdered<Piece        >(board, hTable, policy, sq, m);
                         }
