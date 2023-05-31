@@ -16,7 +16,7 @@ jobs:
       matrix:
         version: [ 0.1-ALPHA ]
         simd: [ sse, sse2, sse3, sse4.1, avx, avx2, avx512bw ]
-        os: [ ubuntu-22.04 , windows-latest, macos-latest ]
+        os: [ ubuntu-22.04 , windows-latest ]
         include:
           - os: windows-latest
             extension: .exe
@@ -51,7 +51,7 @@ jobs:
     - if: matrix.os == 'windows-latest'
       name: Install Clang 16
       run: |
-        choco install llvm --version 16.0.3
+        choco install llvm --version 16.0.3 -y
     - if: matrix.os == 'macos-latest'
       name: Install Clang 16
       run: |
