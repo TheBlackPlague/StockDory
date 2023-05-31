@@ -27,24 +27,11 @@ jobs:
         sudo chown $(whoami) /usr/local
         sudo apt install libncurses5
 
-    - name: Cache Clang
-      id: cache-clang
-      uses: actions/cache@v3
+    - name: Install Clang 16
+      uses: KyleMayes/install-llvm-action@v1.8.0
       with:
-        path: /usr/local/clang-16
-        key: ${{ runner.os }}-clang-16
-
-    - name: Install Clang-16
-      if: steps.cache-clang.outputs.cache-hit != 'true'
-      run: |
-        curl -SL https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz | tar -xJC .
-        mv clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04 clang-16
-        sudo mv clang-16 /usr/local
-
-    - name: Setup Compiler Environment
-      run: |
-        echo "CC=/usr/local/clang-16/bin/clang" >> $GITHUB_ENV
-        echo "CXX=/usr/local/clang-16/bin/clang++" >> $GITHUB_ENV
+        version: "16.0.3"
+        env: true
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
