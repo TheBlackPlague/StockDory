@@ -399,7 +399,7 @@ namespace StockDory
                     .Hash       = hash,
                     .Depth      = static_cast<uint8_t>(depth),
                     .Evaluation = bestEvaluation,
-                    .Move       = bestMove,
+                    .Move       = ttEntryType != AlphaUnchanged ? bestMove : ttMove,
                     .Type       = ttEntryType
                 };
                 InsertEntry(hash, entry);
