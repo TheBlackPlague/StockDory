@@ -27,9 +27,15 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Prepare environment for Clang and Caching.
+    - if: matrix.os == ubuntu-22.04
       run: |
         sudo apt install libncurses5 ninja-build
+    - if: matrix.os == windows-latest
+      run: |
+        choco install ninja
+    - if: matrix.os == macos-latest
+      run: |
+        brew install ninja
 
     - name: Install Clang 16
       uses: KyleMayes/install-llvm-action@v1.8.0
