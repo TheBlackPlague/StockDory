@@ -71,7 +71,7 @@ namespace StockDory
             uint64_t TTNodes = 0;
 
             int32_t Evaluation = -Infinity;
-            Move    BestMove   = Move()   ;
+            Move    BestMove   = NoMove   ;
 
             bool Stop = false;
 
@@ -225,8 +225,8 @@ namespace StockDory
 
                 //region Transposition Table Lookup
                 const EngineEntry& storedEntry = TTable[hash];
-                Move ttMove = Move();
-                bool ttHit  = false;
+                Move ttMove = NoMove;
+                bool ttHit  = false ;
 
                 if (storedEntry.Type != Invalid && storedEntry.Hash == hash) {
                     ttHit  = true            ;
@@ -255,8 +255,12 @@ namespace StockDory
                 }
                 //endregion
 
-                const int32_t staticEvaluation = ttHit ? storedEntry.Evaluation : Evaluation::Evaluate<Color>();
+                //region Static Evaluation
+                const int32_t staticEvaluation = ttHit ?
+                        StaticEvaluationTT<Color>(storedEntry) : Evaluation::Evaluate<Color>();
                 Stack[ply].StaticEvaluation = staticEvaluation;
+                //endregion
+
                 const bool checked = Board.Checked<Color>();
                 bool improving = false;
 
@@ -287,7 +291,7 @@ namespace StockDory
 
                 //region MoveList
                 using MoveList = StockDory::OrderedMoveList<Color>;
-                MoveList moves (Board, ply, KTable, HTable, Move());
+                MoveList moves (Board, ply, KTable, HTable, ttMove);
                 //endregion
 
                 //region Checkmate & Stalemate Detection
@@ -296,7 +300,7 @@ namespace StockDory
 
                 //region Fail-soft Alpha Beta Negamax
                 int32_t bestEvaluation = -Infinity;
-                Move bestMove = Move();
+                Move bestMove = NoMove;
                 EngineEntryType ttEntryType = AlphaUnchanged;
 
                 const uint8_t lmpQuietThreshold = LMPQuietThresholdBase + depth * depth;
@@ -352,7 +356,12 @@ namespace StockDory
                     if (evaluation <= bestEvaluation) continue;
 
                     bestEvaluation = evaluation;
-                    bestMove       = move      ;
+
+                    if (evaluation <= alpha         ) continue;
+
+                    alpha       = evaluation;
+                    bestMove    = move      ;
+                    ttEntryType = Exact     ;
 
                     if (Pv) {
                         PvTable.Insert(ply, move);
@@ -363,12 +372,7 @@ namespace StockDory
                         PvTable.Update(ply);
                     }
 
-                    if (evaluation <= alpha) continue;
-
-                    alpha       = evaluation;
-                    ttEntryType = Exact     ;
-
-                    if (evaluation < beta) continue;
+                    if (evaluation < beta           ) continue;
 
                     if (quiet) {
                         if (KTable.Get<1>(ply) != move) {
@@ -395,7 +399,7 @@ namespace StockDory
                     .Hash       = hash,
                     .Depth      = static_cast<uint8_t>(depth),
                     .Evaluation = bestEvaluation,
-                    .Move       = bestMove,
+                    .Move       = ttEntryType != AlphaUnchanged ? bestMove : ttMove,
                     .Type       = ttEntryType
                 };
                 InsertEntry(hash, entry);
@@ -408,7 +412,6 @@ namespace StockDory
             int32_t Q(const uint8_t ply, const int16_t depth, int32_t alpha, int32_t beta)
             {
                 constexpr enum Color OColor     = Opposite(Color);
-                constexpr      Move  BaseTTMove = Move    (        );
 
                 //region Selective Depth Change
                 if (Pv) SelectiveDepth = std::max(SelectiveDepth, ply);
@@ -436,7 +439,7 @@ namespace StockDory
 
                 //region MoveList
                 using MoveList = StockDory::OrderedMoveList<Color, true>;
-                MoveList moves (Board, ply, KTable, HTable, BaseTTMove);
+                MoveList moves (Board, ply, KTable, HTable, NoMove);
                 //endregion
 
                 //region Fail-soft Alpha Beta Negamax
@@ -451,15 +454,12 @@ namespace StockDory
                     if (seeEvaluation > beta) return seeEvaluation;
                     //endregion
 
-                    constexpr MoveType MT = NNUE | ZOBRIST;
-
-                    PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion());
-                    Nodes++;
+                    const PreviousState state = EngineMove<false>(move);
 
                     int32_t evaluation =
                             -Q<OColor, Pv>(ply + 1, depth - 1, -beta, -alpha);
 
-                    Board.UndoMove<MT>(state, move.From(), move.To());
+                    EngineUndoMove<false>(state, move);
 
                     //region Handle Evaluation
                     if (evaluation <= bestEvaluation) continue;
@@ -521,7 +521,11 @@ namespace StockDory
                 const PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion());
                 Nodes++;
 
-                if (UpdateHistory) Repetition.Push(Board.Zobrist());
+                const ZobristHash hash = Board.Zobrist();
+
+                TTable.Prefetch(hash);
+
+                if (UpdateHistory) Repetition.Push(hash);
 
                 return state;
             }
@@ -554,7 +558,18 @@ namespace StockDory
                     TTable[hash] = entry;
             }
 
+            template<Color Color>
+            static inline int32_t StaticEvaluationTT(const EngineEntry& entry)
+            {
+                if (entry.Type == Exact) return entry.Evaluation;
 
+                const int32_t staticEvaluation = Evaluation::Evaluate<Color>();
+
+                if ((staticEvaluation > entry.Evaluation && entry.Type == BetaCutoff    ) ||
+                    (staticEvaluation < entry.Evaluation && entry.Type == AlphaUnchanged)) return staticEvaluation;
+
+                return entry.Evaluation;
+            }
 
     };
 
