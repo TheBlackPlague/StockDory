@@ -66,8 +66,9 @@ jobs:
     - if: matrix.os == 'macos-latest'
       name: Set CC and CXX for MacOS
       run: |
-        echo "CC=clang" >> $GITHUB_ENV
-        echo "CXX=clang++" >> $GITHUB_ENV
+        echo "CC=/usr/local/opt/llvm@16/bin/clang" >> $GITHUB_ENV
+        echo "CXX=/usr/local/opt/llvm@16/bin/clang++" >> $GITHUB_ENV
+        echo "PATH=/usr/local/opt/llvm@16/bin:$PATH" >> $GITHUB_ENV
 
     - name: Configure CMake
       run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_CXX_FLAGS="-m${{ matrix.simd }}" -G Ninja
