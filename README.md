@@ -15,11 +15,13 @@
 </a>
 </p>
 
-### Overview
-- **Powerful and Deep Analysis**
-- **UCI Compatible**
-- **Free and Open Source**
-- **Cross Platform**
+### 🌐 Overview
+- 🧠 **Powerful and Deep Analysis**
+- 🚀 **High Performance**
+- 📦 **Lightweight**
+- 💻 **Cross Platform**
+- 🔄 **UCI Compatible**
+- 👌 **Free and Open Source**
 
 StockDory, the mark of strength and efficiency, emerges as a proficient chess engine reengineered
 in C++ from its popular and mighty C# predecessor, StockNemo.
@@ -31,35 +33,35 @@ Download the latest release and try it out for yourself!
 For maximum performance, compile the engine specifically for your hardware using the
 instructions below.
 
-### Compiling
+### 🛠️ Compiling
 StockDory is written in C++ and uses CMake as its build system.
 
 **Requirements**:
-- CMake >= 3.15
-- Clang (LLVM) >= 16.0.0
-- Ninja >= 1.10.2
+- 🏭 CMake >= 3.15
+- 🐉 Clang (LLVM) >= 16.0.0
+- 🥷 Ninja >= 1.10.2
 
 **Steps**:
-- Clone the repository
+- 💾 Clone the repository
 ```bash
 git clone https://github.com/TheBlackPlague/StockDory.git
 ```
-- Setup Build Process
+- 🔦 Setup Build Process
 ```bash
 cd StockDory
 cmake -B Build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -G Ninja
 ```
-- Compile
+- 🪛 Compile
 ```bash
 cmake --build Build --config Release
 ```
-- Run
+- 🏃‍♂️ Run
 ```bash
 ./Build/StockDory
 ```
 
-### Contributing
-**Hardware Contributions:**
+### 🤝 Contributing
+🖥 **Hardware Contributions:**
 
 StockDory requires a lot of computational power to be tested and improved.
 As such, the [FindingChess Testing Framework](http://tests.findingchess.com/)
@@ -74,7 +76,7 @@ If you would like to contribute hardware for the development of StockDory,
 please download the Client Worker from the
 [FindingChess Testing Framework](http://tests.findingchess.com/) and run it.
 
-**Pull Requests and Bug Reports:**
+📝 **Pull Requests and Bug Reports:**
 
 StockDory is a community project, and as such, we welcome any and all contributors
 looking to improve the codebase or report bugs.
@@ -97,8 +99,8 @@ Please understand that at times your pull request may require some changes befor
 and that this is not a reflection of your work, but rather a reflection of the high standards
 that StockDory is held to.
 
-### Terms of Use
-**StockDory Engine:**
+### 📑 Terms of Use
+🚂 **StockDory Engine:**
 
 The StockDory engine is licensed under the [LGPL-3.0](LICENSE). 
 This is a very permissive license that allows you to use the engine
@@ -117,7 +119,7 @@ StockNemo or StockDory would've never existed if it wasn't for the
 generosity of the open-source community, and it's now our turn to
 carry on that tradition.
 
-**StockDory Logo:**
+🎀 **StockDory Logo:**
 The StockDory Logo is licensed under the 
 [CC BY-NC-ND 4.0 License](https://creativecommons.org/licenses/by-nc-nd/4.0/).
 
