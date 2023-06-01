@@ -1,8 +1,13 @@
 cmake_minimum_required(VERSION 3.15)
 project(StockDory)
 
+if (CMAKE_CXX_FLAGS MATCHES "")
+    set(CMAKE_CXX_FLAGS "-march=native")
+else ()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+endif ()
+
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_FLAGS "-march=native")
 set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g -ftime-report")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
