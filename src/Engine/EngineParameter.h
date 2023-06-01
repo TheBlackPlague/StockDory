@@ -18,7 +18,8 @@ constexpr int32_t Draw     = 0           ;
 constexpr uint8_t MaxDepth = 128;
 constexpr uint8_t MaxMove  = 218;
 
-constexpr uint8_t NullMoveDepth = 3;
+constexpr uint8_t NullMoveDepth            = 3  ;
+constexpr uint8_t NullMoveEvaluationMargin = 180;
 
 constexpr uint16_t AspirationBound = 3500;
 constexpr uint8_t  AspirationSize  = 16  ;

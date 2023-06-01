@@ -484,7 +484,7 @@ namespace StockDory
                 constexpr enum Color OColor = Opposite(Color);
 
                 const auto reductionStep   = static_cast<int16_t>(depth / NullMoveDepth);
-                const auto reductionFactor = static_cast<int16_t>((staticEvaluation - beta) / 180);
+                const auto reductionFactor = static_cast<int16_t>((staticEvaluation - beta) / NullMoveEvaluationMargin);
                 const auto reduction       = static_cast<int16_t>(NullMoveDepth + reductionStep +
                                                 std::min<int16_t>(NullMoveDepth, reductionFactor));
 
