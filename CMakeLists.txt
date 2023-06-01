@@ -1,11 +1,9 @@
 cmake_minimum_required(VERSION 3.15)
 project(StockDory)
 
-if (CMAKE_CXX_FLAGS MATCHES "")
+if(CMAKE_CXX_FLAGS STREQUAL "")
     set(CMAKE_CXX_FLAGS "-march=native")
-else ()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-endif ()
+endif()
 
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
