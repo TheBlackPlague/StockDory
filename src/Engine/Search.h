@@ -51,7 +51,7 @@ namespace StockDory
             {
 
                 int32_t StaticEvaluation = 0;
-
+                bool NullMove = false;
             };
 
             Board       Board;
@@ -277,7 +277,7 @@ namespace StockDory
                     //endregion
 
                     //region Null Move Pruning
-                    if (NMP<Color, Root>(ply, depth, beta)) return beta;
+                    if (NMP<Color, Root>(ply, depth, beta, staticEvaluation)) return beta;
                     //endregion
                 } else if (checked) {
                     //region Check Extension
@@ -477,15 +477,15 @@ namespace StockDory
             }
 
             template<Color Color, bool Root>
-            inline bool NMP(const uint8_t ply, const int16_t depth, const int32_t beta)
+            inline bool NMP(const uint8_t ply, const int16_t depth, const int32_t beta, const int32_t staticEval)
             {
                 if (Root || depth <= NullMoveDepth) return false;
+                if (staticEval < beta) return false;
 
                 constexpr enum Color OColor = Opposite(Color);
 
                 const auto reducedDepth =
-                        static_cast<int16_t>(depth - NullMoveReduction     -
-                                            (depth / NullMoveScalingFactor - NullMoveScalingCorrection));
+                        static_cast<int16_t>(depth - (3 + depth / 3 + std::min(3, (staticEval - beta) / 180)));
 
                 PreviousStateNull state = Board.Move();
 
