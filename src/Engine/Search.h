@@ -299,14 +299,15 @@ namespace StockDory
                 //endregion
 
                 //region Fail-soft Alpha Beta Negamax
-                int32_t bestEvaluation = -Infinity;
-                Move bestMove = NoMove;
-                EngineEntryType ttEntryType = AlphaUnchanged;
+                int32_t         bestEvaluation = -Infinity;
+                Move            bestMove       = NoMove;
+                EngineEntryType ttEntryType    = AlphaUnchanged;
 
                 const uint8_t lmpQuietThreshold = LMPQuietThresholdBase + depth * depth;
-                const bool lmp = !Root && !checked && depth <= LMPDepthThreshold;
-                const bool lmr = depth >= LMRDepthThreshold && !checked;
-                const int32_t historyBonus = depth * depth;
+                const bool    lmp               = !Root && !checked && depth <= LMPDepthThreshold;
+                const bool    lmr               = depth >= LMRDepthThreshold && !checked;
+                const int32_t historyBonus      = depth * depth;
+                const uint8_t historyFactor     = std::min(depth / 3, 1);
 
                 uint8_t quietMoveCount = 0;
                 for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -337,6 +338,8 @@ namespace StockDory
                             if (!Pv) r++;
 
                             if (!improving) r++;
+
+                            if (move.Promotion() != NAP) r++;
 
                             int16_t reducedDepth = static_cast<int16_t>(std::max(depth - r, 1));
 
@@ -380,11 +383,13 @@ namespace StockDory
                             KTable.Set<1>(ply, move);
                         }
 
-                        HTable.Get(Board[move.From()].Piece(), Color, move.To()) += historyBonus;
+                        HTable.Get(Board[move.From()].Piece(), Color, move.To())
+                        += historyBonus + i * historyFactor;
 
                         for (uint8_t q = 1; q < quietMoveCount; q++) {
                             const Move other = moves.UnsortedAccess(i - q);
-                            HTable.Get(Board[other.From()].Piece(), Color, other.To()) -= historyBonus;
+                            HTable.Get(Board[other.From()].Piece(), Color, other.To())
+                            -= historyBonus + (quietMoveCount - q) * historyFactor;
                         }
                     }
 
