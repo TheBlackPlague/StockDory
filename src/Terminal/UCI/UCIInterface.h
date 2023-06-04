@@ -43,8 +43,9 @@ namespace StockDory
             static CommandSwitch UCICommandSwitch;
             static OptionSwitch  UCIOptionSwitch;
 
-            static Board             MainBoard  ;
-            static RepetitionHistory MainHistory;
+            static Board             MainBoard      ;
+            static RepetitionHistory MainHistory    ;
+            static uint8_t           HalfMoveCounter;
 
             static UCISearch Search;
 
@@ -203,12 +204,14 @@ namespace StockDory
                 if (strutil::compare_ignore_case(args[0], "fen")) {
                     const Arguments   fenToken = {args.begin() + 1, args.begin() + 7};
                     const std::string fen      = strutil::join(fenToken, " ");
-                    MainBoard   = Board(fen);
-                    MainHistory = RepetitionHistory(MainBoard.Zobrist());
+                    MainBoard       = Board(fen);
+                    MainHistory     = RepetitionHistory(MainBoard.Zobrist());
+                    HalfMoveCounter = std::stoi(fenToken[5]);
                     moveStrIndex = 8;
                 } else if (strutil::compare_ignore_case(args[0], "startpos")) {
-                    MainBoard   = Board();
-                    MainHistory = RepetitionHistory(MainBoard.Zobrist());
+                    MainBoard       = Board();
+                    MainHistory     = RepetitionHistory(MainBoard.Zobrist());
+                    HalfMoveCounter = 0;
                 } else return;
 
                 if (args.size() >= moveStrIndex &&
@@ -217,6 +220,11 @@ namespace StockDory
 
                     for (const std::string& moveStr : movesToken) {
                         const Move move = Move::FromString(moveStr);
+
+                        if (MainBoard[move.To()].Piece() != NAP || MainBoard[move.From()].Piece() == Pawn)
+                             HalfMoveCounter = 0;
+                        else HalfMoveCounter++  ;
+
                         MainBoard.Move<ZOBRIST>(move.From(), move.To(), move.Promotion());
                         MainHistory.Push(MainBoard.Zobrist());
                     }
@@ -269,7 +277,7 @@ namespace StockDory
                 }
 
                 Search.Stop();
-                Search = UCISearch(MainBoard, timeControl, MainHistory);
+                Search = UCISearch(MainBoard, timeControl, MainHistory, HalfMoveCounter);
                 Search.Start(depth);
             }
 
@@ -294,9 +302,10 @@ StockDory::UCIInterface::CommandSwitch StockDory::UCIInterface::UCICommandSwitch
 StockDory::UCIInterface::OptionSwitch StockDory::UCIInterface::UCIOptionSwitch =
         StockDory::UCIInterface::OptionSwitch();
 
-StockDory::Board             StockDory::UCIInterface::MainBoard   = StockDory::Board();
-StockDory::RepetitionHistory StockDory::UCIInterface::MainHistory =
+StockDory::Board             StockDory::UCIInterface::MainBoard       = StockDory::Board();
+StockDory::RepetitionHistory StockDory::UCIInterface::MainHistory     =
         StockDory::RepetitionHistory(MainBoard.Zobrist());
+uint8_t                      StockDory::UCIInterface::HalfMoveCounter = 0;
 
 StockDory::UCISearch StockDory::UCIInterface::Search = StockDory::UCISearch();
 

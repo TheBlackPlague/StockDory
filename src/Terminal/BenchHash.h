@@ -42,7 +42,7 @@ namespace StockDory
 
                     const Board             board   (Positions[i]);
                     const RepetitionHistory history (board.Zobrist());
-                    Search<NoLogger> search(board, infinite, history);
+                    Search<NoLogger> search(board, infinite, history, 0);
 
                     const TP start = std::chrono::high_resolution_clock::now();
                     search.IterativeDeepening(BenchDepth);

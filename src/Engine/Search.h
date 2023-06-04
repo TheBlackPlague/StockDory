@@ -51,6 +51,7 @@ namespace StockDory
             {
 
                 int32_t StaticEvaluation = 0;
+                uint8_t HalfMoveCounter  = 0;
 
             };
 
@@ -79,11 +80,13 @@ namespace StockDory
             Search() = default;
 
             explicit Search(const StockDory::Board board, const StockDory::TimeControl tc,
-                            const RepetitionHistory repetition)
+                            const RepetitionHistory repetition, const uint8_t halfMoveCounter)
             {
                 Board      = board     ;
                 TC         = tc        ;
                 Repetition = repetition;
+
+                Stack[0].HalfMoveCounter = halfMoveCounter;
             }
 
             void IterativeDeepening(const int16_t depth)
@@ -207,6 +210,8 @@ namespace StockDory
 
                 //region Mate Pruning & Draw Detection
                 if (!Root) {
+                    if (Stack[ply].HalfMoveCounter >= 100) return Draw;
+
                     if (Repetition.Found(hash)) return Draw;
 
                     const uint8_t pieceCount = Count(~Board[NAC]);
@@ -324,7 +329,7 @@ namespace StockDory
                         break;
                     //endregion
 
-                    const PreviousState state = EngineMove<true>(move);
+                    const PreviousState state = EngineMove<true>(move, ply, quiet);
 
                     int32_t evaluation = 0;
                     if (i == 0) evaluation = -AlphaBeta<OColor, Pv, false>
@@ -454,7 +459,7 @@ namespace StockDory
                     if (seeEvaluation > beta) return seeEvaluation;
                     //endregion
 
-                    const PreviousState state = EngineMove<false>(move);
+                    const PreviousState state = EngineMove<false>(move, ply);
 
                     int32_t evaluation =
                             -Q<OColor, Pv>(ply + 1, depth - 1, -beta, -alpha);
@@ -515,9 +520,13 @@ namespace StockDory
             }
 
             template<bool UpdateHistory>
-            inline PreviousState EngineMove(const Move move)
+            inline PreviousState EngineMove(const Move move, const uint8_t ply, const bool quiet = false)
             {
                 constexpr MoveType MT = NNUE | ZOBRIST;
+
+                if (!quiet || Board[move.From()].Piece() == Pawn)
+                     Stack[ply + 1].HalfMoveCounter =                              0;
+                else Stack[ply + 1].HalfMoveCounter = Stack[ply].HalfMoveCounter + 1;
 
                 const PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion());
                 Nodes++;
