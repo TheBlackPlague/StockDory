@@ -212,7 +212,7 @@ namespace StockDory
                 if (!Root) {
                     if (Stack[ply].HalfMoveCounter >= 100) return Draw;
 
-                    if (Repetition.Found(hash, Stack[ply].HalfMoveCounter)) return Draw;
+                    if (Repetition.Found(hash)) return Draw;
 
                     const uint8_t pieceCount = Count(~Board[NAC]);
 
