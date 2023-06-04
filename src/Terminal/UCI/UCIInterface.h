@@ -206,7 +206,7 @@ namespace StockDory
                     const std::string fen      = strutil::join(fenToken, " ");
                     MainBoard       = Board(fen);
                     MainHistory     = RepetitionHistory(MainBoard.Zobrist());
-                    HalfMoveCounter = std::stoi(fenToken[5]);
+                    HalfMoveCounter = std::stoi(fenToken[4]);
                     moveStrIndex = 8;
                 } else if (strutil::compare_ignore_case(args[0], "startpos")) {
                     MainBoard       = Board();
