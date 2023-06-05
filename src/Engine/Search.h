@@ -312,7 +312,7 @@ namespace StockDory
                 const bool    lmp               = !Root && !checked && depth <= LMPDepthThreshold;
                 const bool    lmr               = depth >= LMRDepthThreshold && !checked;
                 const int32_t historyBonus      = depth * depth;
-                const uint8_t historyFactor     = std::min(depth / 3, 1);
+                const uint8_t historyFactor     = std::max(depth / 3, 1);
 
                 uint8_t quietMoveCount = 0;
                 for (uint8_t i = 0; i < moves.Count(); i++) {
