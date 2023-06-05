@@ -39,12 +39,16 @@ namespace StockDory
             }
 
             [[nodiscard]]
-            constexpr inline bool Found(const ZobristHash hash) const
+            constexpr inline bool Found(const ZobristHash hash, const uint8_t halfMoveCounter) const
             {
                 uint8_t count = 0;
                 for (uint16_t i = CurrentIndex - 1; i != 0xFFFF; i--) {
-                    if (Internal[i] == hash) count++;
-                    if (count > 2) return true;
+                    if (i < CurrentIndex - 1 - halfMoveCounter) return false;
+
+                    if (Internal[i] == hash) {
+                        count++;
+                        if (count > 2) return true;
+                    }
                 }
 
                 return false;
