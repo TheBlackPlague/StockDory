@@ -34,7 +34,7 @@ endif()
 include(${CPM_DOWNLOAD_LOCATION})
 
 CPMAddPackage("gh:ArthurSonzogni/ftxui#v4.0.0")
-CPMAddPackage("gh:TheBlackPlague/MantaRay#master")
+CPMAddPackage("gh:TheBlackPlague/MantaRay#e440f75f9ea5648e2b0e6eeea773adbe2b88151d")
 CPMAddPackage(
         NAME thread-pool
         GITHUB_REPOSITORY DeveloperPaul123/thread-pool

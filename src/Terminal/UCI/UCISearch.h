@@ -74,9 +74,9 @@ namespace StockDory
             UCISearch() = default;
 
             explicit UCISearch(const Board& board, const StockDory::TimeControl& timeControl,
-                               const RepetitionHistory& repetitionHistory)
+                               const RepetitionHistory& repetitionHistory, const uint8_t halfMoveCounter)
             {
-                EngineSearch = Search(board, timeControl, repetitionHistory);
+                EngineSearch = Search(board, timeControl, repetitionHistory, halfMoveCounter);
             }
 
             void Start(const uint8_t depth)

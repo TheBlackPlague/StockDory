@@ -51,6 +51,7 @@ namespace StockDory
             {
 
                 int32_t StaticEvaluation = 0;
+                uint8_t HalfMoveCounter  = 0;
 
             };
 
@@ -79,11 +80,13 @@ namespace StockDory
             Search() = default;
 
             explicit Search(const StockDory::Board board, const StockDory::TimeControl tc,
-                            const RepetitionHistory repetition)
+                            const RepetitionHistory repetition, const uint8_t halfMoveCounter)
             {
                 Board      = board     ;
                 TC         = tc        ;
                 Repetition = repetition;
+
+                Stack[0].HalfMoveCounter = halfMoveCounter;
             }
 
             void IterativeDeepening(const int16_t depth)
@@ -207,7 +210,9 @@ namespace StockDory
 
                 //region Mate Pruning & Draw Detection
                 if (!Root) {
-                    if (Repetition.Found(hash)) return Draw;
+                    if (Stack[ply].HalfMoveCounter >= 100) return Draw;
+
+                    if (Repetition.Found(hash, Stack[ply].HalfMoveCounter)) return Draw;
 
                     const uint8_t pieceCount = Count(~Board[NAC]);
 
@@ -277,7 +282,7 @@ namespace StockDory
                     //endregion
 
                     //region Null Move Pruning
-                    if (NMP<Color, Root>(ply, depth, beta)) return beta;
+                    if (NMP<Color, Root>(ply, depth, staticEvaluation, beta)) return beta;
                     //endregion
                 } else if (checked) {
                     //region Check Extension
@@ -299,14 +304,15 @@ namespace StockDory
                 //endregion
 
                 //region Fail-soft Alpha Beta Negamax
-                int32_t bestEvaluation = -Infinity;
-                Move bestMove = NoMove;
-                EngineEntryType ttEntryType = AlphaUnchanged;
+                int32_t         bestEvaluation = -Infinity;
+                Move            bestMove       = NoMove;
+                EngineEntryType ttEntryType    = AlphaUnchanged;
 
                 const uint8_t lmpQuietThreshold = LMPQuietThresholdBase + depth * depth;
-                const bool lmp = !Root && !checked && depth <= LMPDepthThreshold;
-                const bool lmr = depth >= LMRDepthThreshold && !checked;
-                const int32_t historyBonus = depth * depth;
+                const bool    lmp               = !Root && !checked && depth <= LMPDepthThreshold;
+                const bool    lmr               = depth >= LMRDepthThreshold && !checked;
+                const int32_t historyBonus      = depth * depth;
+                const uint8_t historyFactor     = std::max(depth / 3, 1);
 
                 uint8_t quietMoveCount = 0;
                 for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -324,7 +330,7 @@ namespace StockDory
                         break;
                     //endregion
 
-                    const PreviousState state = EngineMove<true>(move);
+                    const PreviousState state = EngineMove<true>(move, ply, quiet);
 
                     int32_t evaluation = 0;
                     if (i == 0) evaluation = -AlphaBeta<OColor, Pv, false>
@@ -380,11 +386,13 @@ namespace StockDory
                             KTable.Set<1>(ply, move);
                         }
 
-                        HTable.Get(Board[move.From()].Piece(), Color, move.To()) += historyBonus;
+                        HTable.Get(Board[move.From()].Piece(), Color, move.To())
+                        += historyBonus + i * historyFactor;
 
                         for (uint8_t q = 1; q < quietMoveCount; q++) {
                             const Move other = moves.UnsortedAccess(i - q);
-                            HTable.Get(Board[other.From()].Piece(), Color, other.To()) -= historyBonus;
+                            HTable.Get(Board[other.From()].Piece(), Color, other.To())
+                            -= historyBonus + (quietMoveCount - q) * historyFactor;
                         }
                     }
 
@@ -454,7 +462,7 @@ namespace StockDory
                     if (seeEvaluation > beta) return seeEvaluation;
                     //endregion
 
-                    const PreviousState state = EngineMove<false>(move);
+                    const PreviousState state = EngineMove<false>(move, ply);
 
                     int32_t evaluation =
                             -Q<OColor, Pv>(ply + 1, depth - 1, -beta, -alpha);
@@ -477,20 +485,21 @@ namespace StockDory
             }
 
             template<Color Color, bool Root>
-            inline bool NMP(const uint8_t ply, const int16_t depth, const int32_t beta)
+            inline bool NMP(const uint8_t ply, const int16_t depth, const int32_t staticEvaluation, const int32_t beta)
             {
-                if (Root || depth <= NullMoveDepth) return false;
+                if (Root || depth < NullMoveDepth || staticEvaluation < beta) return false;
 
                 constexpr enum Color OColor = Opposite(Color);
 
-                const auto reducedDepth =
-                        static_cast<int16_t>(depth - NullMoveReduction     -
-                                            (depth / NullMoveScalingFactor - NullMoveScalingCorrection));
+                const auto reductionStep   = static_cast<int16_t>(depth / NullMoveDepth);
+                const auto reductionFactor = static_cast<int16_t>((staticEvaluation - beta) / NullMoveEvaluationMargin);
+                const auto reduction       = static_cast<int16_t>(NullMoveDepth + reductionStep +
+                                                std::min<int16_t>(NullMoveDepth, reductionFactor));
 
                 PreviousStateNull state = Board.Move();
 
                 const int32_t evaluation = -AlphaBeta<OColor, false, false>
-                        (ply + 1, reducedDepth, -beta, -beta + 1);
+                        (ply + 1, depth - reduction, -beta, -beta + 1);
 
                 Board.UndoMove(state);
 
@@ -514,9 +523,13 @@ namespace StockDory
             }
 
             template<bool UpdateHistory>
-            inline PreviousState EngineMove(const Move move)
+            inline PreviousState EngineMove(const Move move, const uint8_t ply, const bool quiet = false)
             {
                 constexpr MoveType MT = NNUE | ZOBRIST;
+
+                if (!quiet || Board[move.From()].Piece() == Pawn)
+                     Stack[ply + 1].HalfMoveCounter =                              0;
+                else Stack[ply + 1].HalfMoveCounter = Stack[ply].HalfMoveCounter + 1;
 
                 const PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion());
                 Nodes++;
