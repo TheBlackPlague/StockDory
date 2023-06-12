@@ -96,11 +96,15 @@ namespace StockDory
                 std::string outputDirectory;
                 std::getline(std::cin, outputDirectory);
 
-                if (strutil::compare_ignore_case(architecture, "Starshard")) {
+                if        (strutil::compare_ignore_case(architecture, "Starshard")) {
                     std::shared_ptr<Starshard> network = ReadFromFile<Starshard>(inputPath);
                     WriteToFile<Starshard>(outputDirectory, network);
-                    GenerateHash(outputDirectory, architecture);
+                } else if (strutil::compare_ignore_case(architecture, "Aurora"   )) {
+                    std::shared_ptr<Aurora   > network = ReadFromFile<Aurora   >(inputPath);
+                    WriteToFile<Aurora   >(outputDirectory, network);
                 }
+
+                GenerateHash(outputDirectory, architecture);
             }
 
     };
