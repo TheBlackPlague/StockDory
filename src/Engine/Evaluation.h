@@ -12,6 +12,7 @@
 #include "../Backend/Type/PieceColor.h"
 #include "../Backend/Type/Square.h"
 
+#include "NetworkArchitecture.h"
 #include "Model/NeuralNetworkBinary.h"
 
 namespace StockDory
@@ -20,11 +21,8 @@ namespace StockDory
     class Evaluation
     {
 
-        using ActivationFunction = MantaRay::ClippedReLU<int16_t, 0, 255>;
-        using NNUE = MantaRay::PerspectiveNetwork<int16_t, int32_t, ActivationFunction, 768, 256, 1, 512, 400, 255, 64>;
-
         private:
-            static NNUE NN;
+            static Starshard NN;
 
         public:
             static inline void ResetNetworkState()
@@ -73,9 +71,9 @@ namespace StockDory
 
 } // StockDory
 
-StockDory::Evaluation::NNUE StockDory::Evaluation::NN = []() {
+Starshard StockDory::Evaluation::NN = []() {
     MantaRay::BinaryMemoryStream stream(_NeuralNetworkBinaryData, _NeuralNetworkBinarySize);
-    return NNUE(stream);
+    return Starshard(stream);
 }();
 
 #endif //STOCKDORY_EVALUATION_H
