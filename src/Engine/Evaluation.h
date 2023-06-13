@@ -22,7 +22,7 @@ namespace StockDory
     {
 
         private:
-            static Starshard NN;
+            static Aurora NN;
 
         public:
             static inline void ResetNetworkState()
@@ -71,9 +71,9 @@ namespace StockDory
 
 } // StockDory
 
-Starshard StockDory::Evaluation::NN = []() {
+Aurora StockDory::Evaluation::NN = []() {
     MantaRay::BinaryMemoryStream stream(_NeuralNetworkBinaryData, _NeuralNetworkBinarySize);
-    return Starshard(stream);
+    return Aurora (stream);
 }();
 
 #endif //STOCKDORY_EVALUATION_H
