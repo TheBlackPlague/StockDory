@@ -25,6 +25,11 @@ namespace StockDory
             static Aurora NN;
 
         public:
+            static inline std::string Name()
+            {
+                return "Aurora";
+            }
+
             static inline void ResetNetworkState()
             {
                 NN.  ResetAccumulator();
