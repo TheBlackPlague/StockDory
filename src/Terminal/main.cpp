@@ -14,7 +14,7 @@
 void DisplayTitle()
 {
     std::stringstream ss;
-    ss << Title << " " << Version << "\n";
+    ss << Title << " " << Version << " - " << StockDory::Evaluation::Name() << "\n";
     ss << "Provided by " << Author << " under the " << License << " license.";
 
     std::cerr << ss.str() << std::endl;
