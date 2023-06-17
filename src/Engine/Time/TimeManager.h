@@ -29,7 +29,7 @@ namespace StockDory
     {
 
         private:
-            constexpr static uint8_t TimePartition = 10;
+            constexpr static uint8_t TimePartition = 20;
             constexpr static uint8_t TimeOverhead  = 10;
 
             constexpr static uint8_t IncrementPartitionNumerator   = 3;
@@ -88,7 +88,7 @@ namespace StockDory
                 optimal =  MoveCountAdjustment(board, optimal);
                 optimal =      CheckAdjustment(board, optimal);
 
-//                std::cout << "Actual: " << actual << " Optimal: " << optimal << "\n";
+                std::cout << "Actual: " << actual << " Optimal: " << optimal << "\n";
 
                 optimal = std::min(optimal, actual);
 
