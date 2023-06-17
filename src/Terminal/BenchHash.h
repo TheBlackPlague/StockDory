@@ -9,6 +9,7 @@
 #include <array>
 #include <string>
 
+#include "../Engine/Time/TimeManager.h"
 #include "../Engine/Search.h"
 
 namespace StockDory
@@ -26,11 +27,8 @@ namespace StockDory
         public:
             static void Run()
             {
-                using MS = StockDory::TimeControl::Milliseconds;
-                using TP = std::chrono::time_point<std::chrono::high_resolution_clock>;
-
                 uint64_t nodes = 0;
-                TimeControl infinite;
+                TimeControl infinite = TimeManager::Default();
 
                 MS time (0);
 
@@ -42,7 +40,7 @@ namespace StockDory
 
                     const Board             board   (Positions[i]);
                     const RepetitionHistory history (board.Zobrist());
-                    Search<NoLogger> search(board, infinite, history, 0);
+                    Search<NoLogger> search (board, infinite, history, 0);
 
                     const TP start = std::chrono::high_resolution_clock::now();
                     search.IterativeDeepening(BenchDepth);

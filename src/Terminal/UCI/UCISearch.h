@@ -19,7 +19,7 @@ namespace StockDory
         public:
             static void LogDepthIteration(const uint8_t depth, const uint8_t selectiveDepth, const int32_t evaluation,
                                           const uint64_t nodes, const uint64_t ttNodes,
-                                          const StockDory::TimeControl::Milliseconds time, const std::string& pv)
+                                          const MS time, const std::string& pv)
             {
                 std::stringstream output;
 
@@ -73,11 +73,9 @@ namespace StockDory
         public:
             UCISearch() = default;
 
-            explicit UCISearch(const Board& board, const StockDory::TimeControl& timeControl,
-                               const RepetitionHistory& repetitionHistory, const uint8_t halfMoveCounter)
-            {
-                EngineSearch = Search(board, timeControl, repetitionHistory, halfMoveCounter);
-            }
+            UCISearch(const Board& board, const StockDory::TimeControl& timeControl,
+                      const RepetitionHistory& repetitionHistory, const uint8_t halfMoveCounter)
+                      : EngineSearch(Search(board, timeControl, repetitionHistory, halfMoveCounter)) {}
 
             void Start(const uint8_t depth)
             {

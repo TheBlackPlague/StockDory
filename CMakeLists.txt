@@ -55,6 +55,7 @@ file(GLOB StockDoryBackendType
 
 file(GLOB StockDoryEngineType
         "src/Engine/Move/*.h"
+        "src/Engine/Time/*.h"
         "src/Engine/*.h")
 
 file(GLOB StockDoryExternalType

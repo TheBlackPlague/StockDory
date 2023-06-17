@@ -14,12 +14,12 @@
 #include "Move/PrincipleVariationTable.h"
 #include "Move/KillerTable.h"
 #include "Move/HistoryTable.h"
+#include "Time/TimeControl.h"
 #include "Evaluation.h"
 #include "EngineParameter.h"
 #include "LogarithmicReductionTable.h"
 #include "SEE.h"
 #include "RepetitionHistory.h"
-#include "TimeControl.h"
 
 namespace StockDory
 {
@@ -33,7 +33,7 @@ namespace StockDory
                                           [[maybe_unused]] const int32_t evaluation,
                                           [[maybe_unused]] const uint64_t nodes,
                                           [[maybe_unused]] const uint64_t ttNodes,
-                                          [[maybe_unused]] const StockDory::TimeControl::Milliseconds time,
+                                          [[maybe_unused]] const MS time,
                                           [[maybe_unused]] const std::string& pv) {}
 
             static void LogBestMove([[maybe_unused]] const Move& move) {}
@@ -79,14 +79,11 @@ namespace StockDory
         public:
             Search() = default;
 
-            explicit Search(const StockDory::Board board, const StockDory::TimeControl tc,
-                            const RepetitionHistory repetition, const uint8_t halfMoveCounter)
+            Search(const StockDory::Board  board,      const StockDory::TimeControl tc,
+                   const RepetitionHistory repetition, const uint8_t                hm)
+                   : Board(board), TC(tc), Repetition(repetition)
             {
-                Board      = board     ;
-                TC         = tc        ;
-                Repetition = repetition;
-
-                Stack[0].HalfMoveCounter = halfMoveCounter;
+                Stack[0].HalfMoveCounter = hm;
             }
 
             void IterativeDeepening(const int16_t depth)
@@ -97,7 +94,7 @@ namespace StockDory
 
                 try {
                     int16_t currentDepth = 1;
-                    while (currentDepth <= depth && !TC.Finished()) {
+                    while (currentDepth <= depth && !TC.Finished<false>()) {
                         if (Board.ColorToMove() == White)
                              Evaluation = Aspiration<White>(currentDepth);
                         else Evaluation = Aspiration<Black>(currentDepth);
@@ -107,7 +104,7 @@ namespace StockDory
                         Logger::LogDepthIteration(currentDepth, SelectiveDepth,
                                                   Evaluation,
                                                   Nodes, TTNodes,
-                                                  TC.SinceBeginning(), PvLine());
+                                                  TC.Elapsed(), PvLine());
                         currentDepth++;
                     }
                 } catch (SearchStopException&) {}
@@ -157,7 +154,7 @@ namespace StockDory
                 uint8_t research = 0;
                 while (true) {
                     //region Out of Time & Force Stop
-                    if (Stop || TC.Finished()) throw SearchStopException();
+                    if (Stop || TC.Finished<true>()) throw SearchStopException();
                     //endregion
 
                     //region Reset Window
@@ -187,7 +184,7 @@ namespace StockDory
             int32_t AlphaBeta(const uint8_t ply, int16_t depth, int32_t alpha, int32_t beta)
             {
                 //region Out of Time & Force Stop
-                if (Stop || ((Nodes & 4095) && TC.Finished())) throw SearchStopException();
+                if (Stop || ((Nodes & 4095) && TC.Finished<true>())) throw SearchStopException();
                 //endregion
 
                 constexpr enum Color OColor = Opposite(Color);
