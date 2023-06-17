@@ -79,10 +79,10 @@ namespace StockDory
                 uint64_t optimal = actual;
 
                 optimal = PieceCountAdjustment(board, optimal);
-                optimal =  MoveCountAdjustment(board, optimal);
-                optimal =      CheckAdjustment(board, optimal);
+//                optimal =  MoveCountAdjustment(board, optimal);
+//                optimal =      CheckAdjustment(board, optimal);
 
-                std::cout << "Actual: " << actual << " Optimal: " << optimal << "\n";
+                std::cerr << "Actual: " << actual << " Optimal: " << optimal << "\n";
 
                 optimal = std::min(optimal, actual);
 
