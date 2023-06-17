@@ -39,13 +39,7 @@ namespace StockDory
             constexpr static uint8_t PieceCountNumerator   =  3;
             constexpr static uint8_t PieceCountDenominator =  5;
 
-            constexpr static uint8_t  MoveCountBase        =  25;
-            constexpr static uint8_t  MoveCountNumerator   =   3;
-            constexpr static uint8_t  MoveCountDenominator =   4;
             constexpr static uint64_t MoveInstantTime      = 500;
-
-            constexpr static uint8_t CheckNumerator   = 10;
-            constexpr static uint8_t CheckDenominator =  7;
 
             constexpr static KillerTable  DummyKTable;
             constexpr static HistoryTable DummyHTable;
@@ -79,10 +73,7 @@ namespace StockDory
                 uint64_t optimal = actual;
 
                 optimal = PieceCountAdjustment(board, optimal);
-//                optimal =  MoveCountAdjustment(board, optimal);
-//                optimal =      CheckAdjustment(board, optimal);
-
-                std::cerr << "Actual: " << actual << " Optimal: " << optimal << "\n";
+                optimal =  MoveCountAdjustment(board, optimal);
 
                 optimal = std::min(optimal, actual);
 
@@ -114,19 +105,7 @@ namespace StockDory
                                             board, 0, DummyKTable, DummyHTable, NoMove
                                     ).Count() ;
 
-                moveCount = std::min<uint8_t>(moveCount, MoveCountBase);
-
-                return moveCount == 1 ? std::min<uint64_t>(MoveInstantTime, optimal) :
-                    std::max(optimal * moveCount          / MoveCountBase,
-                             optimal * MoveCountNumerator / MoveCountDenominator);
-            }
-
-            static uint64_t CheckAdjustment(const Board& board, const uint64_t optimal)
-            {
-                const bool checked = board.ColorToMove() == White ? board.Checked<White>() : board.Checked<Black>();
-
-                return checked ? optimal *   CheckNumerator / CheckDenominator :
-                                 optimal * CheckDenominator /   CheckNumerator ;
+                return moveCount == 1 ? std::min<uint64_t>(MoveInstantTime, optimal) : optimal;
             }
 
     };
