@@ -45,7 +45,7 @@ namespace StockDory
             {
                 if (ActualTime == Zero) return false;
 
-                return Elapsed() >= (Hard ? ActualTime : OptimalTime);
+                return Elapsed() > (Hard ? ActualTime : OptimalTime);
             }
 
             [[nodiscard]]

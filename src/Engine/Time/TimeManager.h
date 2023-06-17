@@ -34,10 +34,6 @@ namespace StockDory
             constexpr static uint8_t IncrementPartitionNumerator   = 3;
             constexpr static uint8_t IncrementPartitionDenominator = 4;
 
-            constexpr static uint8_t  TimeDifferenceNumerator   =    1;
-            constexpr static uint8_t  TimeDifferenceDenominator =    2;
-            constexpr static uint64_t TimeDifferenceThreshold   = 2000;
-
             constexpr static uint8_t OptimalNumerator   = 5;
             constexpr static uint8_t OptimalDenominator = 5;
 
@@ -59,13 +55,11 @@ namespace StockDory
                 const uint64_t time = color == White ? data.WhiteTime      : data.BlackTime     ;
                 const uint64_t inc  = color == White ? data.WhiteIncrement : data.BlackIncrement;
 
-                uint64_t actual = data.MovesToGo > 0 ? std::max(time / TimePartition, time / data.MovesToGo)
-                                                              : time / TimePartition;
+                uint64_t actual = time / TimePartition;
+
+                actual = data.MovesToGo > 0 ? std::max(actual, time / data.MovesToGo) : actual;
 
                 actual += inc * IncrementPartitionNumerator / IncrementPartitionDenominator;
-
-                actual += time - (color == White ? data.BlackTime : data.WhiteTime) > TimeDifferenceThreshold ?
-                          time * TimeDifferenceNumerator / TimeDifferenceDenominator : 0;
 
                 actual -= TimeOverhead;
 
