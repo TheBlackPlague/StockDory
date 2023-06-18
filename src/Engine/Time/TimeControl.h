@@ -26,17 +26,37 @@ namespace StockDory
             MS OptimalTime = Zero;
             MS  ActualTime = Zero;
 
+            bool Optimizable = false;
+
         public:
             TimeControl() = default;
 
-            explicit TimeControl(const uint64_t Optimal, const uint64_t Actual)
+            explicit TimeControl(const uint64_t optimal, const uint64_t actual, const bool optimizable = false)
             : Origin(std::chrono::high_resolution_clock::now()),
-              OptimalTime(MS(Optimal)),
-               ActualTime(MS(Actual )) {}
+              OptimalTime(MS(optimal)),
+               ActualTime(MS(actual )),
+              Optimizable(optimizable) {}
 
             void Start()
             {
                 Origin = std::chrono::high_resolution_clock::now();
+            }
+
+            [[nodiscard]]
+            bool CanBeOptimised() const
+            {
+                return Optimizable;
+            }
+
+            [[nodiscard]]
+            uint64_t GetOptimal() const
+            {
+                return OptimalTime.count();
+            }
+
+            void SetOptimal(const uint64_t time)
+            {
+                OptimalTime = MS(time);
             }
 
             template<bool Hard>

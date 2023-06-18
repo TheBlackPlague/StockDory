@@ -14,7 +14,7 @@
 #include "Move/PrincipleVariationTable.h"
 #include "Move/KillerTable.h"
 #include "Move/HistoryTable.h"
-#include "Time/TimeControl.h"
+#include "Time/TimeManager.h"
 #include "Evaluation.h"
 #include "EngineParameter.h"
 #include "LogarithmicReductionTable.h"
@@ -74,6 +74,8 @@ namespace StockDory
             int32_t Evaluation = -Infinity;
             Move    BestMove   = NoMove   ;
 
+            uint8_t BestMoveStability = 0;
+
             bool Stop = false;
 
         public:
@@ -98,6 +100,12 @@ namespace StockDory
                         if (Board.ColorToMove() == White)
                              Evaluation = Aspiration<White>(currentDepth);
                         else Evaluation = Aspiration<Black>(currentDepth);
+
+                        if (BestMove == PvTable[0]) BestMoveStability++;
+                        else                        BestMoveStability =
+                                                    std::max(static_cast<int8_t>(BestMoveStability) - 4, 0);
+
+                        if (BestMoveStability > 7) TimeManager::Optimise(TC, BestMoveStability);
 
                         BestMove = PvTable[0];
 

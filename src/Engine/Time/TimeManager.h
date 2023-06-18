@@ -77,7 +77,16 @@ namespace StockDory
 
                 optimal = std::min(optimal, actual);
 
-                return TimeControl(optimal, actual);
+                return TimeControl(optimal, actual, true);
+            }
+
+            static void Optimise(TimeControl& control, const uint8_t bestMoveStability)
+            {
+                if (!control.CanBeOptimised()) return;
+
+                const uint64_t time = control.GetOptimal();
+
+                control.SetOptimal(time * (100 - bestMoveStability) / 100);
             }
 
         private:
