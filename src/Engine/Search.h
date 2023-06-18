@@ -101,11 +101,11 @@ namespace StockDory
                              Evaluation = Aspiration<White>(currentDepth);
                         else Evaluation = Aspiration<Black>(currentDepth);
 
-                        if (BestMove == PvTable[0]) BestMoveStability++;
+                        if (BestMove == PvTable[0]) BestMoveStability += depth / 3;
                         else                        BestMoveStability =
                                                     std::max(static_cast<int8_t>(BestMoveStability) - 4, 0);
 
-                        if (BestMoveStability > 7) TimeManager::Optimise(TC, BestMoveStability);
+                        if (BestMoveStability > 5) TimeManager::Optimise(TC, BestMoveStability);
 
                         BestMove = PvTable[0];
 
