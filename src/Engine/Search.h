@@ -149,7 +149,7 @@ namespace StockDory
                 if (lastBestMove == BestMove) BestMoveStability = std::min(BestMoveStability + 1, 4);
                 else                          BestMoveStability = 0;
 
-                TimeManager::Optimise(TC, BestMoveStabilityScale[BestMoveStability]);
+                TimeManager::Optimise(TC, BestMoveStabilityOptimisationFactor[BestMoveStability]);
             }
 
             template<Color Color>
