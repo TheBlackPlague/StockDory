@@ -51,6 +51,14 @@ constexpr uint8_t ReplacementThreshold = 3;
 
 constexpr Move NoMove = Move();
 
+constexpr std::array<std::pair<uint16_t, uint16_t>, 5> BestMoveStabilityScale = {
+        {{250, 100},
+         {120, 100},
+         { 90, 100},
+         { 80, 100},
+         { 75, 100}}
+};
+
 StockDory::TranspositionTable<StockDory::EngineEntry> TTable =
         StockDory::TranspositionTable<StockDory::EngineEntry>(16 * MB);
 

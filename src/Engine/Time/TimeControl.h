@@ -56,7 +56,8 @@ namespace StockDory
 
             void SetOptimal(const uint64_t time)
             {
-                OptimalTime = MS(time);
+                const uint64_t adjustedTime = std::min<uint64_t>(time, ActualTime.count());
+                OptimalTime = MS(adjustedTime);
             }
 
             template<bool Hard>

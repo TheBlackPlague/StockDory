@@ -97,17 +97,15 @@ namespace StockDory
                 try {
                     int16_t currentDepth = 1;
                     while (currentDepth <= depth && !TC.Finished<false>()) {
+                        const Move lastBestMove = BestMove;
+
                         if (Board.ColorToMove() == White)
                              Evaluation = Aspiration<White>(currentDepth);
                         else Evaluation = Aspiration<Black>(currentDepth);
 
-                        if (BestMove == PvTable[0]) BestMoveStability += depth % 3 == 0;
-                        else                        BestMoveStability =
-                                                    std::max(static_cast<int8_t>(BestMoveStability) - 4, 0);
-
-                        if (BestMoveStability > 5) TimeManager::Optimise(TC, BestMoveStability);
-
                         BestMove = PvTable[0];
+
+                        BestMoveStabilityOptimisation(lastBestMove);
 
                         Logger::LogDepthIteration(currentDepth, SelectiveDepth,
                                                   Evaluation,
@@ -146,6 +144,14 @@ namespace StockDory
             }
 
         private:
+            void BestMoveStabilityOptimisation(const Move lastBestMove)
+            {
+                if (lastBestMove == BestMove) BestMoveStability = std::min(BestMoveStability + 1, 4);
+                else                          BestMoveStability = 0;
+
+                TimeManager::Optimise(TC, BestMoveStabilityScale[BestMoveStability]);
+            }
+
             template<Color Color>
             int32_t Aspiration(const int16_t depth)
             {
