@@ -28,7 +28,6 @@ endif()
 
 include(${CPM_DOWNLOAD_LOCATION})
 
-CPMAddPackage("gh:ArthurSonzogni/ftxui#v4.0.0")
 CPMAddPackage("gh:TheBlackPlague/MantaRay#6911ba4b35fed878ba31361ca33020073adf4543")
 CPMAddPackage(
         NAME thread-pool
@@ -71,4 +70,4 @@ add_executable(StockDory src/Terminal/main.cpp
 
 target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
-target_link_libraries(StockDory ftxui::screen ftxui::dom ftxui::component MantaRay dp::thread-pool)
+target_link_libraries(StockDory MantaRay dp::thread-pool)
