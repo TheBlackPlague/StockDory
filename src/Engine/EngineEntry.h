@@ -26,9 +26,9 @@ namespace StockDory
     {
 
         ZobristHash     Hash       = 0;
-        uint8_t         Depth      = 0;
         int32_t         Evaluation = 0;
         Move            Move       = ::Move();
+        uint8_t         Depth      = 0;
         EngineEntryType Type       = Invalid;
 
     };
