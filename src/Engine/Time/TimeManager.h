@@ -72,8 +72,7 @@ namespace StockDory
 
                 uint64_t optimal = actual;
 
-//                optimal = PieceCountAdjustment(board, optimal);
-//                optimal =  MoveCountAdjustment(board, optimal);
+                optimal = MoveCountAdjustment(board, optimal);
 
                 optimal = std::min(optimal, actual);
 
@@ -90,20 +89,6 @@ namespace StockDory
             }
 
         private:
-            static uint64_t PieceCountAdjustment(const Board& board, const uint64_t optimal)
-            {
-                const uint8_t pieceCount =
-                        Count(board.PieceBoard<White>(Pawn  ) | board.PieceBoard<Black>(Pawn  )) +
-                        Count(board.PieceBoard<White>(Knight) | board.PieceBoard<Black>(Knight)) +
-                        Count(board.PieceBoard<White>(Bishop) | board.PieceBoard<Black>(Bishop)) +
-                        Count(board.PieceBoard<White>(Rook  ) | board.PieceBoard<Black>(Rook  )) +
-                        Count(board.PieceBoard<White>(Queen ) | board.PieceBoard<Black>(Queen )) +
-                        Count(board.PieceBoard<White>(King  ) | board.PieceBoard<Black>(King  ));
-
-                return std::max(optimal * pieceCount          / PieceCountBase,
-                                optimal * PieceCountNumerator / PieceCountDenominator);
-            }
-
             static uint64_t MoveCountAdjustment(const Board& board, const uint64_t optimal)
             {
                 uint8_t moveCount = board.ColorToMove() == White ?
