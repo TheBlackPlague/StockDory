@@ -68,13 +68,11 @@ namespace StockDory
 
                 actual += inc * IncrementPartitionNumerator / IncrementPartitionDenominator;
 
+                actual = MoveCountAdjustment(board, actual);
+
                 actual -= TimeOverhead;
 
                 uint64_t optimal = actual;
-
-                optimal = MoveCountAdjustment(board, optimal);
-
-                optimal = std::min(optimal, actual);
 
                 return TimeControl(optimal, actual, true);
             }
@@ -89,7 +87,7 @@ namespace StockDory
             }
 
         private:
-            static uint64_t MoveCountAdjustment(const Board& board, const uint64_t optimal)
+            static uint64_t MoveCountAdjustment(const Board& board, const uint64_t actual)
             {
                 uint8_t moveCount = board.ColorToMove() == White ?
                                     OrderedMoveList<White>(
@@ -99,7 +97,7 @@ namespace StockDory
                                             board, 0, DummyKTable, DummyHTable, NoMove
                                     ).Count() ;
 
-                return moveCount == 1 ? std::min<uint64_t>(MoveInstantTime, optimal) : optimal;
+                return moveCount == 1 ? std::min<uint64_t>(MoveInstantTime, actual) : actual;
             }
 
     };
