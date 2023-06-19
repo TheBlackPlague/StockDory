@@ -52,9 +52,9 @@ constexpr uint8_t ReplacementThreshold = 3;
 constexpr Move NoMove = Move();
 
 constexpr std::array<std::pair<uint16_t, uint16_t>, 5> BestMoveStabilityOptimisationFactor = {
-        {{250, 100},
-         {180, 100},
+        {{150, 100},
          {120, 100},
+         {105, 100},
          { 99, 100},
          { 97, 100}}
 };
