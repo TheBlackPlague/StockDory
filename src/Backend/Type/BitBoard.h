@@ -24,7 +24,7 @@ constexpr inline uint8_t Count(const BitBoard bb)
 }
 
 template<bool Activate>
-constexpr inline void Set(BitBoard &bb, const Square sq)
+constexpr inline void Set(BitBoard& bb, const Square sq)
 {
     if (Activate) bb |=   1ULL << sq ;
     else          bb &= ~(1ULL << sq);
