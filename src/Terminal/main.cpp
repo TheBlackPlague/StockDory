@@ -9,11 +9,12 @@
 
 #include "UCI/UCIInterface.h"
 #include "BenchHash.h"
+#include "NetworkConverter.h"
 
 void DisplayTitle()
 {
     std::stringstream ss;
-    ss << Title << " " << Version << "\n";
+    ss << Title << " " << Version << " - " << StockDory::Evaluation::Name() << "\n";
     ss << "Provided by " << Author << " under the " << License << " license.";
 
     std::cerr << ss.str() << std::endl;
@@ -22,6 +23,16 @@ void DisplayTitle()
 int main(int argc, char* argv[])
 {
     DisplayTitle();
+
+    if (argc > 1) {
+        if        (strutil::compare_ignore_case(argv[1], "bench")) {
+            StockDory::BenchHash::Run();
+            return EXIT_SUCCESS;
+        } else if (strutil::compare_ignore_case(argv[1], "convert")) {
+            StockDory::NetworkConverter::Launch();
+            return EXIT_SUCCESS;
+        }
+    }
 
     if (argc > 1 && strutil::compare_ignore_case(argv[1], "bench")) {
         StockDory::BenchHash::Run();

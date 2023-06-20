@@ -118,6 +118,7 @@ namespace StockDory
 
                 std::stringstream ss;
                 ss << "id name " << Title << " " << Version << "\n";
+                ss << "id nnue " << StockDory::Evaluation::Name() << "\n";
                 ss << "id author " << Author << "\n";
                 ss << "id license " << License << "\n";
 

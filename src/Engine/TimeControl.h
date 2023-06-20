@@ -39,7 +39,12 @@ namespace StockDory
             Milliseconds Time = ZeroTime;
 
             constexpr static uint8_t TPartition = 20;
-            constexpr static uint8_t IPartition = 2 ;
+            constexpr static uint8_t Overhead   = 10;
+
+            constexpr static uint8_t IPartitionN = 3;
+            constexpr static uint8_t IPartitionD = 4;
+            constexpr static uint8_t TDeltaN     = 3;
+            constexpr static uint8_t TDeltaD     = 4;
 
         public:
             TimeControl() = default;
@@ -61,11 +66,13 @@ namespace StockDory
                 Time += oT / TPartition;
 
                 if (timeData.MovesToGo > 0)
-                    Time = std::max(Time, (oT / timeData.MovesToGo) - Milliseconds(100));
+                    Time = std::max(Time, oT / timeData.MovesToGo);
 
-                Time += oI / IPartition;
+                Time += oI * IPartitionN / IPartitionD;
 
-                if (oT - Milliseconds(1000) > tT) Time += (oT - tT) / TPartition;
+                if (oT - Milliseconds(1000) > tT) Time += (oT - tT) * TDeltaN / TDeltaD;
+
+                Time -= Milliseconds(Overhead);
             }
 
             inline void Start()
