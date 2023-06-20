@@ -201,7 +201,7 @@ namespace StockDory
                 //endregion
 
                 //region Q Jump
-                if (depth <= 0) return Q<Color, Pv>(ply, 15, alpha, beta);
+                if (depth <= 0) return Q<Color, Pv>(ply, MaxDepth / 4, alpha, beta);
                 //endregion
 
                 //region Zobrist Hash
@@ -278,7 +278,7 @@ namespace StockDory
 
                     //region Razoring
                     if (depth == 1 && staticEvaluation + RazoringEvaluationThreshold < alpha)
-                        return Q<Color, false>(ply, 15, alpha, beta);
+                        return Q<Color, false>(ply, MaxDepth / 4, alpha, beta);
                     //endregion
 
                     //region Null Move Pruning
