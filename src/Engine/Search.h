@@ -416,9 +416,9 @@ namespace StockDory
                 //region Transposition Table Insertion
                 auto entry = EngineEntry {
                     .Hash       = hash,
-                    .Depth      = static_cast<uint8_t>(depth),
                     .Evaluation = bestEvaluation,
                     .Move       = ttEntryType != AlphaUnchanged ? bestMove : ttMove,
+                    .Depth      = static_cast<uint8_t>(depth),
                     .Type       = ttEntryType
                 };
                 InsertEntry(hash, entry);
