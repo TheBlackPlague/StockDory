@@ -62,4 +62,6 @@ constexpr std::array<std::pair<uint16_t, uint16_t>, 5> BestMoveStabilityOptimisa
 StockDory::TranspositionTable<StockDory::EngineEntry> TTable =
         StockDory::TranspositionTable<StockDory::EngineEntry>(16 * MB);
 
+StockDory::EngineEntry::Generation Generation = 0;
+
 #endif //STOCKDORY_ENGINEPARAMETER_H

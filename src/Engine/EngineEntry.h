@@ -25,11 +25,20 @@ namespace StockDory
     struct EngineEntry
     {
 
+        using Generation = uint16_t;
+
         ZobristHash     Hash       = 0;
-        int32_t         Evaluation = 0;
+        int16_t         Evaluation = 0;
         Move            Move       = ::Move();
+        Generation      Gen        = 0;
         uint8_t         Depth      = 0;
         EngineEntryType Type       = Invalid;
+
+        [[nodiscard]]
+        constexpr uint16_t Quality() const
+        {
+            return Gen + Depth / 3;
+        }
 
     };
 

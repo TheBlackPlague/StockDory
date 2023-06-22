@@ -91,6 +91,7 @@ namespace StockDory
             void IterativeDeepening(const int16_t depth)
             {
                 Board.LoadForEvaluation();
+                Generation++;
 
                 TC.Start();
 
@@ -254,10 +255,10 @@ namespace StockDory
                                 TTNodes++;
                                 return storedEntry.Evaluation;
                             case BetaCutoff:
-                                alpha = std::max(alpha, storedEntry.Evaluation);
+                                alpha = std::max<int32_t>(alpha, storedEntry.Evaluation);
                                 break;
                             case AlphaUnchanged:
-                                beta  = std::min(beta , storedEntry.Evaluation);
+                                beta  = std::min<int32_t>(beta , storedEntry.Evaluation);
                                 break;
                             case Invalid:
                                 break;
@@ -416,8 +417,9 @@ namespace StockDory
                 //region Transposition Table Insertion
                 auto entry = EngineEntry {
                     .Hash       = hash,
-                    .Evaluation = bestEvaluation,
+                    .Evaluation = static_cast<int16_t>(bestEvaluation),
                     .Move       = ttEntryType != AlphaUnchanged ? bestMove : ttMove,
+                    .Gen        = Generation,
                     .Depth      = static_cast<uint8_t>(depth),
                     .Type       = ttEntryType
                 };
@@ -574,12 +576,7 @@ namespace StockDory
 
             static inline void InsertEntry(const ZobristHash hash, const EngineEntry& entry)
             {
-                const EngineEntry& old = TTable[hash];
-                if (entry.Type == Exact || entry.Hash != old.Hash ||
-                   (old  .Type == AlphaUnchanged  &&
-                    entry.Type == BetaCutoff    ) ||
-                    entry.Depth > old.Depth - ReplacementThreshold)
-                    TTable[hash] = entry;
+                if (entry.Quality() >= TTable[hash].Quality()) TTable[hash] = entry;
             }
 
             template<Color Color>

@@ -153,6 +153,7 @@ namespace StockDory
                 MainBoard = Board();
                 MainHistory = RepetitionHistory(MainBoard.Zobrist());
                 TTable.Clear();
+                Generation = 0;
             }
 
             static void IsReady()
