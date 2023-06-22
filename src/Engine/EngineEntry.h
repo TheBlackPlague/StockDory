@@ -37,7 +37,7 @@ namespace StockDory
         [[nodiscard]]
         constexpr uint16_t Quality() const
         {
-            return Gen + Depth / 3;
+            return Gen + Depth / 5;
         }
 
     };
