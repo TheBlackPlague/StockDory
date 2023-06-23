@@ -35,9 +35,9 @@ namespace StockDory
         EngineEntryType Type       = Invalid;
 
         [[nodiscard]]
-        constexpr uint16_t Quality() const
+        constexpr int32_t Quality() const
         {
-            return Gen + Depth / 5;
+            return Gen * 4 + Depth / 3 + (Type == Exact) * 2 + (Type == BetaCutoff) - (Type == AlphaUnchanged);
         }
 
     };
