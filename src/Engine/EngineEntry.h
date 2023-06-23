@@ -37,7 +37,17 @@ namespace StockDory
         [[nodiscard]]
         constexpr int32_t Quality() const
         {
-            return Gen * 4 + Depth / 3 + (Type == Exact) * 2 + (Type == BetaCutoff) - (Type == AlphaUnchanged);
+            int32_t quality = 0;
+
+            quality += (Type == Exact         ) * 2;
+            quality += (Type == BetaCutoff    ) * 1;
+            quality -= (Type == AlphaUnchanged)    ;
+
+            quality += Depth / 2;
+
+            quality += Gen;
+
+            return quality;
         }
 
     };
