@@ -42,7 +42,7 @@ CPMAddPackage(
 include(BinaryResource.cmake)
 
 file(GLOB NNUEBinary
-        "src/Engine/Model/*.nnue")
+        "src/Engine/Model/*")
 
 BinaryToHeader(${NNUEBinary} "${CMAKE_CURRENT_BINARY_DIR}/Model/NeuralNetworkBinary.h" "NeuralNetworkBinary")
 
