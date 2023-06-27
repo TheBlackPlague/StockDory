@@ -349,7 +349,7 @@ namespace StockDory
                     else {
                         //region Late Move Reduction
                         if (i >= LMRFullSearchThreshold && lmr) {
-                            uint8_t r = LogarithmicReductionTable::Get(depth, i);
+                            int16_t r = LogarithmicReductionTable::Get(depth, i);
 
                             if (!Pv) r++;
 
@@ -357,7 +357,7 @@ namespace StockDory
 
                             if (Board.Checked<OColor>()) r--;
 
-                            int16_t reducedDepth = static_cast<int16_t>(std::max(depth - r, 1));
+                            const int16_t reducedDepth = static_cast<int16_t>(std::max(depth - r, 1));
 
                             evaluation = -AlphaBeta<OColor, false, false>
                                     (ply + 1, reducedDepth, -alpha - 1, -alpha);
