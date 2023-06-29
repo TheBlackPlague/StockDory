@@ -423,7 +423,7 @@ namespace StockDory
                     .Depth      = static_cast<uint8_t>(depth),
                     .Type       = ttEntryType
                 };
-                InsertEntry(hash, entry);
+                if (Pv || entry > TTable[hash]) TTable[hash] = entry;
                 //endregion
 
                 return bestEvaluation;
@@ -572,11 +572,6 @@ namespace StockDory
                 return depth        < ReverseFutilityDepthThreshold &&
                        abs(beta) < Mate                          &&
                        staticEvaluation - ReverseFutilityD * depth + improving * ReverseFutilityI >= beta;
-            }
-
-            static inline void InsertEntry(const ZobristHash hash, const EngineEntry& entry)
-            {
-                if (entry > TTable[hash]) TTable[hash] = entry;
             }
 
             template<Color Color>
