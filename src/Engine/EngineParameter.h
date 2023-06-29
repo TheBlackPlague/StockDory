@@ -47,8 +47,6 @@ constexpr uint8_t CheckExtension = 1;
 
 constexpr size_t MB = 1024 * 1024;
 
-constexpr uint8_t ReplacementThreshold = 3;
-
 constexpr Move NoMove = Move();
 
 constexpr std::array<std::pair<uint16_t, uint16_t>, 5> BestMoveStabilityOptimisationFactor = {

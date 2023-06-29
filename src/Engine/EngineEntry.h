@@ -31,6 +31,21 @@ namespace StockDory
         uint8_t         Depth      = 0;
         EngineEntryType Type       = Invalid;
 
+        constexpr inline bool operator>(const EngineEntry& entry) const
+        {
+            constexpr uint8_t ReplacementThreshold = 3;
+
+            if (Type == Exact) return true;
+
+            if (Hash != entry.Hash) return true;
+
+            if (Type == BetaCutoff && entry.Type == AlphaUnchanged) return true;
+
+            if (Depth > entry.Depth - ReplacementThreshold) return true;
+
+            return false;
+        }
+
     };
 
 } // StockDory

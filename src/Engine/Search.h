@@ -576,12 +576,7 @@ namespace StockDory
 
             static inline void InsertEntry(const ZobristHash hash, const EngineEntry& entry)
             {
-                const EngineEntry& old = TTable[hash];
-                if (entry.Type == Exact || entry.Hash != old.Hash ||
-                   (old  .Type == AlphaUnchanged  &&
-                    entry.Type == BetaCutoff    ) ||
-                    entry.Depth > old.Depth - ReplacementThreshold)
-                    TTable[hash] = entry;
+                if (entry > TTable[hash]) TTable[hash] = entry;
             }
 
             template<Color Color>
