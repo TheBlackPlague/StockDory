@@ -241,32 +241,15 @@ namespace StockDory
 
                 //region Transposition Table Lookup
                 const EngineEntry& storedEntry = TTable[hash];
-                Move ttMove = NoMove;
-                bool ttHit  = false ;
+                bool ttHit  = storedEntry.Type != Invalid && storedEntry.Hash == hash;
+                Move ttMove = ttHit ? storedEntry.Move : NoMove;
 
-                if (storedEntry.Type != Invalid && storedEntry.Hash == hash) {
-                    ttHit  = true            ;
-                    ttMove = storedEntry.Move;
-
-                    if (!Pv && storedEntry.Depth >= depth) {
-                        switch (storedEntry.Type) {
-                            case Exact:
-                                TTNodes++;
-                                return storedEntry.Evaluation;
-                            case BetaCutoff:
-                                alpha = std::max(alpha, storedEntry.Evaluation);
-                                break;
-                            case AlphaUnchanged:
-                                beta  = std::min(beta , storedEntry.Evaluation);
-                                break;
-                            case Invalid:
-                                break;
-                        }
-
-                        if (alpha >= beta) {
-                            TTNodes++;
-                            return storedEntry.Evaluation;
-                        }
+                if (!Pv && ttHit && storedEntry.Depth >= depth) {
+                    if ( storedEntry.Type == Exact          ||
+                        (storedEntry.Type == BetaCutoff     && storedEntry.Evaluation >= beta ) ||
+                        (storedEntry.Type == AlphaUnchanged && storedEntry.Evaluation <= alpha)) {
+                        TTNodes++;
+                        return storedEntry.Evaluation;
                     }
                 }
                 //endregion
@@ -418,7 +401,7 @@ namespace StockDory
                 //region Transposition Table Insertion
                 auto entry = EngineEntry {
                     .Hash       = hash,
-                    .Evaluation = std::min(3000, std::max(-3000, bestEvaluation)),
+                    .Evaluation = bestEvaluation,
                     .Move       = ttEntryType != AlphaUnchanged ? bestMove : ttMove,
                     .Depth      = static_cast<uint8_t>(depth),
                     .Type       = ttEntryType
@@ -432,7 +415,7 @@ namespace StockDory
             template<Color Color, bool Pv>
             int32_t Q(const uint8_t ply, const int16_t depth, int32_t alpha, int32_t beta)
             {
-                constexpr enum Color OColor     = Opposite(Color);
+                constexpr enum Color OColor = Opposite(Color);
 
                 //region Selective Depth Change
                 if (Pv) SelectiveDepth = std::max(SelectiveDepth, ply);
