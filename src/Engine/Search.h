@@ -418,12 +418,12 @@ namespace StockDory
                 //region Transposition Table Insertion
                 auto entry = EngineEntry {
                     .Hash       = hash,
-                    .Evaluation = bestEvaluation,
+                    .Evaluation = std::min(3000, std::max(-3000, bestEvaluation)),
                     .Move       = ttEntryType != AlphaUnchanged ? bestMove : ttMove,
                     .Depth      = static_cast<uint8_t>(depth),
                     .Type       = ttEntryType
                 };
-                if (Pv || entry > TTable[hash]) TTable[hash] = entry;
+                if (entry > TTable[hash]) TTable[hash] = entry;
                 //endregion
 
                 return bestEvaluation;
