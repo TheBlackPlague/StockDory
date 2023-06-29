@@ -27,6 +27,8 @@ namespace StockDory
         public:
             static void Run()
             {
+                using BTP = std::chrono::time_point<std::chrono::high_resolution_clock>;
+
                 uint64_t nodes = 0;
                 TimeControl infinite = TimeManager::Default();
 
@@ -42,9 +44,9 @@ namespace StockDory
                     const RepetitionHistory history (board.Zobrist());
                     Search<NoLogger> search (board, infinite, history, 0);
 
-                    const TP start = std::chrono::high_resolution_clock::now();
+                    const BTP start = std::chrono::high_resolution_clock::now();
                     search.IterativeDeepening(BenchDepth);
-                    const TP stop  = std::chrono::high_resolution_clock::now();
+                    const BTP stop  = std::chrono::high_resolution_clock::now();
 
                     nodes += search.NodesSearched();
                     time  += std::chrono::duration_cast<MS>(stop - start);
