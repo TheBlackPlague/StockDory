@@ -12,7 +12,7 @@ namespace StockDory
 {
 
     using MS = std::chrono::milliseconds;
-    using TP = std::chrono::time_point<std::chrono::high_resolution_clock>;
+    using TP = std::chrono::time_point<std::chrono::steady_clock>;
 
     class TimeControl
     {
@@ -32,14 +32,14 @@ namespace StockDory
             TimeControl() = default;
 
             explicit TimeControl(const uint64_t optimal, const uint64_t actual, const bool optimizable = false)
-            : Origin(std::chrono::high_resolution_clock::now()),
+            : Origin(std::chrono::steady_clock::now()),
               OptimalTime(MS(optimal)),
                ActualTime(MS(actual )),
               Optimizable(optimizable) {}
 
             void Start()
             {
-                Origin = std::chrono::high_resolution_clock::now();
+                Origin = std::chrono::steady_clock::now();
             }
 
             [[nodiscard]]
@@ -72,7 +72,7 @@ namespace StockDory
             [[nodiscard]]
             inline MS Elapsed() const
             {
-                return std::chrono::duration_cast<MS>(std::chrono::high_resolution_clock::now() - Origin);
+                return std::chrono::duration_cast<MS>(std::chrono::steady_clock::now() - Origin);
             }
 
     };

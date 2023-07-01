@@ -198,7 +198,7 @@ namespace StockDory
             int32_t AlphaBeta(const uint8_t ply, int16_t depth, int32_t alpha, int32_t beta)
             {
                 //region Out of Time & Force Stop
-                if (Stop || ((Nodes & 4095) && TC.Finished<true>())) throw SearchStopException();
+                if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) throw SearchStopException();
                 //endregion
 
                 constexpr enum Color OColor = Opposite(Color);
