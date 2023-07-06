@@ -24,6 +24,34 @@
 namespace StockDory
 {
 
+    struct Limit
+    {
+
+        private:
+            uint64_t Nodes = 0xFFFFFFFFFFFFFFFF;
+            uint8_t  Depth = MaxDepth / 2;
+
+        public:
+            constexpr Limit() = default;
+
+            constexpr explicit Limit(const uint64_t nodes)
+            {
+                Nodes = nodes;
+            }
+
+            constexpr explicit Limit(const uint8_t depth)
+            {
+                Depth = depth;
+            }
+
+            [[nodiscard]]
+            inline bool BeyondLimit(const uint64_t nodes, const uint8_t depth) const
+            {
+                return nodes > Nodes || depth > Depth;
+            }
+
+    };
+
     class NoLogger
     {
 
@@ -88,7 +116,7 @@ namespace StockDory
                 Stack[0].HalfMoveCounter = hm;
             }
 
-            void IterativeDeepening(const int16_t depth)
+            void IterativeDeepening(const Limit limit)
             {
                 Board.LoadForEvaluation();
 
@@ -96,7 +124,7 @@ namespace StockDory
 
                 try {
                     int16_t currentDepth = 1;
-                    while (currentDepth <= depth && !TC.Finished<false>()) {
+                    while (!limit.BeyondLimit(Nodes, currentDepth) && !TC.Finished<false>()) {
                         const Move lastBestMove = BestMove;
 
                         if (Board.ColorToMove() == White)

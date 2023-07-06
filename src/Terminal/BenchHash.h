@@ -20,7 +20,7 @@ namespace StockDory
 
         private:
             constexpr static uint8_t BenchLength = 50;
-            constexpr static uint8_t BenchDepth  = 13;
+            constexpr static Limit   BenchLimit  = Limit(static_cast<uint8_t>(13));
 
             static std::array<std::string, BenchLength> Positions;
 
@@ -45,7 +45,7 @@ namespace StockDory
                     Search<NoLogger> search (board, infinite, history, 0);
 
                     const BTP start = std::chrono::high_resolution_clock::now();
-                    search.IterativeDeepening(BenchDepth);
+                    search.IterativeDeepening(BenchLimit);
                     const BTP stop  = std::chrono::high_resolution_clock::now();
 
                     nodes += search.NodesSearched();

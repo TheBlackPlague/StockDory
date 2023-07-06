@@ -255,14 +255,16 @@ namespace StockDory
 //                    return;
 //                }
 
-                uint8_t     depth       = MaxDepth / 2          ;
                 TimeControl timeControl = TimeManager::Default();
+                Limit       limit       = Limit()               ;
 
                 if        (args.size() == 2) {
                     if      (strutil::compare_ignore_case(args[0], "movetime"))
                         timeControl = TimeManager::Fixed(std::stoull(args[1]));
                     else if (strutil::compare_ignore_case(args[0], "depth"   ))
-                        depth = static_cast<uint8_t>(std::stoull(args[1]));
+                        limit = Limit(static_cast< uint8_t>(std::stoull(args[1])));
+                    else if (strutil::compare_ignore_case(args[0], "nodes"   ))
+                        limit = Limit(static_cast<uint64_t>(std::stoull(args[1])));
                 } else if (args.size() >  2) {
                     const TimeData timeData {
                         .WhiteTime      = TokenToValue<uint64_t>(args, "wtime"    , 0),
@@ -277,7 +279,7 @@ namespace StockDory
 
                 Search.Stop();
                 Search = UCISearch(MainBoard, timeControl, MainHistory, HalfMoveCounter);
-                Search.Start(depth);
+                Search.Start(limit);
             }
 
             static void HandleStop()

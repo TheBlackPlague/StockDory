@@ -77,15 +77,15 @@ namespace StockDory
                       const RepetitionHistory& repetitionHistory, const uint8_t halfMoveCounter)
                       : EngineSearch(Search(board, timeControl, repetitionHistory, halfMoveCounter)) {}
 
-            void Start(const uint8_t depth)
+            void Start(const Limit limit)
             {
                 ThreadPool.enqueue_detach(
-                    [this](const uint8_t depth) {
+                    [this](const Limit limit) {
                         Running = true;
-                        EngineSearch.IterativeDeepening(depth);
+                        EngineSearch.IterativeDeepening(limit);
                         Running = false;
                     },
-                    depth
+                    limit
                 );
             }
 
