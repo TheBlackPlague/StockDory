@@ -3,7 +3,7 @@ ifeq ($(OS),Windows_NT)
     RM = powershell -Command "Remove-Item -Recurse -Force"
     EXTENSION = .exe
     LLVM_PROFDATA = llvm-profdata
-    SLASH = \
+    SLASH = \\
 else
     CP = cp
     RM = rm
