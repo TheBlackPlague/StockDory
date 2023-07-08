@@ -20,7 +20,7 @@ endif
 	cmake -B RB -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -G Ninja -DPGO=True && \
 	cmake --build RB --config Release && \
 	RB/StockDory$(EXTENSION) bench && \
-	$(LLVM_PROFDATA) merge -output=RB/StockDory.profdata RB/*.profraw && \
+	$(LLVM_PROFDATA) merge -output=RB/pgo.profdata RB/pgo.profraw && \
 	$(RM) RB/StockDory$(EXTENSION) && \
 	cmake -B RB -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -G Ninja -DPGO=True && \
 	cmake --build RB --config Release && \
