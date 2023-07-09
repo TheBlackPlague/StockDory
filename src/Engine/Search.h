@@ -316,7 +316,7 @@ namespace StockDory
                     //endregion
 
                     //region Razoring
-                    if (depth == 1 && staticEvaluation + RazoringEvaluationThreshold < alpha)
+                    if (staticEvaluation < alpha - RazoringEvaluationThreshold * depth * depth)
                         return Q<Color, false>(ply, MaxDepth / 4, alpha, beta);
                     //endregion
 
