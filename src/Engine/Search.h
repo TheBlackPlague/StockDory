@@ -454,8 +454,8 @@ namespace StockDory
                 InsertEntry(hash, entry);
                 //endregion
 
-                if ((staticEvaluation > entry.Evaluation && ttEntryType == BetaCutoff    ) ||
-                    (staticEvaluation < entry.Evaluation && ttEntryType == AlphaUnchanged)) return staticEvaluation;
+                if ((staticEvaluation > bestEvaluation && ttEntryType == BetaCutoff    ) ||
+                    (staticEvaluation < bestEvaluation && ttEntryType == AlphaUnchanged)) return staticEvaluation;
 
                 return bestEvaluation;
             }
