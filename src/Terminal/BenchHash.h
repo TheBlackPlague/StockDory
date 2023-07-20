@@ -9,6 +9,7 @@
 #include <array>
 #include <string>
 
+#include "../Engine/Time/TimeManager.h"
 #include "../Engine/Search.h"
 
 namespace StockDory
@@ -19,18 +20,17 @@ namespace StockDory
 
         private:
             constexpr static uint8_t BenchLength = 50;
-            constexpr static uint8_t BenchDepth  = 13;
+            constexpr static Limit   BenchLimit  = Limit(static_cast<uint8_t>(13));
 
             static std::array<std::string, BenchLength> Positions;
 
         public:
             static void Run()
             {
-                using MS = StockDory::TimeControl::Milliseconds;
-                using TP = std::chrono::time_point<std::chrono::high_resolution_clock>;
+                using BTP = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
                 uint64_t nodes = 0;
-                TimeControl infinite;
+                TimeControl infinite = TimeManager::Default();
 
                 MS time (0);
 
@@ -42,11 +42,11 @@ namespace StockDory
 
                     const Board             board   (Positions[i]);
                     const RepetitionHistory history (board.Zobrist());
-                    Search<NoLogger> search(board, infinite, history, 0);
+                    Search<NoLogger> search (board, infinite, history, 0);
 
-                    const TP start = std::chrono::high_resolution_clock::now();
-                    search.IterativeDeepening(BenchDepth);
-                    const TP stop  = std::chrono::high_resolution_clock::now();
+                    const BTP start = std::chrono::high_resolution_clock::now();
+                    search.IterativeDeepening(BenchLimit);
+                    const BTP stop  = std::chrono::high_resolution_clock::now();
 
                     nodes += search.NodesSearched();
                     time  += std::chrono::duration_cast<MS>(stop - start);

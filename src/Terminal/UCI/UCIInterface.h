@@ -18,6 +18,7 @@
 #include "../../Backend/Information.h"
 #include "../../Backend/Util.h"
 
+#include "../../Engine/Time/TimeManager.h"
 #include "../../Engine/Search.h"
 
 #include "UCISearch.h"
@@ -254,32 +255,31 @@ namespace StockDory
 //                    return;
 //                }
 
-                using MS = StockDory::TimeControl::Milliseconds;
-
-                uint8_t     depth       = MaxDepth / 2;
-                TimeControl timeControl               ;
+                TimeControl timeControl = TimeManager::Default();
+                Limit       limit       = Limit()               ;
 
                 if        (args.size() == 2) {
                     if      (strutil::compare_ignore_case(args[0], "movetime"))
-                        timeControl = TimeControl(std::stoull(args[1]));
+                        timeControl = TimeManager::Fixed(std::stoull(args[1]));
                     else if (strutil::compare_ignore_case(args[0], "depth"   ))
-                        depth = static_cast<uint8_t>(std::stoull(args[1]));
+                        limit = Limit(static_cast< uint8_t>(std::stoull(args[1])));
+                    else if (strutil::compare_ignore_case(args[0], "nodes"   ))
+                        limit = Limit(static_cast<uint64_t>(std::stoull(args[1])));
                 } else if (args.size() >  2) {
-                    const StockDory::TimeControl::TimeData timeData {
-                        .WhiteTime      = MS(TokenToValue<uint64_t>(args, "wtime", 0)),
-                        .BlackTime      = MS(TokenToValue<uint64_t>(args, "btime", 0)),
-                        .WhiteIncrement = MS(TokenToValue<uint64_t>(args, "winc" , 0)),
-                        .BlackIncrement = MS(TokenToValue<uint64_t>(args, "binc" , 0)),
-
-                        .MovesToGo = TokenToValue<uint16_t>(args, "movestogo", 0)
+                    const TimeData timeData {
+                        .WhiteTime      = TokenToValue<uint64_t>(args, "wtime"    , 0),
+                        .BlackTime      = TokenToValue<uint64_t>(args, "btime"    , 0),
+                        .WhiteIncrement = TokenToValue<uint64_t>(args, "winc"     , 0),
+                        .BlackIncrement = TokenToValue<uint64_t>(args, "binc"     , 0),
+                        .MovesToGo      = TokenToValue<uint16_t>(args, "movestogo", 0)
                     };
 
-                    timeControl = TimeControl(MainBoard, timeData);
+                    timeControl = TimeManager::Optimal(MainBoard, timeData);
                 }
 
                 Search.Stop();
                 Search = UCISearch(MainBoard, timeControl, MainHistory, HalfMoveCounter);
-                Search.Start(depth);
+                Search.Start(limit);
             }
 
             static void HandleStop()
