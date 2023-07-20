@@ -45,13 +45,13 @@ jobs:
       uses: KyleMayes/install-llvm-action@v1.8.0
       with:
         ubuntu-version: "22.04"
-        version: "16.0.3"
+        version: "16.0.6"
         force-version: true
         env: true
     - if: matrix.os == 'windows-latest'
       name: Install Clang 16 (Windows)
       run: |
-        choco install llvm --version 16.0.3 -y
+        choco install llvm --version 16.0.6 -y
     - if: matrix.os == 'macos-latest'
       name: Install Clang 16 (MacOS)
       run: |
