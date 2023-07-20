@@ -42,12 +42,11 @@ jobs:
 
     - if: matrix.os == 'ubuntu-22.04'
       name: Install Clang 16 (Ubuntu)
-      uses: KyleMayes/install-llvm-action@v1.8.0
-      with:
-        ubuntu-version: "22.04"
-        version: "16.0.6"
-        force-version: true
-        env: true
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        sudo chmod +x llvm.sh
+        sudo ./llvm.sh 16
+        sudo rm -rf llvm.sh
     - if: matrix.os == 'windows-latest'
       name: Install Clang 16 (Windows)
       run: |
@@ -57,6 +56,11 @@ jobs:
       run: |
         brew install llvm@16
 
+    - if: matrix.os == 'ubuntu-22.04'
+      name: Set CC and CXX for Linux
+      run: |
+        echo "CC=clang-16" >> $GITHUB_ENV
+        echo "CXX=clang++-16" >> $GITHUB_ENV
     - if: matrix.os == 'windows-latest'
       name: Set CC and CXX for Windows
       shell: powershell
