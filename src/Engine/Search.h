@@ -240,7 +240,7 @@ namespace StockDory
                 //endregion
 
                 //region Q Jump
-                if (depth <= 0) return Q<Color, Pv>(ply, MaxDepth / 4, alpha, beta);
+                if (depth <= 0) return Q<Color, Pv>(ply, alpha, beta);
                 //endregion
 
                 //region Zobrist Hash
@@ -317,7 +317,7 @@ namespace StockDory
 
                     //region Razoring
                     if (depth == 1 && staticEvaluation + RazoringEvaluationThreshold < alpha)
-                        return Q<Color, false>(ply, MaxDepth / 4, alpha, beta);
+                        return Q<Color, false>(ply, alpha, beta);
                     //endregion
 
                     //region Null Move Pruning
@@ -458,9 +458,9 @@ namespace StockDory
             }
 
             template<Color Color, bool Pv>
-            int32_t Q(const uint8_t ply, const int16_t depth, int32_t alpha, int32_t beta)
+            int32_t Q(const uint8_t ply, int32_t alpha, int32_t beta)
             {
-                constexpr enum Color OColor     = Opposite(Color);
+                constexpr enum Color OColor = Opposite(Color);
 
                 //region Selective Depth Change
                 if (Pv) SelectiveDepth = std::max(SelectiveDepth, ply);
@@ -505,8 +505,7 @@ namespace StockDory
 
                     const PreviousState state = EngineMove<false>(move, ply);
 
-                    int32_t evaluation =
-                            -Q<OColor, Pv>(ply + 1, depth - 1, -beta, -alpha);
+                    int32_t evaluation = -Q<OColor, Pv>(ply + 1, -beta, -alpha);
 
                     EngineUndoMove<false>(state, move);
 
