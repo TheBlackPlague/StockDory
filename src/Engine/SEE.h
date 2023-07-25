@@ -23,6 +23,16 @@ namespace StockDory
                     82, 337, 365, 477, 1025, 0, 0
             };
 
+            static inline bool Unchecked(const Board& board, const Move move)
+            {
+                if (move.Promotion() != NAP) return true;
+
+                const Piece from = board[move.From()].Piece();
+                if (from == Pawn && move.To() == board.EnPassantSquare()) return true;
+
+                return from == King && (move.To() == C1 || move.To() == C8 || move.To() == G1 || move.To() == G8);
+            }
+
         public:
             static inline int32_t Approximate(const Board& board, const Move move)
             {
@@ -37,6 +47,59 @@ namespace StockDory
 
                 return value - Internal[from];
             }
+
+            static inline bool Accurate(const Board& board, const Move move, const int32_t threshold)
+            {
+                if (Unchecked(board, move)) return true;
+
+                int32_t value = Internal[board[move.To()].Piece()] - threshold;
+                if (value <  0) return false;
+
+                value -= Internal[board[move.From()].Piece()];
+                if (value >= 0) return true;
+
+                BitBoard occ = (~board[NAC] ^ BitBoard(move.From())) | BitBoard(move.To());
+                BitBoard att = board.SquareAttackers(move.To(), occ);
+
+                BitBoard diagonal = board.PieceBoard<White>(Bishop) | board.PieceBoard<Black>(Bishop) |
+                                    board.PieceBoard<White>(Queen ) | board.PieceBoard<Black>(Queen ) ;
+                BitBoard straight = board.PieceBoard<White>(Rook  ) | board.PieceBoard<Black>(Rook  ) |
+                                    board.PieceBoard<White>(Queen ) | board.PieceBoard<Black>(Queen ) ;
+
+                Color ctm = Opposite(board.ColorToMove());
+                while (true) {
+                    att &= occ;
+
+                    BitBoard us = att & board[ctm];
+                    if (!us) break;
+
+                    Piece piece;
+                    for ( piece = Pawn; piece < King; piece = Next(piece))
+                        if (us & board.PieceBoard(piece, ctm)) break;
+
+                    ctm = Opposite(ctm);
+
+                    if ((value = -value - 1 - Internal[piece]) >= 0) {
+                        if (piece == King && (att & board[ctm])) ctm = Opposite(ctm);
+
+                        break;
+                    }
+
+                    occ ^= BitBoard(ToSquare(us & board.PieceBoard(piece, Opposite(ctm))));
+
+                    if (piece == Pawn || piece == Bishop || piece == Queen) {
+                        const uint32_t idx = BlackMagicFactory::MagicIndex(Bishop, move.To(), occ);
+                        att |= AttackTable::Sliding[idx] & diagonal;
+                    }
+                    if (piece == Rook || piece == Queen) {
+                        const uint32_t idx = BlackMagicFactory::MagicIndex(Rook  , move.To(), occ);
+                        att |= AttackTable::Sliding[idx] & straight;
+                    }
+                }
+
+                return ctm != board.ColorToMove();
+            }
+
     };
 
 } // StockDory

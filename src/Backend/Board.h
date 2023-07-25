@@ -479,6 +479,23 @@ namespace StockDory
                 return pin;
             }
 
+            [[nodiscard]]
+            constexpr inline BitBoard SquareAttackers(const Square sq, const BitBoard occ) const
+            {
+                BitBoard attackers = (AttackTable::Pawn  [White][sq] &  BB[Black][Pawn  ]) |
+                                     (AttackTable::Pawn  [Black][sq] &  BB[White][Pawn  ]) |
+                                     (AttackTable::Knight       [sq] & (BB[White][Knight]  | BB[Black][Knight])) |
+                                     (AttackTable::King         [sq] & (BB[White][King  ]  | BB[Black][King  ])) ;
+
+                attackers |= AttackTable::Sliding[BlackMagicFactory::MagicIndex(Bishop, sq, occ)] &
+                             (BB[White][Bishop] | BB[Black][Bishop] | BB[White][Queen] | BB[Black][Queen]);
+
+                attackers |= AttackTable::Sliding[BlackMagicFactory::MagicIndex(Rook  , sq, occ)] &
+                             (BB[White][Rook  ] | BB[Black][Rook  ] | BB[White][Queen] | BB[Black][Queen]);
+
+                return attackers;
+            }
+
             constexpr inline PreviousStateNull Move()
             {
                 auto state = PreviousStateNull(EnPassantSquare());
