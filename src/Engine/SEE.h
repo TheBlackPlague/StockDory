@@ -20,7 +20,7 @@ namespace StockDory
 
         private:
             constexpr static std::array<uint16_t, 7> Internal = {
-                    82, 337, 365, 477, 1025, 0, 0
+                    82, 337, 365, 477, 1025, 30000, 0
             };
 
             static inline bool Unchecked(const Board& board, const Move move)
