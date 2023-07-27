@@ -58,7 +58,7 @@ namespace StockDory
                 value -= Internal[board[move.From()].Piece()];
                 if (value >= 0) return true;
 
-                BitBoard occ = (~board[NAC] ^ BitBoard(move.From())) | BitBoard(move.To());
+                BitBoard occ = (~board[NAC] ^ FromSquare(move.From())) | FromSquare(move.To());
                 BitBoard att = board.SquareAttackers(move.To(), occ);
 
                 BitBoard diagonal = board.PieceBoard<White>(Bishop) | board.PieceBoard<Black>(Bishop) |
@@ -85,7 +85,7 @@ namespace StockDory
                         break;
                     }
 
-                    occ ^= BitBoard(ToSquare(us & board.PieceBoard(piece, Opposite(ctm))));
+                    occ ^= FromSquare(ToSquare(us & board.PieceBoard(piece, Opposite(ctm))));
 
                     if (piece == Pawn || piece == Bishop || piece == Queen) {
                         const uint32_t idx = BlackMagicFactory::MagicIndex(Bishop, move.To(), occ);
