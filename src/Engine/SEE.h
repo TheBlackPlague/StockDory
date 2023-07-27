@@ -34,20 +34,6 @@ namespace StockDory
             }
 
         public:
-            static inline int32_t Approximate(const Board& board, const Move move)
-            {
-                Piece from = board[move.From()].Piece();
-                Piece to   = board[move.  To()].Piece();
-
-                if (from == Pawn && move.To() == board.EnPassantSquare()) to = Pawn;
-
-                int32_t value = Internal[to];
-
-                if (move.Promotion() != NAP) value += Internal[move.Promotion()] - Internal[Pawn];
-
-                return value - Internal[from];
-            }
-
             static inline bool Accurate(const Board& board, const Move move, const int32_t threshold)
             {
                 if (Unchecked(board, move)) return true;
