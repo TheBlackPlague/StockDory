@@ -497,10 +497,7 @@ namespace StockDory
                     const Move move = moves[i];
 
                     //region SEE Pruning
-                    const int32_t see = SEE::Approximate(Board, move);
-
-                    const int32_t seeEvaluation = staticEvaluation + see;
-                    if (seeEvaluation > beta) return seeEvaluation;
+                    if (!SEE::Accurate(Board, move, 0)) continue;
                     //endregion
 
                     const PreviousState state = EngineMove<false>(move, ply);
