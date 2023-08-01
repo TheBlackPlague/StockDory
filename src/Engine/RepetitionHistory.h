@@ -18,7 +18,7 @@ namespace StockDory
     {
 
         private:
-            std::array<ZobristHash, 1024> Internal = {};
+            std::array<ZobristHash, 4096> Internal = {};
 
             uint16_t CurrentIndex = 0;
 

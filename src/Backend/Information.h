@@ -9,7 +9,7 @@
 #include <string>
 
 const std::string Title   = "StockDory"            ;
-const std::string Version = "1.0-ALPHA07202023"    ;
+const std::string Version = "1.0-ALPHA08012023"    ;
 const std::string Author  = "the StockDory Authors";
 const std::string License = "LGPL-3.0"             ;
 
