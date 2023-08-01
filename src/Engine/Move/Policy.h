@@ -76,8 +76,8 @@ namespace StockDory
             inline int32_t CaptureScore(const Board& board, const Move move) const
             {
                 if (SEE::Accurate(board, move, 0))
-                     return         MvvLva[board[move.To()].Piece()][Piece]  *  1000;
-                else return 8000 - (MvvLva[board[move.To()].Piece()][Piece]) * -1000;
+                     return MvvLva[board[move.To()].Piece()][Piece] * 1000;
+                else return MvvLva[board[move.To()].Piece()][Piece] * 300 ;
             }
 
     };
