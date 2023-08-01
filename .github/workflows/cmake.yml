@@ -31,7 +31,7 @@ jobs:
       name: Install Linux Dependencies
       run: |
         sudo apt install libncurses5 ninja-build
-        sudo apt remove python3-lldb-14 python3-lldb-16
+        sudo apt remove python3-lldb-14
     - if: matrix.os == 'windows-latest'
       name: Install Windows Dependencies
       run: |
