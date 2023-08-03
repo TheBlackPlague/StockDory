@@ -14,9 +14,9 @@ jobs:
   build:
     strategy:
       matrix:
-        version: [ 1.0-ALPHA08012023 ]
+        version: [ 1.0-ALPHA08032023 ]
         simd: [ sse, sse2, sse3, sse4.1, avx, avx2, avx512bw ]
-        os: [ ubuntu-22.04 , windows-latest ]
+        os: [ ubuntu-22.04 , windows-latest, macos-latest ]
         include:
           - os: windows-latest
             extension: .exe
