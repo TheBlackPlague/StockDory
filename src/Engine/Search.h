@@ -277,21 +277,9 @@ namespace StockDory
                     ttMove = storedEntry.Move;
 
                     if (!Pv && storedEntry.Depth >= depth) {
-                        switch (storedEntry.Type) {
-                            case Exact:
-                                TTNodes++;
-                                return storedEntry.Evaluation;
-                            case BetaCutoff:
-                                alpha = std::max(alpha, storedEntry.Evaluation);
-                                break;
-                            case AlphaUnchanged:
-                                beta  = std::min(beta , storedEntry.Evaluation);
-                                break;
-                            case Invalid:
-                                break;
-                        }
-
-                        if (alpha >= beta) {
+                        if (storedEntry.Type == Exact          ||
+                           (storedEntry.Type == BetaCutoff     && storedEntry.Evaluation >= beta ) ||
+                           (storedEntry.Type == AlphaUnchanged && storedEntry.Evaluation <= alpha)) {
                             TTNodes++;
                             return storedEntry.Evaluation;
                         }
