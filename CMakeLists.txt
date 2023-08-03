@@ -64,7 +64,7 @@ endforeach()
 
 include(${CPM_DOWNLOAD_LOCATION})
 
-CPMAddPackage("gh:TheBlackPlague/MantaRay#6911ba4b35fed878ba31361ca33020073adf4543")
+CPMAddPackage("gh:TheBlackPlague/MantaRay#5299e77043cf7b0b7cab5c79ac7d5769a5f9474d")
 
 include(BinaryResource.cmake)
 
