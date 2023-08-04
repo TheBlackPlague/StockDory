@@ -67,14 +67,16 @@ class BitBoardIterator
             return static_cast<Square>(i);
         }
 
-        inline std::vector<Square> Values()
+        template<size_t N>
+        inline uint8_t ToArray(std::array<Square, N>& array)
         {
-            uint8_t count = Count(BB);
-            std::vector<Square> v (count);
+            const uint8_t count = Count(BB);
 
-            for (uint8_t i = 0; i < count; i++) v[i] = Value();
+            assert(N >= count);
 
-            return v;
+            for (uint8_t i = 0; i < count; i++) array[i] = Value();
+
+            return count;
         }
 
 };

@@ -191,8 +191,11 @@ namespace StockDory
                     }
                 } else {
                     std::atomic<uint64_t> atomicNodes;
-                    std::vector<Square> psq = pIterator.Values();
-                    std::for_each(std::execution::par, psq.begin(), psq.end(), [&](const Square sq) {
+                    std::array<Square, 64> psq = {};
+                    uint8_t count = pIterator.ToArray(psq);
+
+                    std::for_each(std::execution::par, psq.begin(), std::next(psq.begin(), count),
+                    [&](const Square sq) {
                         Board parallelBoard = board;
 
                         MoveList<Piece, Color> moves (parallelBoard, sq, pin, check);
@@ -287,8 +290,8 @@ namespace StockDory
                 auto start = std::chrono::high_resolution_clock::now();
                 const uint64_t nodes =
                         PerftBoard.ColorToMove() == White ?
-                        Perft<White, Divide, false, TT>(PerftBoard, depth) :
-                        Perft<Black, Divide, false, TT>(PerftBoard, depth);
+                        Perft<White, Divide, true, TT>(PerftBoard, depth) :
+                        Perft<Black, Divide, true, TT>(PerftBoard, depth) ;
                 auto stop  = std::chrono::high_resolution_clock::now();
                 auto time = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
 
