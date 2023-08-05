@@ -190,65 +190,69 @@ namespace StockDory
                         }
                     }
                 } else {
-                    std::atomic<uint64_t> atomicNodes;
                     std::array<Square, 64> psq = {};
                     uint8_t count = pIterator.ToArray(psq);
 
-                    std::for_each(std::execution::par, psq.begin(), std::next(psq.begin(), count),
-                    [&](const Square sq) {
-                        Board parallelBoard = board;
+                    BS::multi_future<uint64_t> nodeFuture =
+                    ThreadPool.parallelize_loop(count, [&](uint8_t i, const uint8_t l) -> uint64_t {
+                        uint64_t parallelNodes = 0;
+                        for (; i < l; i++) {
+                            Board parallelBoard = board;
 
-                        MoveList<Piece, Color> moves (parallelBoard, sq, pin, check);
-                        if (moves.Count() < 0) return;
+                            const Square sq = psq[i];
 
-                        uint64_t parallelNodes = 0        ;
-                        uint8_t  nextDepth     = depth - 1;
+                            MoveList<Piece, Color> moves (parallelBoard, sq, pin, check);
+                            if (moves.Count() <= 0) continue;
 
-                        BitBoardIterator mIterator = moves.Iterator();
+                            const uint8_t  nextDepth     = depth - 1;
 
-                        for (Square m = mIterator.Value(); m != NASQ; m = mIterator.Value()) {
-                            if (moves.Promotion(sq)) {
-                                PreviousState state = BLayer::Move(parallelBoard, sq, m, Queen);
-                                const uint64_t queenNodes = PLayer::Perft(parallelBoard, nextDepth);
-                                BLayer::UndoMove(parallelBoard, state, sq, m);
-                                parallelNodes += queenNodes;
+                            BitBoardIterator mIterator = moves.Iterator();
 
-                                if (Divide) LogMove<Queen >(sq, m, queenNodes);
+                            for (Square m = mIterator.Value(); m != NASQ; m = mIterator.Value()) {
+                                if (moves.Promotion(sq)) {
+                                    PreviousState state = BLayer::Move(parallelBoard, sq, m, Queen);
+                                    const uint64_t queenNodes = PLayer::Perft(parallelBoard, nextDepth);
+                                    BLayer::UndoMove(parallelBoard, state, sq, m);
+                                    parallelNodes += queenNodes;
 
-                                state = BLayer::Move(parallelBoard, sq, m, Rook);
-                                const uint64_t rookNodes = PLayer::Perft(parallelBoard, nextDepth);
-                                BLayer::UndoMove(parallelBoard, state, sq, m);
-                                parallelNodes += rookNodes;
+                                    if (Divide) LogMove<Queen >(sq, m, queenNodes);
 
-                                if (Divide) LogMove<Rook  >(sq, m, rookNodes);
+                                    state = BLayer::Move(parallelBoard, sq, m, Rook);
+                                    const uint64_t rookNodes = PLayer::Perft(parallelBoard, nextDepth);
+                                    BLayer::UndoMove(parallelBoard, state, sq, m);
+                                    parallelNodes += rookNodes;
 
-                                state = BLayer::Move(parallelBoard, sq, m, Bishop);
-                                const uint64_t bishopNodes = PLayer::Perft(parallelBoard, nextDepth);
-                                BLayer::UndoMove(parallelBoard, state, sq, m);
-                                parallelNodes += bishopNodes;
+                                    if (Divide) LogMove<Rook  >(sq, m, rookNodes);
 
-                                if (Divide) LogMove<Bishop>(sq, m, bishopNodes);
+                                    state = BLayer::Move(parallelBoard, sq, m, Bishop);
+                                    const uint64_t bishopNodes = PLayer::Perft(parallelBoard, nextDepth);
+                                    BLayer::UndoMove(parallelBoard, state, sq, m);
+                                    parallelNodes += bishopNodes;
 
-                                state = BLayer::Move(parallelBoard, sq, m, Knight);
-                                const uint64_t knightNodes = PLayer::Perft(parallelBoard, nextDepth);
-                                BLayer::UndoMove(parallelBoard, state, sq, m);
-                                parallelNodes += knightNodes;
+                                    if (Divide) LogMove<Bishop>(sq, m, bishopNodes);
 
-                                if (Divide) LogMove<Knight>(sq, m, knightNodes);
-                            } else {
-                                const PreviousState state = BLayer::Move(parallelBoard, sq, m);
-                                const uint64_t perftNodes = PLayer::Perft(parallelBoard, nextDepth);
-                                BLayer::UndoMove(parallelBoard, state, sq, m);
-                                parallelNodes += perftNodes;
+                                    state = BLayer::Move(parallelBoard, sq, m, Knight);
+                                    const uint64_t knightNodes = PLayer::Perft(parallelBoard, nextDepth);
+                                    BLayer::UndoMove(parallelBoard, state, sq, m);
+                                    parallelNodes += knightNodes;
 
-                                if (Divide) LogMove(sq, m, perftNodes);
+                                    if (Divide) LogMove<Knight>(sq, m, knightNodes);
+                                } else {
+                                    const PreviousState state = BLayer::Move(parallelBoard, sq, m);
+                                    const uint64_t perftNodes = PLayer::Perft(parallelBoard, nextDepth);
+                                    BLayer::UndoMove(parallelBoard, state, sq, m);
+                                    parallelNodes += perftNodes;
+
+                                    if (Divide) LogMove(sq, m, perftNodes);
+                                }
                             }
                         }
 
-                        atomicNodes += parallelNodes;
+                        return parallelNodes;
                     });
 
-                    nodes += atomicNodes;
+                    std::vector<uint64_t> nodeVector = nodeFuture.get();
+                    for (uint64_t node : nodeVector) nodes += node;
                 }
 
                 return nodes;
@@ -290,8 +294,8 @@ namespace StockDory
                 auto start = std::chrono::high_resolution_clock::now();
                 const uint64_t nodes =
                         PerftBoard.ColorToMove() == White ?
-                        Perft<White, Divide, true, TT>(PerftBoard, depth) :
-                        Perft<Black, Divide, true, TT>(PerftBoard, depth) ;
+                        Perft<White, Divide, false, TT>(PerftBoard, depth) :
+                        Perft<Black, Divide, false, TT>(PerftBoard, depth) ;
                 auto stop  = std::chrono::high_resolution_clock::now();
                 auto time = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
 
