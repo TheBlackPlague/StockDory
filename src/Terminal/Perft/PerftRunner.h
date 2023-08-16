@@ -252,13 +252,9 @@ namespace StockDory
                         });
                     }
 
-                    std::atomic<uint64_t> atomicNodes = 0;
-
                     for (uint8_t i = 0; i < count; i++) {
-                        atomicNodes += futures[i].get();
+                        nodes += futures[i].get();
                     }
-
-                    nodes = atomicNodes;
                 }
 
                 return nodes;
