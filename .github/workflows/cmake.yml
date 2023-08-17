@@ -2,7 +2,7 @@ name: CMake
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "cmake-ci-bs-thread-pool" ]
   pull_request:
     branches: [ "master" ]
 
@@ -14,13 +14,21 @@ jobs:
   build:
     strategy:
       matrix:
-        version: [ 1.0-ALPHA08012023 ]
-        simd: [ sse, sse2, sse3, sse4.1, avx, avx2, avx512bw ]
-        os: [ ubuntu-22.04 , windows-latest ]
+        version: [ 1.0-ALPHA08032023 ]
+        arch: [ x86-64, x86-64-v2, x86-64-v3, x86-64-v4 ]
+        os: [ ubuntu-22.04 , windows-latest, macos-latest ]
         include:
           - os: windows-latest
             extension: .exe
-
+        exclude:
+          - os: windows-latest
+            arch: apple-m1
+          - os: windows-latest
+            arch: apple-m2
+          - os: ubuntu-22.04
+            arch: apple-m1
+          - os: ubuntu-22.04
+            arch: apple-m2
 
     runs-on: ${{ matrix.os }}
 
@@ -75,19 +83,24 @@ jobs:
         echo "CXX=/usr/local/opt/llvm@16/bin/clang++" >> $GITHUB_ENV
         echo "PATH=/usr/local/opt/llvm@16/bin:$PATH" >> $GITHUB_ENV
 
-    - name: Configure CMake
-      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_CXX_FLAGS="-m${{ matrix.simd }}" -G Ninja
+    - if: matrix.arch == 'apple-m1' || matrix.arch == 'apple-m2'
+      name: Configure CMake for Apple M1/M2 (ARM64)
+      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_CXX_FLAGS="--target=arm64 -mcpu=${{ matrix.arch }}" -G Ninja
+
+    - if: matrix.arch != 'apple-m1' && matrix.arch != 'apple-m2'
+      name: Configure CMake
+      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_CXX_FLAGS="-march=${{ matrix.arch }}" -G Ninja
 
     - name: Build
       run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }}
 
     - name: Rename Binary
       run: |
-        mv ${{ github.workspace }}/build/StockDory${{ matrix.extension }} ${{ github.workspace }}/StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.simd }}${{ matrix.extension }}
+        mv ${{ github.workspace }}/build/StockDory${{ matrix.extension }} ${{ github.workspace }}/StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}
 
     - name: Upload Binary
       uses: actions/upload-artifact@v3
       with:
-        name: StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.simd }}
-        path: ${{ github.workspace }}/StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.simd }}${{ matrix.extension }}
+        name: StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}
+        path: ${{ github.workspace }}/StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}
 
