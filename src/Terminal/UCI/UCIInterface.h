@@ -12,10 +12,11 @@
 #include <unordered_map>
 #include <functional>
 
+#include "Information.h"
+
 #include "../../External/strutil.h"
 
 #include "../../Backend/Board.h"
-#include "../../Backend/Information.h"
 #include "../../Backend/Util.h"
 
 #include "../../Engine/Time/TimeManager.h"
@@ -118,10 +119,10 @@ namespace StockDory
                 if (UciPrompted) return;
 
                 std::stringstream ss;
-                ss << "id name " << Title << " " << Version << "\n";
+                ss << "id name " << NAME << " " << VERSION << "\n";
                 ss << "id nnue " << StockDory::Evaluation::Name() << "\n";
-                ss << "id author " << Author << "\n";
-                ss << "id license " << License << "\n";
+                ss << "id author " << AUTHOR << "\n";
+                ss << "id license " << LICENSE << "\n";
 
                 for (const auto& [_, option] : UCIOptionSwitch)
                     ss << option->Log() << "\n";
