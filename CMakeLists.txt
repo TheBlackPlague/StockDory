@@ -1,9 +1,21 @@
 cmake_minimum_required(VERSION 3.15)
 project(StockDory)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_FLAGS "-march=native -flto")
+set(VERSION  "0.1"   )
+set(CODENAME "Nebula")
 
+if(CI)
+    set(CI TRUE)
+else()
+    set(CI FALSE)
+endif()
+
+set(CMAKE_CXX_STANDARD 20)
+if(CMAKE_CXX_FLAGS STREQUAL "")
+    set(CMAKE_CXX_FLAGS "-march=native")
+endif()
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
 if(PGO MATCHES "True")
     message(STATUS "PGO: Enabled")
     if(EXISTS ${CMAKE_BINARY_DIR}/pgo.profdata)
@@ -72,6 +84,10 @@ file(GLOB NNUEBinary
         "src/Engine/Model/*")
 
 BinaryToHeader(${NNUEBinary} "${CMAKE_CURRENT_BINARY_DIR}/Model/NeuralNetworkBinary.h" "NeuralNetworkBinary")
+
+include(Information.cmake)
+
+Information(${VERSION} ${CODENAME} ${CI})
 
 file(GLOB StockDoryBackendType
         "src/Backend/Type/*.h"

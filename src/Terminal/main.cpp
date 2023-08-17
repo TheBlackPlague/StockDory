@@ -5,7 +5,7 @@
 
 #include <iostream>
 
-#include "../Backend/Information.h"
+#include "Information.h"
 
 #include "UCI/UCIInterface.h"
 #include "BenchHash.h"
@@ -14,8 +14,8 @@
 void DisplayTitle()
 {
     std::stringstream ss;
-    ss << Title << " " << Version << " - " << StockDory::Evaluation::Name() << "\n";
-    ss << "Provided by " << Author << " under the " << License << " license.";
+    ss << NAME << " " << VERSION << " - Neural Network: " << StockDory::Evaluation::Name() << "\n";
+    ss << "Provided by " << AUTHOR << " under the " << LICENSE << " license.";
 
     std::cerr << ss.str() << std::endl;
 }
