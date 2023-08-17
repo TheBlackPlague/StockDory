@@ -35,6 +35,10 @@ jobs:
             simd: sse2
           - os: macos-latest
             simd: sse
+          - os: windows-latest
+            simd: neon
+          - os: ubuntu-22.04
+            simd: neon
 
 
     runs-on: ${{ matrix.os }}
