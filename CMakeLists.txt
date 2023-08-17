@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 project(StockDory)
 
-set(VERSION  "0.1"   )
-set(CODENAME "Nebula")
+set(VERSION  "0.1"     )
+set(CODENAME "Starfish")
 
 if(CI)
     set(CI TRUE)
