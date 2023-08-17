@@ -12,6 +12,7 @@
 #include "../../Backend/Board.h"
 #include "../../Backend/TranspositionTable.h"
 #include "../../Backend/Util.h"
+#include "../../Backend/ThreadPool.h"
 #include "../../Backend/Move/MoveList.h"
 
 #include "PerftEntry.h"
@@ -193,37 +194,43 @@ namespace StockDory
                     std::array<std::future<uint64_t>, 64> futures = {};
                     uint8_t count = pIterator.ToArray(psq);
 
-                    for (uint8_t i = 0; i < count; i++) {
-                        futures[i] = std::async(std::launch::async, [i, depth, &board, &pin, &check, &psq]() -> uint64_t
-                        {
-                            const Square sq = psq[i];
+                    BS::blocks blocks(0, count, std::thread::hardware_concurrency());
 
-                            Board parallelBoard = board;
+                    auto ParallelComputation =
+                    [depth, &board, &pin, &check, &psq, &blocks](const size_t b) -> uint64_t
+                    {
+                        const uint8_t start = blocks.start(b);
+                        const uint8_t end   = blocks.  end(b);
+
+                        uint64_t parallelNodes = 0        ;
+                        uint8_t  nextDepth     = depth - 1;
+
+                        Board parallelBoard = board;
+
+                        for (uint8_t i = start; i < end; i++) {
+                            const Square sq = psq[i];
 
                             MoveList<Piece, Color> moves (parallelBoard, sq, pin, check);
                             if (moves.Count() < 1) return 0;
-
-                            uint64_t parallelNodes = 0        ;
-                            uint8_t  nextDepth     = depth - 1;
 
                             BitBoardIterator mIterator = moves.Iterator();
 
                             for (Square m = mIterator.Value(); m != NASQ; m = mIterator.Value()) {
                                 if (moves.Promotion(sq)) {
                                     PreviousState state =
-                                            BLayer::Move(parallelBoard, sq, m, Queen );
+                                            BLayer::Move(parallelBoard, sq, m, Queen);
                                     const uint64_t queenNodes = PLayer::Perft(parallelBoard, nextDepth);
                                     BLayer::UndoMove(parallelBoard, state, sq, m);
                                     parallelNodes += queenNodes;
 
-                                    if (Divide) LogMove<Queen >(sq, m,  queenNodes);
+                                    if (Divide) LogMove<Queen>(sq, m, queenNodes);
 
-                                    state = BLayer::Move(parallelBoard, sq, m, Rook  );
+                                    state = BLayer::Move(parallelBoard, sq, m, Rook);
                                     const uint64_t rookNodes = PLayer::Perft(parallelBoard, nextDepth);
                                     BLayer::UndoMove(parallelBoard, state, sq, m);
                                     parallelNodes += rookNodes;
 
-                                    if (Divide) LogMove<Rook  >(sq, m,   rookNodes);
+                                    if (Divide) LogMove<Rook>(sq, m, rookNodes);
 
                                     state = BLayer::Move(parallelBoard, sq, m, Bishop);
                                     const uint64_t bishopNodes = PLayer::Perft(parallelBoard, nextDepth);
@@ -239,7 +246,7 @@ namespace StockDory
 
                                     if (Divide) LogMove<Knight>(sq, m, knightNodes);
                                 } else {
-                                    const PreviousState state = BLayer::Move (parallelBoard, sq, m);
+                                    const PreviousState state = BLayer::Move(parallelBoard, sq, m);
                                     const uint64_t perftNodes = PLayer::Perft(parallelBoard, nextDepth);
                                     BLayer::UndoMove(parallelBoard, state, sq, m);
                                     parallelNodes += perftNodes;
@@ -247,13 +254,20 @@ namespace StockDory
                                     if (Divide) LogMove(sq, m, perftNodes);
                                 }
                             }
+                        }
 
-                            return parallelNodes;
-                        });
+                        return parallelNodes;
+                    };
+
+                    size_t b = 0;
+                    while (b < blocks.get_num_blocks()) {
+                        futures[b] = std::async(std::launch::async, ParallelComputation, b);
+
+                        b++;
                     }
 
-                    for (uint8_t i = 0; i < count; i++) {
-                        nodes += futures[i].get();
+                    for (size_t f = 0; f < b; f++) {
+                        nodes += futures[f].get();
                     }
                 }
 
