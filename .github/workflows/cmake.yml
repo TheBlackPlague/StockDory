@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         version: [ 1.0-ALPHA08032023 ]
-        arch: [ x86-64, x86-64-v2, x86-64-v3, x86-64-v4, apple-m1, apple-m2 ]
+        arch: [ x86-64, x86-64-v2, x86-64-v3, x86-64-v4 ]
         os: [ ubuntu-22.04 , windows-latest, macos-latest ]
         include:
           - os: windows-latest
