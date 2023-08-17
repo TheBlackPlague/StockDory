@@ -83,11 +83,6 @@ jobs:
         echo "CXX=/usr/local/opt/llvm@16/bin/clang++" >> $GITHUB_ENV
         echo "PATH=/usr/local/opt/llvm@16/bin:$PATH" >> $GITHUB_ENV
 
-    - name: Provide Compiler Information
-      run: |
-        $CXX -v
-        $CXX -mcpu=?
-
     - if: matrix.arch == 'apple-m1' || matrix.arch == 'apple-m2'
       name: Configure CMake for Apple M1/M2 (ARM64)
       run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_CXX_FLAGS="-target arm64 -march=${{ matrix.arch }}" -G Ninja
