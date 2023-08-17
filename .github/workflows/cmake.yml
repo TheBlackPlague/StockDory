@@ -85,7 +85,7 @@ jobs:
 
     - if: matrix.arch == 'apple-m1' || matrix.arch == 'apple-m2'
       name: Configure CMake for Apple M1/M2 (ARM64)
-      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_CXX_FLAGS="-target arm64 -march=${{ matrix.arch }}" -G Ninja
+      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_CXX_FLAGS="--target=arm64 -march=${{ matrix.arch }}" -G Ninja
 
     - if: matrix.arch != 'apple-m1' && matrix.arch != 'apple-m2'
       name: Configure CMake
