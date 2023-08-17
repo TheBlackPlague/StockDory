@@ -16,7 +16,7 @@ jobs:
       matrix:
         version: [ 1.0-ALPHA08032023 ]
         arch: [ x86-64, x86-64-v2, x86-64-v3, x86-64-v4 ]
-        os: [ ubuntu-22.04 , windows-latest, macos-latest ]
+        os: [ ubuntu-latest , windows-latest, macos-latest ]
         include:
           - os: windows-latest
             extension: .exe
@@ -25,9 +25,9 @@ jobs:
             arch: apple-m1
           - os: windows-latest
             arch: apple-m2
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             arch: apple-m1
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             arch: apple-m2
 
     runs-on: ${{ matrix.os }}
