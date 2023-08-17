@@ -64,16 +64,7 @@ endforeach()
 
 include(${CPM_DOWNLOAD_LOCATION})
 
-CPMAddPackage("gh:TheBlackPlague/MantaRay#6911ba4b35fed878ba31361ca33020073adf4543")
-CPMAddPackage(
-        NAME thread-pool
-        GITHUB_REPOSITORY DeveloperPaul123/thread-pool
-        GIT_TAG 0.5.1
-        OPTIONS
-        "TP_BUILD_TESTS OFF"
-        "TP_BUILD_BENCHMARKS OFF"
-        "TP_BUILD_EXAMPLES OFF"
-)
+CPMAddPackage("gh:TheBlackPlague/MantaRay#4038386a746ae65881e7d1f02673e1805f729cc9")
 
 include(BinaryResource.cmake)
 
@@ -94,7 +85,8 @@ file(GLOB StockDoryEngineType
         "src/Engine/*.h")
 
 file(GLOB StockDoryExternalType
-        "src/External/*.h")
+        "src/External/*.h"
+        "src/External/thread_pool.hpp")
 
 file(GLOB StockDoryFrontendType
         "src/Terminal/UI/*.h"
@@ -107,4 +99,8 @@ add_executable(StockDory src/Terminal/main.cpp
 
 target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
-target_link_libraries(StockDory MantaRay dp::thread-pool)
+target_link_libraries(StockDory MantaRay)
+
+if(NOT WIN32)
+    target_link_libraries(StockDory pthread)
+endif()

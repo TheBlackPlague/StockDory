@@ -6,12 +6,12 @@
 #ifndef STOCKDORY_THREADPOOL_H
 #define STOCKDORY_THREADPOOL_H
 
-#include <thread_pool/thread_pool.h>
+#include "../External/thread_pool.hpp"
 
 namespace StockDory
 {
 
-    dp::thread_pool<> ThreadPool;
+    BS::thread_pool ThreadPool;
 
 } // StockDory
 

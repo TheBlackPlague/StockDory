@@ -23,7 +23,7 @@
 
 #include "UCISearch.h"
 #include "UCIOption.h"
-//#include "../Perft/PerftRunner.h"
+#include "../Perft/PerftRunner.h"
 
 namespace StockDory
 {
@@ -248,12 +248,12 @@ namespace StockDory
             {
                 if (!UciPrompted || Search.IsRunning()) return;
 
-//                if (args.size() > 1 && strutil::compare_ignore_case(args[0], "perft")) {
-//                    const auto depth = static_cast<uint8_t>(std::stoull(args[1]));
-//                    StockDory::PerftRunner::SetBoard(MainBoard);
-//                    StockDory::PerftRunner::Perft<true>(depth);
-//                    return;
-//                }
+                if (args.size() > 1 && strutil::compare_ignore_case(args[0], "perft")) {
+                    const auto depth = static_cast<uint8_t>(std::stoull(args[1]));
+                    StockDory::PerftRunner::SetBoard(MainBoard);
+                    StockDory::PerftRunner::Perft<true>(depth);
+                    return;
+                }
 
                 TimeControl timeControl = TimeManager::Default();
                 Limit       limit       = Limit()               ;
