@@ -25,9 +25,9 @@ jobs:
             arch: apple-m1
           - os: windows-latest
             arch: apple-m2
-          - os: macos-latest
+          - os: ubuntu-22.04
             arch: apple-m1
-          - os: macos-latest
+          - os: ubuntu-22.04
             arch: apple-m2
 
     runs-on: ${{ matrix.os }}
@@ -85,7 +85,7 @@ jobs:
 
     - if: matrix.arch == 'apple-m1' || matrix.arch == 'apple-m2'
       name: Configure CMake for Apple M1/M2 (ARM64)
-      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_CXX_FLAGS="--target=arm64-unknown-darwin -march=${{ matrix.arch }}" -G Ninja
+      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_CXX_FLAGS="--target=arm64 -mcpu=${{ matrix.arch }}" -G Ninja
 
     - if: matrix.arch != 'apple-m1' && matrix.arch != 'apple-m2'
       name: Configure CMake
@@ -94,25 +94,11 @@ jobs:
     - name: Build
       run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }}
 
-    - if: matrix.arch == 'apple-m1' || matrix.arch == 'apple-m2'
-      name: Rename Binary for Apple M1/M2 (ARM64)
-      run: |
-        mv ${{ github.workspace }}/build/StockDory${{ matrix.extension }} ${{ github.workspace }}/StockDory-${{ matrix.version }}-macos-latest-${{ matrix.arch }}${{ matrix.extension }}
-
-    - if: matrix.arch != 'apple-m1' && matrix.arch != 'apple-m2'
-      name: Rename Binary
+    - name: Rename Binary
       run: |
         mv ${{ github.workspace }}/build/StockDory${{ matrix.extension }} ${{ github.workspace }}/StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}
 
-    - if: matrix.arch == 'apple-m1' || matrix.arch == 'apple-m2'
-      name: Upload Binary for Apple M1/M2 (ARM64)
-      uses: actions/upload-artifact@v3
-      with:
-        name: StockDory-${{ matrix.version }}-macos-latest-${{ matrix.arch }}
-        path: ${{ github.workspace }}/StockDory-${{ matrix.version }}-macos-latest-${{ matrix.arch }}${{ matrix.extension }}
-
-    - if: matrix.arch != 'apple-m1' && matrix.arch != 'apple-m2'
-      name: Upload Binary
+    - name: Upload Binary
       uses: actions/upload-artifact@v3
       with:
         name: StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}
