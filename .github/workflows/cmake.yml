@@ -82,11 +82,11 @@ jobs:
 
     - name: Rename Binary
       run: |
-        mv ${{ github.workspace }}/build/StockDory${{ matrix.extension }} ${{ github.workspace }}/StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.simd }}${{ matrix.extension }}
+        mv ${{ github.workspace }}/build/StockDory${{ matrix.extension }} ${{ github.workspace }}/StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}
 
     - name: Upload Binary
       uses: actions/upload-artifact@v3
       with:
-        name: StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.simd }}
-        path: ${{ github.workspace }}/StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.simd }}${{ matrix.extension }}
+        name: StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}
+        path: ${{ github.workspace }}/StockDory-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}
 
