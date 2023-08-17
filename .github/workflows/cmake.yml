@@ -2,7 +2,7 @@ name: CMake
 
 on:
   push:
-    branches: [ "master", "cmake-ci-bs-thread-pool" ]
+    branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
 
