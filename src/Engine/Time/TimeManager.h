@@ -35,10 +35,6 @@ namespace StockDory
             constexpr static uint8_t IncrementPartitionNumerator   = 3;
             constexpr static uint8_t IncrementPartitionDenominator = 4;
 
-            constexpr static uint8_t PieceCountBase        = 32;
-            constexpr static uint8_t PieceCountNumerator   =  3;
-            constexpr static uint8_t PieceCountDenominator =  5;
-
             constexpr static uint64_t MoveInstantTime      = 500;
 
             constexpr static KillerTable  DummyKTable;
