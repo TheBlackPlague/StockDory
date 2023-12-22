@@ -554,7 +554,7 @@ namespace StockDory
                         const Color opposite = Opposite(colorF);
 
                         const auto epPawnSq = static_cast<Square>(state.EnPassant ^ 8);
-                        EmptyNative     <T>(      Pawn, opposite, epPawnSq);
+                        EmptyNative(Pawn, opposite, epPawnSq);
                         Hash = HashPiece<T>(Hash, Pawn, opposite, epPawnSq);
 
                         if (T & NNUE) Evaluation::Deactivate(Pawn, opposite, epPawnSq);
@@ -574,9 +574,9 @@ namespace StockDory
                     } else if (promotion != NAP) {
                         state.PromotedPiece = promotion;
 
-                        EmptyNative <T>(Pawn     , colorF, from);
-                        EmptyNative <T>(pieceT   , colorT, to  );
-                        InsertNative<T>(promotion, colorF, to  );
+                        EmptyNative (Pawn     , colorF, from);
+                        EmptyNative (pieceT   , colorT, to  );
+                        InsertNative(promotion, colorF, to  );
 
                         if (T & NNUE) {
                             Evaluation::Deactivate(Pawn     , colorF, from);
@@ -606,10 +606,10 @@ namespace StockDory
                             state.CastlingFrom = CastleRookSquareStart[colorF][to < from];
                             state.CastlingTo   = CastleRookSquareEnd  [colorF][to < from];
 
-                            EmptyNative <T>(King, colorF, from              );
-                            EmptyNative <T>(Rook, colorF, state.CastlingFrom);
-                            InsertNative<T>(King, colorF, to                );
-                            InsertNative<T>(Rook, colorF, state.CastlingTo  );
+                            EmptyNative (King, colorF, from              );
+                            EmptyNative (Rook, colorF, state.CastlingFrom);
+                            InsertNative(King, colorF, to                );
+                            InsertNative(Rook, colorF, state.CastlingTo  );
 
                             if (T & NNUE) {
                                 Evaluation::Transition(King, colorF, from, to);
@@ -629,7 +629,7 @@ namespace StockDory
                     }
                 }
 
-                MoveNative<T>(pieceF, colorF, from, pieceT, colorT, to);
+                MoveNative(pieceF, colorF, from, pieceT, colorT, to);
 
                 if (T & NNUE) {
                     Evaluation::Transition(pieceF, colorF, from, to);
@@ -658,25 +658,24 @@ namespace StockDory
                 else                         EnPassantTarget = BBDefault;
 
                 if (state.PromotedPiece         != NAP) {
-                    EmptyNative <T>(state.PromotedPiece, state.MovedPiece.Color(), to  );
-                    InsertNative<T>(Pawn               , state.MovedPiece.Color(), from);
+                    EmptyNative (state.PromotedPiece, state.MovedPiece.Color(), to  );
+                    InsertNative(Pawn               , state.MovedPiece.Color(), from);
                 } else {
-                    EmptyNative <T>(state.MovedPiece.Piece(), state.MovedPiece.Color(), to  );
-                    InsertNative<T>(state.MovedPiece.Piece(), state.MovedPiece.Color(), from);
+                    EmptyNative (state.MovedPiece.Piece(), state.MovedPiece.Color(), to  );
+                    InsertNative(state.MovedPiece.Piece(), state.MovedPiece.Color(), from);
                 }
 
                 if (state.CapturedPiece.Piece() != NAP) {
-                    InsertNative<T>(state.CapturedPiece.Piece(), state.CapturedPiece.Color(), to);
+                    InsertNative(state.CapturedPiece.Piece(), state.CapturedPiece.Color(), to);
                 } else if (state.EnPassantCapture) {
                     auto epPieceSq = static_cast<Square>(to ^ 8);
-                    InsertNative<T>(Pawn, Opposite(state.MovedPiece.Color()), epPieceSq);
+                    InsertNative(Pawn, Opposite(state.MovedPiece.Color()), epPieceSq);
                 } else if (state.CastlingFrom != NASQ) {
-                    EmptyNative <T>(Rook, state.MovedPiece.Color(), state.CastlingTo  );
-                    InsertNative<T>(Rook, state.MovedPiece.Color(), state.CastlingFrom);
+                    EmptyNative (Rook, state.MovedPiece.Color(), state.CastlingTo  );
+                    InsertNative(Rook, state.MovedPiece.Color(), state.CastlingFrom);
                 }
             }
 
-            template<MoveType T>
             constexpr inline void MoveNative(const Piece pF, const Color cF, const Square sqF,
                                              const Piece pT, const Color cT, const Square sqT)
             {
@@ -698,7 +697,6 @@ namespace StockDory
                 PieceAndColor[sqF] = PieceColor(NAP, NAC);
             }
 
-            template<MoveType T>
             constexpr inline void EmptyNative(const Piece p, const Color c, const Square sq)
             {
                 Set<false>(BB[c][p], sq);
@@ -710,7 +708,6 @@ namespace StockDory
                 PieceAndColor[sq] = PieceColor(NAP, NAC);
             }
 
-            template<MoveType T>
             constexpr inline void InsertNative(const Piece p, const Color c, const Square sq)
             {
                 Set<true>(BB[c][p], sq);
