@@ -312,7 +312,7 @@ namespace StockDory
                         PerftBoard.ColorToMove() == White ?
                         Perft<White, Divide, false, TT>(PerftBoard, depth) :
                         Perft<Black, Divide, false, TT>(PerftBoard, depth) ;
-                auto stop  = std::chrono::high_resolution_clock::now();
+                auto stop = std::chrono::high_resolution_clock::now();
                 auto time = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
 
                 std::cout << "Searched " << nodes << " nodes. (" << time << "µs)" << std::endl;
