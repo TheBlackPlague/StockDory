@@ -102,7 +102,10 @@ file(GLOB StockDoryEngineType
 
 file(GLOB StockDoryExternalType
         "src/External/*.h"
-        "src/External/thread_pool.hpp")
+        "src/External/*.hpp")
+
+file(GLOB StockDoryStatisticalType
+        "src/Statistical/*.h")
 
 file(GLOB StockDoryFrontendType
         "src/Terminal/UI/*.h"
@@ -111,7 +114,8 @@ file(GLOB StockDoryFrontendType
         "src/Terminal/*.h")
 
 add_executable(StockDory src/Terminal/main.cpp
-        ${StockDoryBackendType} ${StockDoryEngineType} ${StockDoryExternalType} ${StockDoryFrontendType})
+        ${StockDoryBackendType} ${StockDoryEngineType} ${StockDoryExternalType} ${StockDoryStatisticalType}
+        ${StockDoryFrontendType})
 
 target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 

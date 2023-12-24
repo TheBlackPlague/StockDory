@@ -4,12 +4,15 @@
 //
 
 #include <iostream>
+#include <cstdlib>
 
 #include "Information.h"
 
 #include "UCI/UCIInterface.h"
 #include "BenchHash.h"
 #include "NetworkConverter.h"
+
+#include "../Statistical/UniquePositionCounter.h"
 
 void DisplayTitle()
 {
@@ -31,12 +34,11 @@ int main(int argc, char* argv[])
         } else if (strutil::compare_ignore_case(argv[1], "convert")) {
             StockDory::NetworkConverter::Launch();
             return EXIT_SUCCESS;
+        } else if (strutil::compare_ignore_case(argv[1], "upc")) {
+            StockDory::UpcRunner::SetBoard(argv[2]);
+            StockDory::UpcRunner::UniquePositionCount<true>(strutil::parse_string<uint32_t>(argv[3]));
+            return EXIT_SUCCESS;
         }
-    }
-
-    if (argc > 1 && strutil::compare_ignore_case(argv[1], "bench")) {
-        StockDory::BenchHash::Run();
-        return EXIT_SUCCESS;
     }
 
     StockDory::UCIInterface::Launch();
