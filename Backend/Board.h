@@ -5,7 +5,7 @@
 
 #ifndef STOCKDORY_BOARD_H
 #define STOCKDORY_BOARD_H
-
+#include <iostream>
 #include <array>
 #include <string>
 #include <cassert>
@@ -26,8 +26,6 @@
 #include "Move/BlackMagicFactory.h"
 
 #include "../External/strutil.h"
-
-#include "../Engine/Evaluation.h"
 
 #include "Util.h"
 
@@ -176,17 +174,7 @@ namespace StockDory
                 ColorBB[NAC] = ~(ColorBB[White] | ColorBB[Black]);
             }
 
-            inline void LoadForEvaluation() const
-            {
-                Evaluation::ResetNetworkState();
 
-                for (Square sq = A1; sq < NASQ; sq = Next(sq)) {
-                    PieceColor pc = PieceAndColor[sq];
-                    if (pc.Piece() == NAP || pc.Color() == NAC) continue;
-
-                    Evaluation::Activate(pc.Piece(), pc.Color(), sq);
-                }
-            }
 
             [[nodiscard]]
             inline std::string Fen() const
@@ -523,7 +511,7 @@ namespace StockDory
             template<MoveType T>
             constexpr inline PreviousState Move(const Square from, const Square to, const Piece promotion = NAP)
             {
-                if (T & NNUE) Evaluation::PreMove();
+
 
                 auto state = PreviousState(PieceAndColor[from], PieceAndColor[to],
                                            EnPassantSquare(), CastlingRightAndColorToMove,
@@ -557,7 +545,7 @@ namespace StockDory
                         EmptyNative     <T>(      Pawn, opposite, epPawnSq);
                         Hash = HashPiece<T>(Hash, Pawn, opposite, epPawnSq);
 
-                        if (T & NNUE) Evaluation::Deactivate(Pawn, opposite, epPawnSq);
+
 
                         state.EnPassantCapture = true;
                     } else if (static_cast<Square>(from ^ 16) == to) {
@@ -578,12 +566,7 @@ namespace StockDory
                         EmptyNative <T>(pieceT   , colorT, to  );
                         InsertNative<T>(promotion, colorF, to  );
 
-                        if (T & NNUE) {
-                            Evaluation::Deactivate(Pawn     , colorF, from);
-                            Evaluation::Activate  (promotion, colorF, to  );
 
-                            if (pieceT != NAP) Evaluation::Deactivate(pieceT, colorT, to);
-                        }
 
                         Hash = HashPiece<T>(Hash, Pawn     , colorF, from);
                         Hash = HashPiece<T>(Hash, pieceT   , colorT, to  );
@@ -611,11 +594,7 @@ namespace StockDory
                             InsertNative<T>(King, colorF, to                );
                             InsertNative<T>(Rook, colorF, state.CastlingTo  );
 
-                            if (T & NNUE) {
-                                Evaluation::Transition(King, colorF, from, to);
-                                Evaluation::Transition(Rook, colorF,
-                                                       state.CastlingFrom, state.CastlingTo);
-                            }
+
 
                             Hash = HashPiece<T>(Hash, King, colorF, from              );
                             Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingFrom);
@@ -631,11 +610,7 @@ namespace StockDory
 
                 MoveNative<T>(pieceF, colorF, from, pieceT, colorT, to);
 
-                if (T & NNUE) {
-                    Evaluation::Transition(pieceF, colorF, from, to);
 
-                    if (pieceT != NAP) Evaluation::Deactivate(pieceT, colorT, to);
-                }
 
                 Hash = HashPiece<T>(Hash, pieceF, colorF, from);
                 Hash = HashPiece<T>(Hash, pieceT, colorT, to  );
@@ -649,7 +624,7 @@ namespace StockDory
             template<MoveType T>
             constexpr inline void UndoMove(const PreviousState& state, const Square from, const Square to)
             {
-                if (T & NNUE) Evaluation::PreUndoMove();
+
 
                 CastlingRightAndColorToMove = state.CastlingRightAndColorToMove;
                 if (T & ZOBRIST) Hash = state.Hash;
