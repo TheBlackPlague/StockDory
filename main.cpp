@@ -1,4 +1,5 @@
 #include <iostream>
+#include <limits>
 #include "Backend/Board.h"         // Include Board.h for chess board representation
 #include "Backend/Type/Square.h"   // Include Square.h to use the Square enum
 #include "SimplifiedMoveList.h"    // Include your SimplifiedMoveList class
@@ -51,7 +52,10 @@ int main() {
 
     Engine engine;
     std::pair<Move, float> result = engine.minimax(chessBoard, 3);
-    std::cout << "Result is: " << squareToString(result.first.From()) << " to " << squareToString(result.first.To()) << " with score " << result.second;
+    std::cout << "Result is: " << squareToString(result.first.From()) << " to " << squareToString(result.first.To()) << " with score " << result.second << "\n";
+
+    std::pair<Move, float> result2 = engine.alphaBeta(chessBoard, -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), 3);
+    std::cout << "Result is: " << squareToString(result2.first.From()) << " to " << squareToString(result2.first.To()) << " with score " << result2.second;
 
 
     return 0;
