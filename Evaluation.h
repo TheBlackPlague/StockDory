@@ -1,20 +1,19 @@
-// Evaluation.h (Final Corrected Version)
+// Evaluation.h (New Version - Evaluation Function with e-Pawn Move Bonus)
 #ifndef EVALUATION_H
 #define EVALUATION_H
 
-#include "./Backend/Board.h"       // Ensure correct path based on your project structure
-#include "./Backend/Type/Piece.h"  // Include global Piece enum
-#include "./Backend/Type/Color.h"  // Include global Color enum
-#include <iostream>                // Included for debugging statements
+#include "./Backend/Board.h"        // Ensure correct path based on your project structure
+#include "./Backend/Type/Piece.h"   // Include global Piece enum
+#include "./Backend/Type/Color.h"   // Include global Color enum
+#include <iostream>                 // Included for debugging statements
 #include <array>
 #include <cassert>
 
 class Evaluation {
 public:
     // Create evaluation function
-    float eval(const StockDory::Board& board) { // Define Board as const StockDory::Board
+    float eval(const StockDory::Board& board) { // Pass by const reference
         
-        //std::cout << "Board Copy Constructor Called" << std::endl;
         // Define material values for each piece type (aligned with Piece enum)
         const std::array<int, 7> PieceValues = {
             1,    // Pawn             // index 0
@@ -26,7 +25,7 @@ public:
             0     // NAP (No Piece)   // index 6
         };
 
-        int whiteMaterial = 1;
+        int whiteMaterial = 0;
         int blackMaterial = 0;
 
         // Initialize loop counter
@@ -77,13 +76,39 @@ public:
         // Calculate material balance
         float materialBalance = static_cast<float>(whiteMaterial - blackMaterial);
 
-        // Debugging statements
-        //std::cout << "Final White Material: " << whiteMaterial << std::endl;
-        //std::cout << "Final Black Material: " << blackMaterial << std::endl;
-        //std::cout << "Final Material Balance (White - Black): " << materialBalance << std::endl;
+        // ----- Incorporate e-Pawn Move Bonus -----
+        // Define square indices for e2 (White) and e7 (Black)
+        const Square e2 = E2; // Assuming E2 is defined in Square enum
+        const Square e7 = E7; // Assuming E7 is defined in Square enum
+
+        // Initialize bonus counters
+        float ePawnBonus = 0.0f;
+
+        // Check if White's e-pawn has been moved (not on e2)
+        PieceColor whiteEPawn = board[e2];
+        if (!(whiteEPawn.Piece() == Pawn && whiteEPawn.Color() == White)) {
+            ePawnBonus += 0.1f;
+            // Debugging: Print e-pawn move bonus for White
+            // std::cout << "White e-Pawn has been moved. Bonus applied: +0.1" << std::endl;
+        }
+
+        // Check if Black's e-pawn has been moved (not on e7)
+        PieceColor blackEPawn = board[e7];
+        if (!(blackEPawn.Piece() == Pawn && blackEPawn.Color() == Black)) {
+            ePawnBonus -= 0.1f;
+            // Debugging: Print e-pawn move bonus for Black
+            // std::cout << "Black e-Pawn has been moved. Bonus applied: +0.1" << std::endl;
+        }
+
+        // Apply the e-pawn bonus to material balance
+        materialBalance += ePawnBonus;
+
+        // Debugging: Print e-pawn bonus and updated material balance
+        // std::cout << "e-Pawn Bonus: " << ePawnBonus << ", Updated Material Balance: " << materialBalance << std::endl;
 
         return materialBalance;
     }
 };
 
 #endif // EVALUATION_H
+
