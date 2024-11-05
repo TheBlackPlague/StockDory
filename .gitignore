@@ -1,3 +1,6 @@
+#Ignore build folder
+build/
+
 # Ignore CLion project files
 .idea/
 
