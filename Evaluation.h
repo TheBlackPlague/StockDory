@@ -13,6 +13,8 @@ class Evaluation {
 public:
     // Create evaluation function
     float eval(const StockDory::Board& board) { // Define Board as const StockDory::Board
+        
+        std::cout << "Board Copy Constructor Called" << std::endl;
         // Define material values for each piece type (aligned with Piece enum)
         const std::array<int, 7> PieceValues = {
             1,    // Pawn             // index 0
@@ -60,12 +62,12 @@ public:
             if (pc.Color() == White) {
                 whiteMaterial += pieceValue;
                 // Debugging: Print current material addition
-                std::cout << "Added " << pieceValue << " to White Material. Total White Material: " << whiteMaterial << std::endl;
+                //std::cout << "Added " << pieceValue << " to White Material. Total White Material: " << whiteMaterial << std::endl;
             }
             else if (pc.Color() == Black) {
                 blackMaterial += pieceValue;
                 // Debugging: Print current material addition
-                std::cout << "Added " << pieceValue << " to Black Material. Total Black Material: " << blackMaterial << std::endl;
+                //std::cout << "Added " << pieceValue << " to Black Material. Total Black Material: " << blackMaterial << std::endl;
             }
             else {
                 std::cerr << "Invalid color at square " << sq << std::endl;
