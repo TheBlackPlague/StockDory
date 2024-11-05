@@ -7,16 +7,13 @@
 #define STOCKDORY_MOVE_H
 
 #include <cstdint>
-#include <sstream> // Included for ToString()
-#include "../Type/Square.h"
-#include "../Type/Piece.h"
-#include "../Util.h" // Ensure this path is correct based on your project structure
 
-namespace StockDory
+#include "Square.h"
+#include "Piece.h"
+#include "../Util.h"
+
+struct Move
 {
-
-    struct Move
-    {
 
     private:
         // [    PROMOTION    ] [     TO     ] [    FROM    ]
@@ -53,15 +50,14 @@ namespace StockDory
             return Move(from, to, promotion);
         }
 
-        constexpr Move() : Internal(0) // Changed to use member initializer list
+        constexpr Move()
         {
-            // Debugging: Cannot use std::cout in constexpr context
+            Internal = 0;
         }
 
         constexpr explicit Move(const Square from, const Square to, const Piece promotion = NAP)
-            : Internal(from | (to << 6) | (promotion << 12)) // Changed to use member initializer list
         {
-            // Debugging: Cannot use std::cout in constexpr context
+            Internal = from | (to << 6) | (promotion << 12);
         }
 
         [[nodiscard]]
@@ -105,8 +101,6 @@ namespace StockDory
             return s.str();
         }
 
-    };
-
-} // StockDory
+};
 
 #endif //STOCKDORY_MOVE_H
