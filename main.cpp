@@ -51,19 +51,19 @@ int main() {
     // std::cout << "Board state: " << currentFEN << std::endl;
     chessBoard.Move<0>(D2, D4);
     Engine engine;
-    std::pair<Move, float> result = engine.minimax(chessBoard, 3);
+    std::pair<Move, float> result = engine.minimax(chessBoard, 1);
     std::cout << "Result is: " << squareToString(result.first.From()) << " to " << squareToString(result.first.To()) << " with score " << result.second << "\n";
 
-    std::pair<Move, float> result2 = engine.alphaBeta(chessBoard, -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), 3);
+    std::pair<Move, float> result2 = engine.alphaBeta(chessBoard, -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), 1);
     std::cout << "Result is: " << squareToString(result2.first.From()) << " to " << squareToString(result2.first.To()) << " with score " << result2.second << "\n";
 
     if (chessBoard.ColorToMove() == White) {
-        std::pair<Move, float> result3 = engine.alphaBetaNega<White>(chessBoard, -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), 3);
+        std::pair<Move, float> result3 = engine.alphaBetaNega<White>(chessBoard, -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), 1);
         std::cout << "White Result is: " << squareToString(result3.first.From()) << " to " << squareToString(result3.first.To()) << " with score " << result3.second;
     }
     else {
         if (chessBoard.ColorToMove() == Black) {
-            std::pair<Move, float> result3 = engine.alphaBetaNega<Black>(chessBoard, -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), 3);
+            std::pair<Move, float> result3 = engine.alphaBetaNega<Black>(chessBoard, -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), 1);
             std::cout << "Black Result is: " << squareToString(result3.first.From()) << " to " << squareToString(result3.first.To()) << " with score " << result3.second;
         }
     }

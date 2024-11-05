@@ -14,7 +14,7 @@ public:
     // Create evaluation function
     float eval(const StockDory::Board& board) { // Define Board as const StockDory::Board
         
-        std::cout << "Board Copy Constructor Called" << std::endl;
+        //std::cout << "Board Copy Constructor Called" << std::endl;
         // Define material values for each piece type (aligned with Piece enum)
         const std::array<int, 7> PieceValues = {
             1,    // Pawn             // index 0
@@ -26,7 +26,7 @@ public:
             0     // NAP (No Piece)   // index 6
         };
 
-        int whiteMaterial = 0;
+        int whiteMaterial = 1;
         int blackMaterial = 0;
 
         // Initialize loop counter
@@ -35,7 +35,7 @@ public:
         // Iterate over all squares to calculate material
         for (int sq = 0; sq < 64; ++sq, ++loopCounter) {
             // Debugging: Print loop counter and current square
-            std::cout << "Loop Iteration: " << loopCounter << " - Processing Square: " << sq << std::endl;
+            //std::cout << "Loop Iteration: " << loopCounter << " - Processing Square: " << sq << std::endl;
 
             PieceColor pc = board[static_cast<Square>(sq)];
 
@@ -50,7 +50,7 @@ public:
             }
             else if (pc.Piece() == King) {
                 // Debugging: Indicate that a King was encountered and skipped
-                std::cout << "Encountered King at square " << sq << ", skipping material count." << std::endl;
+                //std::cout << "Encountered King at square " << sq << ", skipping material count." << std::endl;
                 continue; // Skip Kings from material count
             }
             else {
@@ -78,9 +78,9 @@ public:
         float materialBalance = static_cast<float>(whiteMaterial - blackMaterial);
 
         // Debugging statements
-        std::cout << "Final White Material: " << whiteMaterial << std::endl;
-        std::cout << "Final Black Material: " << blackMaterial << std::endl;
-        std::cout << "Final Material Balance (White - Black): " << materialBalance << std::endl;
+        //std::cout << "Final White Material: " << whiteMaterial << std::endl;
+        //std::cout << "Final Black Material: " << blackMaterial << std::endl;
+        //std::cout << "Final Material Balance (White - Black): " << materialBalance << std::endl;
 
         return materialBalance;
     }
