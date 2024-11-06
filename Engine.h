@@ -26,14 +26,14 @@ class Engine {
             float bestScore;
 
             // Debugging: Print current depth and player
-            std::cout << "Minimax called at depth " << depth << " for player "
-                    << (chessBoard.ColorToMove() == White ? "White" : "Black") << std::endl;
+            //std::cout << "Minimax called at depth " << depth << " for player "
+            //        << (chessBoard.ColorToMove() == White ? "White" : "Black") << std::endl;
 
             // Base case
             if (depth == 0) {
                 float score = evaluation.eval(chessBoard);
                 // Debugging: Print evaluation score
-                std::cout << "Depth 0 reached. Evaluation score: " << score << std::endl;
+                //std::cout << "Depth 0 reached. Evaluation score: " << score << std::endl;
                 return std::make_pair(Move(), score);
             }
             // White's turn
@@ -54,7 +54,7 @@ class Engine {
                     Square from = nextMove.From();
                     Square to = nextMove.To();
                     // Debugging: Print move being considered
-                    std::cout << "White considering move: " << nextMove.ToString() << std::endl;
+                    //std::cout << "White considering move: " << nextMove.ToString() << std::endl;
 
                     // Perform move
                     PreviousState prevState = chessBoard.Move<0>(from, to);
@@ -86,7 +86,7 @@ class Engine {
                     Square from = nextMove.From();
                     Square to = nextMove.To();
                     // Debugging: Print move being considered
-                    std::cout << "Black considering move: " << nextMove.ToString() << std::endl;
+                    //std::cout << "Black considering move: " << nextMove.ToString() << std::endl;
 
                     // Perform move
                     PreviousState prevState = chessBoard.Move<0>(from, to);
