@@ -1,11 +1,10 @@
-// Evaluation.h (New Version - Evaluation Function with Castling and Pawn Advancement Bonuses)
 #ifndef EVALUATION_H
 #define EVALUATION_H
 
-#include "./Backend/Board.h"        // Ensure correct path based on your project structure
-#include "./Backend/Type/Piece.h"   // Include global Piece enum
-#include "./Backend/Type/Color.h"   // Include global Color enum
-#include <iostream>                 // Included for debugging statements
+#include "./Backend/Board.h"        
+#include "./Backend/Type/Piece.h"   
+#include "./Backend/Type/Color.h"   
+#include <iostream>                 
 #include <array>
 #include <cassert>
 
@@ -13,7 +12,6 @@ class Evaluation {
 public:
     float eval(const StockDory::Board& board) {
         
-        // Define material values for each piece type (aligned with Piece enum)
         const std::array<int, 7> PieceValues = {
             1,    // Pawn             // index 0
             3,    // Knight           // index 1
@@ -68,35 +66,32 @@ public:
             }
         }
 
-        float materialBalance = static_cast<float>(whiteMaterial - blackMaterial);
+        float materialBalance = static_cast<float>(whiteMaterial - blackMaterial);\
 
-        // ----- Incorporate Castling Bonuses -----
         float castlingBonus = 0.0f;
 
-        // Define square indices for kings and rooks
-        const Square WhiteKingInitial = E1;   // e1
-        const Square WhiteKingKingside = G1;  // g1
-        const Square WhiteKingQueenside = C1; // c1
-        const Square WhiteRookKingsideInitial = H1; // h1
-        const Square WhiteRookQueensideInitial = A1; // a1
-        const Square WhiteRookKingsideCastled = F1;   // f1
-        const Square WhiteRookQueensideCastled = D1;  // d1
+        const Square WhiteKingInitial = E1; 
+        const Square WhiteKingKingside = G1; 
+        const Square WhiteKingQueenside = C1;
+        const Square WhiteRookKingsideInitial = H1;
+        const Square WhiteRookQueensideInitial = A1;
+        const Square WhiteRookKingsideCastled = F1; 
+        const Square WhiteRookQueensideCastled = D1;
 
-        const Square BlackKingInitial = E8;   // e8
-        const Square BlackKingKingside = G8;  // g8
-        const Square BlackKingQueenside = C8; // c8
-        const Square BlackRookKingsideInitial = H8; // h8
-        const Square BlackRookQueensideInitial = A8; // a8
-        const Square BlackRookKingsideCastled = F8;   // f8
-        const Square BlackRookQueensideCastled = D8;  // d8
+        const Square BlackKingInitial = E8;
+        const Square BlackKingKingside = G8;
+        const Square BlackKingQueenside = C8;
+        const Square BlackRookKingsideInitial = H8;
+        const Square BlackRookQueensideInitial = A8;
+        const Square BlackRookKingsideCastled = F8; 
+        const Square BlackRookQueensideCastled = D8;
 
-        // Check White Castling
         PieceColor whiteKing = board[WhiteKingKingside];
         PieceColor whiteRook = board[WhiteRookKingsideCastled];
         if (whiteKing.Piece() == King && whiteKing.Color() == White &&
             whiteRook.Piece() == Rook && whiteRook.Color() == White) {
             castlingBonus += 1.0f;
-            std::cout << "White has castled kingside. Bonus applied: +1.0" << std::endl;
+            //std::cout << "White has castled kingside. Bonus applied: +1.0" << std::endl;
         }
 
         whiteKing = board[WhiteKingQueenside];
@@ -104,16 +99,15 @@ public:
         if (whiteKing.Piece() == King && whiteKing.Color() == White &&
             whiteRook.Piece() == Rook && whiteRook.Color() == White) {
             castlingBonus += 1.0f;
-            std::cout << "White has castled queenside. Bonus applied: +1.0" << std::endl;
+            //std::cout << "White has castled queenside. Bonus applied: +1.0" << std::endl;
         }
 
-        // Check Black Castling
         PieceColor blackKing = board[BlackKingKingside];
         PieceColor blackRook = board[BlackRookKingsideCastled];
         if (blackKing.Piece() == King && blackKing.Color() == Black &&
             blackRook.Piece() == Rook && blackRook.Color() == Black) {
             castlingBonus -= 1.0f;
-            std::cout << "Black has castled kingside. Bonus applied: -1.0" << std::endl;
+            //std::cout << "Black has castled kingside. Bonus applied: -1.0" << std::endl;
         }
 
         blackKing = board[BlackKingQueenside];
@@ -121,10 +115,9 @@ public:
         if (blackKing.Piece() == King && blackKing.Color() == Black &&
             blackRook.Piece() == Rook && blackRook.Color() == Black) {
             castlingBonus -= 1.0f;
-            std::cout << "Black has castled queenside. Bonus applied: -1.0" << std::endl;
+            //std::cout << "Black has castled queenside. Bonus applied: -1.0" << std::endl;
         }
 
-        // ----- Incorporate Pawn Advancement Bonuses -----
         float pawnAdvancementBonus = 0.0f;
 
         for (int sq = 0; sq < 64; ++sq) {
@@ -137,32 +130,30 @@ public:
                 if (squaresAdvanced > 0) {
                     float bonus = 0.1f * squaresAdvanced;
                     pawnAdvancementBonus += bonus;
-                    std::cout << "White Pawn on square " << sq << " has advanced " << squaresAdvanced 
-                              << " squares. Bonus applied: +" << bonus << std::endl;
+                    //std::cout << "White Pawn on square " << sq << " has advanced " << squaresAdvanced 
+                    //          << " squares. Bonus applied: +" << bonus << std::endl;
                 }
             }
 
-            // Process Black Pawns
             if (pc.Piece() == Pawn && pc.Color() == Black) {
                 int currentRank = (sq / 8) + 1; // Ranks 1-8
                 int squaresAdvanced = 7 - currentRank; // Starting rank is 7
                 if (squaresAdvanced > 0) {
                     float bonus = 0.1f * squaresAdvanced;
                     pawnAdvancementBonus -= bonus;
-                    std::cout << "Black Pawn on square " << sq << " has advanced " << squaresAdvanced 
-                              << " squares. Bonus applied: -" << bonus << std::endl;
+                    //std::cout << "Black Pawn on square " << sq << " has advanced " << squaresAdvanced 
+                    //          << " squares. Bonus applied: -" << bonus << std::endl;
                 }
             }
         }
 
-        // Apply Bonuses to Material Balance
         materialBalance += castlingBonus;
         materialBalance += pawnAdvancementBonus;
 
         // Debugging: Print total bonuses and updated material balance
         //std::cout << "Total Castling Bonus: " << castlingBonus << std::endl;
-        std::cout << "Total Pawn Advancement Bonus: " << pawnAdvancementBonus << std::endl;
-        std::cout << "Updated Material Balance: " << materialBalance << std::endl;
+        //std::cout << "Total Pawn Advancement Bonus: " << pawnAdvancementBonus << std::endl;
+        //std::cout << "Updated Material Balance: " << materialBalance << std::endl;
 
         return materialBalance;
     }
