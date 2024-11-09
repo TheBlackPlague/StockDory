@@ -102,8 +102,8 @@ class Engine {
             }
 
             // Debugging: Print best move and score at current depth
-            std::cout << "Best move at depth " << depth << ": " << bestMove.ToString()
-                    << " with score " << bestScore << std::endl;
+            //std::cout << "Best move at depth " << depth << ": " << bestMove.ToString()
+            //        << " with score " << bestScore << std::endl;
 
             return std::make_pair(bestMove, bestScore);
         }
