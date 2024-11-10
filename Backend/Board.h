@@ -34,8 +34,9 @@ namespace StockDory
 
     class Board
     {
-
+        
         private:
+            // Existing members...
             std::array<std::array<BitBoard, 7>, 3> BB {};
 
             std::array<PieceColor, 64> PieceAndColor {};
@@ -73,9 +74,20 @@ namespace StockDory
                 {Square::F8, Square::D8}
             }};
 
+            // ----- New Castling Performed Flags -----
+            bool hasWhiteCastledKingside = false;
+            bool hasWhiteCastledQueenside = false;
+            bool hasBlackCastledKingside = false;
+            bool hasBlackCastledQueenside = false;
+
         public:
             //Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
-            Board() : Board("rnbqk2r/pppp1ppp/5n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQ1RK1 b kq - 5 4") {}
+            Board() : Board("rnbqk2r/pppp1ppp/8/2b1N3/2B1n3/8/PPPP1PPP/RNBQ1RK1 b kq - 0 5") {}
+
+            bool HasWhiteCastledKingside() const { return hasWhiteCastledKingside; }
+            bool HasWhiteCastledQueenside() const { return hasWhiteCastledQueenside; }
+            bool HasBlackCastledKingside() const { return hasBlackCastledKingside; }
+            bool HasBlackCastledQueenside() const { return hasBlackCastledQueenside; }
 
             explicit Board(const std::string& fen)
             {
@@ -619,6 +631,50 @@ namespace StockDory
 
                 Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
 
+                if (pieceF == King) {
+                    CastlingRightAndColorToMove &= ~ColorCastleMask[colorF]; // Remove castling rights
+
+                    // Check if the move is a castling move
+                    if (to == C1 || to == C8 || to == G1 || to == G8) {
+                        // Determine castling direction
+                        bool kingside = (to == G1 || to == G8);
+                        bool queenside = (to == C1 || to == C8);
+
+                        // Update castling performed flags
+                        if (colorF == White) {
+                            if (kingside) {
+                                hasWhiteCastledKingside = true;
+                            } else if (queenside) {
+                                hasWhiteCastledQueenside = true;
+                            }
+                        } else { // Black
+                            if (kingside) {
+                                hasBlackCastledKingside = true;
+                            } else if (queenside) {
+                                hasBlackCastledQueenside = true;
+                            }
+                        }
+
+                        // Perform castling: move the Rook accordingly
+                        state.CastlingFrom = CastleRookSquareStart[colorF][kingside];
+                        state.CastlingTo   = CastleRookSquareEnd  [colorF][kingside];
+
+                        EmptyNative <T>(King, colorF, from              );
+                        EmptyNative <T>(Rook, colorF, state.CastlingFrom);
+                        InsertNative<T>(King, colorF, to                );
+                        InsertNative<T>(Rook, colorF, state.CastlingTo  );
+
+                        Hash = HashPiece<T>(Hash, King, colorF, from              );
+                        Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingFrom);
+                        Hash = HashPiece<T>(Hash, King, colorF, to                );
+                        Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingTo  );
+
+                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+
+                        return state;
+                    }
+                }
+
                 return state;
             }
 
@@ -650,6 +706,41 @@ namespace StockDory
                     EmptyNative <T>(Rook, state.MovedPiece.Color(), state.CastlingTo  );
                     InsertNative<T>(Rook, state.MovedPiece.Color(), state.CastlingFrom);
                 }
+
+                // Check if the move was a castling move
+                if (state.CastlingFrom != NASQ) {
+                    // Determine castling direction
+                    bool kingside = (state.CastlingTo == F1 || state.CastlingTo == F8);
+                    bool queenside = (state.CastlingTo == D1 || state.CastlingTo == D8);
+
+                    if (colorF == White) {
+                        if (kingside) {
+                            hasWhiteCastledKingside = false;
+                        } else if (queenside) {
+                            hasWhiteCastledQueenside = false;
+                        }
+                    } else { // Black
+                        if (kingside) {
+                            hasBlackCastledKingside = false;
+                        } else if (queenside) {
+                            hasBlackCastledQueenside = false;
+                        }
+                    }
+
+                    // Undo castling: move the Rook back
+                    EmptyNative <T>(King, colorF, to                );
+                    EmptyNative <T>(Rook, colorF, state.CastlingTo  );
+                    InsertNative<T>(King, colorF, from              );
+                    InsertNative<T>(Rook, colorF, state.CastlingFrom);
+
+                    Hash = HashPiece<T>(Hash, King, colorF, to                );
+                    Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingTo  );
+                    Hash = HashPiece<T>(Hash, King, colorF, from              );
+                    Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingFrom);
+
+                    Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                }
+                
             }
 
             template<MoveType T>
@@ -702,7 +793,8 @@ namespace StockDory
             {
                 ColorBB[Color::NAC] = ~(ColorBB[Color::White] | ColorBB[Color::Black]);
             }
-
+            
+            
     };
 
 } // StockDory

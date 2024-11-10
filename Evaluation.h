@@ -12,18 +12,18 @@ class Evaluation {
 public:
     float eval(const StockDory::Board& board) {
         
-        const std::array<int, 7> PieceValues = {
-            1,    // Pawn             // index 0
-            3,    // Knight           // index 1
-            3,    // Bishop           // index 2
-            5,    // Rook             // index 3
-            9,    // Queen            // index 4
-            0,    // King (not counted in material) // index 5
-            0     // NAP (No Piece)   // index 6
+        const std::array<float, 7> PieceValues = {
+            1.0,    // Pawn             // index 0
+            3.1,    // Knight           // index 1
+            3.2,    // Bishop           // index 2
+            5.0,    // Rook             // index 3
+            9.0,    // Queen            // index 4
+            0.0,    // King (not counted in material) // index 5
+            0.0     // NAP (No Piece)   // index 6
         };
 
-        int whiteMaterial = 0;
-        int blackMaterial = 0;
+        float whiteMaterial = 0;
+        float blackMaterial = 0;
         int loopCounter = 0;
 
         // Iterate over all squares to calculate material
@@ -38,7 +38,7 @@ public:
             }
 
             // Retrieve the value of the piece
-            int pieceValue = 0;
+            float pieceValue = 0;
             if (pc.Piece() >= Pawn && pc.Piece() <= Queen) { // Ensure valid piece type
                 pieceValue = PieceValues[static_cast<int>(pc.Piece())];
             }
@@ -90,7 +90,7 @@ public:
         PieceColor whiteRook = board[WhiteRookKingsideCastled];
         if (whiteKing.Piece() == King && whiteKing.Color() == White &&
             whiteRook.Piece() == Rook && whiteRook.Color() == White) {
-            castlingBonus += 1.0f;
+            castlingBonus += 1.1f;
             //std::cout << "White has castled kingside. Bonus applied: +1.0" << std::endl;
         }
 
@@ -98,7 +98,7 @@ public:
         whiteRook = board[WhiteRookQueensideCastled];
         if (whiteKing.Piece() == King && whiteKing.Color() == White &&
             whiteRook.Piece() == Rook && whiteRook.Color() == White) {
-            castlingBonus += 1.0f;
+            castlingBonus += 1.1f;
             //std::cout << "White has castled queenside. Bonus applied: +1.0" << std::endl;
         }
 
@@ -106,7 +106,7 @@ public:
         PieceColor blackRook = board[BlackRookKingsideCastled];
         if (blackKing.Piece() == King && blackKing.Color() == Black &&
             blackRook.Piece() == Rook && blackRook.Color() == Black) {
-            castlingBonus -= 1.0f;
+            castlingBonus -= 1.1f;
             //std::cout << "Black has castled kingside. Bonus applied: -1.0" << std::endl;
         }
 
@@ -114,7 +114,7 @@ public:
         blackRook = board[BlackRookQueensideCastled];
         if (blackKing.Piece() == King && blackKing.Color() == Black &&
             blackRook.Piece() == Rook && blackRook.Color() == Black) {
-            castlingBonus -= 1.0f;
+            castlingBonus -= 1.1f;
             //std::cout << "Black has castled queenside. Bonus applied: -1.0" << std::endl;
         }
 
