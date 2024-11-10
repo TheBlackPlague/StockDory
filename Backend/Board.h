@@ -631,50 +631,6 @@ namespace StockDory
 
                 Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
 
-                if (pieceF == King) {
-                    CastlingRightAndColorToMove &= ~ColorCastleMask[colorF]; // Remove castling rights
-
-                    // Check if the move is a castling move
-                    if (to == C1 || to == C8 || to == G1 || to == G8) {
-                        // Determine castling direction
-                        bool kingside = (to == G1 || to == G8);
-                        bool queenside = (to == C1 || to == C8);
-
-                        // Update castling performed flags
-                        if (colorF == White) {
-                            if (kingside) {
-                                hasWhiteCastledKingside = true;
-                            } else if (queenside) {
-                                hasWhiteCastledQueenside = true;
-                            }
-                        } else { // Black
-                            if (kingside) {
-                                hasBlackCastledKingside = true;
-                            } else if (queenside) {
-                                hasBlackCastledQueenside = true;
-                            }
-                        }
-
-                        // Perform castling: move the Rook accordingly
-                        state.CastlingFrom = CastleRookSquareStart[colorF][kingside];
-                        state.CastlingTo   = CastleRookSquareEnd  [colorF][kingside];
-
-                        EmptyNative <T>(King, colorF, from              );
-                        EmptyNative <T>(Rook, colorF, state.CastlingFrom);
-                        InsertNative<T>(King, colorF, to                );
-                        InsertNative<T>(Rook, colorF, state.CastlingTo  );
-
-                        Hash = HashPiece<T>(Hash, King, colorF, from              );
-                        Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingFrom);
-                        Hash = HashPiece<T>(Hash, King, colorF, to                );
-                        Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingTo  );
-
-                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
-
-                        return state;
-                    }
-                }
-
                 return state;
             }
 
@@ -706,41 +662,6 @@ namespace StockDory
                     EmptyNative <T>(Rook, state.MovedPiece.Color(), state.CastlingTo  );
                     InsertNative<T>(Rook, state.MovedPiece.Color(), state.CastlingFrom);
                 }
-
-                // Check if the move was a castling move
-                if (state.CastlingFrom != NASQ) {
-                    // Determine castling direction
-                    bool kingside = (state.CastlingTo == F1 || state.CastlingTo == F8);
-                    bool queenside = (state.CastlingTo == D1 || state.CastlingTo == D8);
-
-                    if (colorF == White) {
-                        if (kingside) {
-                            hasWhiteCastledKingside = false;
-                        } else if (queenside) {
-                            hasWhiteCastledQueenside = false;
-                        }
-                    } else { // Black
-                        if (kingside) {
-                            hasBlackCastledKingside = false;
-                        } else if (queenside) {
-                            hasBlackCastledQueenside = false;
-                        }
-                    }
-
-                    // Undo castling: move the Rook back
-                    EmptyNative <T>(King, colorF, to                );
-                    EmptyNative <T>(Rook, colorF, state.CastlingTo  );
-                    InsertNative<T>(King, colorF, from              );
-                    InsertNative<T>(Rook, colorF, state.CastlingFrom);
-
-                    Hash = HashPiece<T>(Hash, King, colorF, to                );
-                    Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingTo  );
-                    Hash = HashPiece<T>(Hash, King, colorF, from              );
-                    Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingFrom);
-
-                    Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
-                }
-                
             }
 
             template<MoveType T>
@@ -793,7 +714,6 @@ namespace StockDory
             {
                 ColorBB[Color::NAC] = ~(ColorBB[Color::White] | ColorBB[Color::Black]);
             }
-            
             
     };
 
