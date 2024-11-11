@@ -1,4 +1,4 @@
-#Ignore build folder
+#Ignore build contents
 build/
 main.exe
 
