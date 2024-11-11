@@ -174,6 +174,10 @@ class Engine {
             if (moveList.Count() == 0 and chessBoard.Checked<color>()) {
                 return std::make_pair(std::vector<Move>(), -mateScore);
             }
+            //stalemate
+            else if (moveList.Count() == 0){
+            return std::make_pair(std::vector<Move>(), 0);
+            }
             //iterate through the moves and calculate the best score that can be reached from the next position
             for (uint8_t i = 0; i < moveList.Count(); i++) {
                 Move nextMove = moveList[i];
