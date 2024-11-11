@@ -34,9 +34,8 @@ namespace StockDory
 
     class Board
     {
-        
+
         private:
-            // Existing members...
             std::array<std::array<BitBoard, 7>, 3> BB {};
 
             std::array<PieceColor, 64> PieceAndColor {};
@@ -74,20 +73,9 @@ namespace StockDory
                 {Square::F8, Square::D8}
             }};
 
-            // ----- New Castling Performed Flags -----
-            bool hasWhiteCastledKingside = false;
-            bool hasWhiteCastledQueenside = false;
-            bool hasBlackCastledKingside = false;
-            bool hasBlackCastledQueenside = false;
-
         public:
             //Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
-            Board() : Board("rnbqk2r/pppp1ppp/8/2b1N3/2B1n3/8/PPPP1PPP/RNBQ1RK1 b kq - 0 5") {}
-
-            bool HasWhiteCastledKingside() const { return hasWhiteCastledKingside; }
-            bool HasWhiteCastledQueenside() const { return hasWhiteCastledQueenside; }
-            bool HasBlackCastledKingside() const { return hasBlackCastledKingside; }
-            bool HasBlackCastledQueenside() const { return hasBlackCastledQueenside; }
+            Board() : Board("5k2/8/8/7Q/2B5/8/8/5K2 w - - 0 1") {}
 
             explicit Board(const std::string& fen)
             {
@@ -714,7 +702,7 @@ namespace StockDory
             {
                 ColorBB[Color::NAC] = ~(ColorBB[Color::White] | ColorBB[Color::Black]);
             }
-            
+
     };
 
 } // StockDory
