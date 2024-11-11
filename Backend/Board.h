@@ -75,7 +75,7 @@ namespace StockDory
 
         public:
             //Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
-            Board() : Board("5k2/8/8/7Q/2B5/8/8/5K2 w - - 0 1") {}
+            Board() : Board("2k5/6RP/8/8/8/8/8/4K3 w - - 5 3") {}
 
             explicit Board(const std::string& fen)
             {

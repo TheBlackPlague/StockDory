@@ -9,6 +9,8 @@
 #include "Backend/Type/Color.h"
 #include "Engine.h"
 
+constexpr int maxDepth = 25;
+
 // Function to convert a Square enum to its string representation (e.g., E2 -> "e2")
 std::string squareToString(Square square) {
     return std::string(1, File(square)) + std::string(1, Rank(square));
@@ -99,13 +101,13 @@ int main(int argc, char* argv[]) {
     Color currentPlayer = chessBoard.ColorToMove();
 
     // Define a pair to hold the result (best move sequence and its score)
-    std::pair<std::vector<Move>, float> result;
+    std::pair<std::array<Move, maxDepth>, float> result;
 
     // Execute the appropriate search algorithm based on the user's choice and current player
     if (algorithmChoice == 1) { // YBWC
         if (currentPlayer == White) {
             // Perform YBWC for White
-            result = engine.YBWC<White>(
+            result = engine.YBWC<White, maxDepth>(
                 chessBoard,
                 -std::numeric_limits<float>::infinity(),
                 std::numeric_limits<float>::infinity(),
@@ -115,15 +117,15 @@ int main(int argc, char* argv[]) {
             // Check if there is at least one move in the sequence
             if (!result.first.empty()) {
                 Move bestMove = result.first.front();
-                std::cout << "White's Best Move (YBWC): " 
-                          << squareToString(bestMove.From()) << " to " 
-                          << squareToString(bestMove.To()) 
+                std::cout << "White's Best Move (YBWC): "
+                          << squareToString(bestMove.From()) << " to "
+                          << squareToString(bestMove.To())
                           << " with score " << result.second << "\n";
 
                 // Print the entire sequence of moves (best line)
                 std::cout << "Best Line: ";
                 for (const Move &move : result.first) {
-                    std::cout << squareToString(move.From()) << " to " 
+                    std::cout << squareToString(move.From()) << " to "
                               << squareToString(move.To()) << ", ";
                 }
                 std::cout << "\n";
@@ -133,7 +135,7 @@ int main(int argc, char* argv[]) {
         }
         else if (currentPlayer == Black) {
             // Perform YBWC for Black
-            result = engine.YBWC<Black>(
+            result = engine.YBWC<Black, maxDepth>(
                 chessBoard,
                 -std::numeric_limits<float>::infinity(),
                 std::numeric_limits<float>::infinity(),
@@ -143,15 +145,15 @@ int main(int argc, char* argv[]) {
             // Check if there is at least one move in the sequence
             if (!result.first.empty()) {
                 Move bestMove = result.first.front();
-                std::cout << "Black's Best Move (YBWC): " 
-                          << squareToString(bestMove.From()) << " to " 
-                          << squareToString(bestMove.To()) 
+                std::cout << "Black's Best Move (YBWC): "
+                          << squareToString(bestMove.From()) << " to "
+                          << squareToString(bestMove.To())
                           << " with score " << result.second << "\n";
 
                 // Print the entire sequence of moves (best line)
                 std::cout << "Best Line: ";
                 for (const Move &move : result.first) {
-                    std::cout << squareToString(move.From()) << " to " 
+                    std::cout << squareToString(move.From()) << " to "
                               << squareToString(move.To()) << ", ";
                 }
                 std::cout << "\n";
@@ -163,7 +165,7 @@ int main(int argc, char* argv[]) {
     else if (algorithmChoice == 2) { // PVS
         if (currentPlayer == White) {
             // Perform PVS for White
-            result = engine.PVS<White>(
+            result = engine.PVS<White, maxDepth>(
                 chessBoard,
                 -std::numeric_limits<float>::infinity(),
                 std::numeric_limits<float>::infinity(),
@@ -173,15 +175,15 @@ int main(int argc, char* argv[]) {
             // Check if there is at least one move in the sequence
             if (!result.first.empty()) {
                 Move bestMove = result.first.front();
-                std::cout << "White's Best Move (PVS): " 
-                          << squareToString(bestMove.From()) << " to " 
-                          << squareToString(bestMove.To()) 
+                std::cout << "White's Best Move (PVS): "
+                          << squareToString(bestMove.From()) << " to "
+                          << squareToString(bestMove.To())
                           << " with score " << result.second << "\n";
 
                 // Print the entire sequence of moves (best line)
                 std::cout << "Best Line: ";
                 for (const Move &move : result.first) {
-                    std::cout << squareToString(move.From()) << " to " 
+                    std::cout << squareToString(move.From()) << " to "
                               << squareToString(move.To()) << ", ";
                 }
                 std::cout << "\n";
@@ -191,7 +193,7 @@ int main(int argc, char* argv[]) {
         }
         else if (currentPlayer == Black) {
             // Perform PVS for Black
-            result = engine.PVS<Black>(
+            result = engine.PVS<Black, maxDepth>(
                 chessBoard,
                 -std::numeric_limits<float>::infinity(),
                 std::numeric_limits<float>::infinity(),
@@ -201,15 +203,15 @@ int main(int argc, char* argv[]) {
             // Check if there is at least one move in the sequence
             if (!result.first.empty()) {
                 Move bestMove = result.first.front();
-                std::cout << "Black's Best Move (PVS): " 
-                          << squareToString(bestMove.From()) << " to " 
-                          << squareToString(bestMove.To()) 
+                std::cout << "Black's Best Move (PVS): "
+                          << squareToString(bestMove.From()) << " to "
+                          << squareToString(bestMove.To())
                           << " with score " << result.second << "\n";
 
                 // Print the entire sequence of moves (best line)
                 std::cout << "Best Line: ";
                 for (const Move &move : result.first) {
-                    std::cout << squareToString(move.From()) << " to " 
+                    std::cout << squareToString(move.From()) << " to "
                               << squareToString(move.To()) << ", ";
                 }
                 std::cout << "\n";
@@ -221,7 +223,7 @@ int main(int argc, char* argv[]) {
     else if (algorithmChoice == 3) { // Parallel Alpha-Beta Nega
         if (currentPlayer == White) {
             // Perform Parallel Alpha-Beta Nega for White
-            result = engine.parallelAlphaBetaNega<White>(
+            result = engine.parallelAlphaBetaNega<White, maxDepth>(
                 chessBoard,
                 -std::numeric_limits<float>::infinity(),
                 std::numeric_limits<float>::infinity(),
@@ -231,15 +233,15 @@ int main(int argc, char* argv[]) {
             // Check if there is at least one move in the sequence
             if (!result.first.empty()) {
                 Move bestMove = result.first.front();
-                std::cout << "White's Best Move (Parallel Alpha-Beta Nega): " 
-                          << squareToString(bestMove.From()) << " to " 
-                          << squareToString(bestMove.To()) 
+                std::cout << "White's Best Move (Parallel Alpha-Beta Nega): "
+                          << squareToString(bestMove.From()) << " to "
+                          << squareToString(bestMove.To())
                           << " with score " << result.second << "\n";
 
                 // Print the entire sequence of moves (best line)
                 std::cout << "Best Line: ";
                 for (const Move &move : result.first) {
-                    std::cout << squareToString(move.From()) << " to " 
+                    std::cout << squareToString(move.From()) << " to "
                               << squareToString(move.To()) << ", ";
                 }
                 std::cout << "\n";
@@ -249,7 +251,7 @@ int main(int argc, char* argv[]) {
         }
         else if (currentPlayer == Black) {
             // Perform Parallel Alpha-Beta Nega for Black
-            result = engine.parallelAlphaBetaNega<Black>(
+            result = engine.parallelAlphaBetaNega<Black, maxDepth>(
                 chessBoard,
                 -std::numeric_limits<float>::infinity(),
                 std::numeric_limits<float>::infinity(),
@@ -259,15 +261,15 @@ int main(int argc, char* argv[]) {
             // Check if there is at least one move in the sequence
             if (!result.first.empty()) {
                 Move bestMove = result.first.front();
-                std::cout << "Black's Best Move (Parallel Alpha-Beta Nega): " 
-                          << squareToString(bestMove.From()) << " to " 
-                          << squareToString(bestMove.To()) 
+                std::cout << "Black's Best Move (Parallel Alpha-Beta Nega): "
+                          << squareToString(bestMove.From()) << " to "
+                          << squareToString(bestMove.To())
                           << " with score " << result.second << "\n";
 
                 // Print the entire sequence of moves (best line)
                 std::cout << "Best Line: ";
                 for (const Move &move : result.first) {
-                    std::cout << squareToString(move.From()) << " to " 
+                    std::cout << squareToString(move.From()) << " to "
                               << squareToString(move.To()) << ", ";
                 }
                 std::cout << "\n";
@@ -280,6 +282,62 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
+// int main() {
+//     StockDory::Board chessBoard;
+//     Engine engine;
+//     int depth = 1;
+//     const StockDory::SimplifiedMoveList<White> moveList(chessBoard);
+//
+//     std::cout << "White's possible moves:\n";
+//     for (uint8_t i = 0; i < moveList.Count(); i++) {
+//         Move nextMove = moveList[i];
+//         std::cout << "Move " << static_cast<int>(i + 1) << ": "
+//                   << squareToString(nextMove.From()) << " to "
+//                   << squareToString(nextMove.To()) << "\n";
+//     }
+//
+//     if (chessBoard.ColorToMove() == White) {
+//         std::pair<std::array<Move, maxDepth>, float> result3 = engine.PVS<White, maxDepth>(chessBoard, -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), depth);
+//
+//         // Check if there is at least one move in the sequence
+//         if (!result3.first.empty()) {
+//             Move bestMove = result3.first.front();
+//             std::cout << "White Result is: " << squareToString(bestMove.From()) << " to " << squareToString(bestMove.To())
+//                       << " with score " << result3.second << "\n";
+//
+//             // Print the entire sequence of moves
+//             std::cout << "Best line: ";
+//             for (int i = 0; i < depth; i++) {
+//                 Move move = result3.first[i];
+//                 std::cout << squareToString(move.From()) << " to " << squareToString(move.To()) << ", ";
+//             }
+//             std::cout << "\n";
+//         } else {
+//             std::cout << "No moves available for White.\n";
+//         }
+//     }
+//     else if (chessBoard.ColorToMove() == Black) {
+//         std::pair<std::array<Move, maxDepth>, float> result3 = engine.YBWC<Black, maxDepth>(chessBoard, -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), depth);
+//
+//         // Check if there is at least one move in the sequence
+//         if (!result3.first.empty()) {
+//             Move bestMove = result3.first.front();
+//             std::cout << "Black Result is: " << squareToString(bestMove.From()) << " to " << squareToString(bestMove.To())
+//                       << " with score " << result3.second << "\n";
+//
+//             // Print the entire sequence of moves
+//             std::cout << "Best line: ";
+//             for (const Move &move : result3.first) {
+//                 std::cout << squareToString(move.From()) << " to " << squareToString(move.To()) << ", ";
+//             }
+//             std::cout << "\n";
+//         } else {
+//             std::cout << "No moves available for Black.\n";
+//         }
+//     }
+//     return 0;
+// }
+
 
     /*
     // The following sections are commented out but can be enabled for alternative algorithms
@@ -289,7 +347,7 @@ int main(int argc, char* argv[]) {
 
     /*
     if (chessBoard.ColorToMove() == White) {
-        std::pair<std::vector<Move>, float> result3 = engine.YBWC<White>(
+        std::pair<std::array<Move, maxDepth>, float> result3 = engine.YBWC<White, maxDepth>(
             chessBoard, -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), 7);
 
         // Check if there is at least one move in the sequence
@@ -309,7 +367,7 @@ int main(int argc, char* argv[]) {
         }
     }
     else if (chessBoard.ColorToMove() == Black) {
-        std::pair<std::vector<Move>, float> result3 = engine.YBWC<Black>(
+        std::pair<std::array<Move, maxDepth>, float> result3 = engine.YBWC<Black, maxDepth>(
             chessBoard, -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), 2);
 
         // Check if there is at least one move in the sequence
@@ -330,7 +388,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (chessBoard.ColorToMove() == White) {
-        std::pair<std::vector<Move>, float> result3 = engine.PVS<White>(
+        std::pair<std::array<Move, maxDepth>, float> result3 = engine.PVS<White, maxDepth>(
             chessBoard, -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), 7);
 
         // Check if there is at least one move in the sequence
@@ -350,7 +408,7 @@ int main(int argc, char* argv[]) {
         }
     }
     else if (chessBoard.ColorToMove() == Black) {
-        std::pair<std::vector<Move>, float> result3 = engine.PVS<Black>(
+        std::pair<std::array<Move, maxDepth>, float> result3 = engine.PVS<Black, maxDepth>(
             chessBoard, -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), 2);
 
         // Check if there is at least one move in the sequence
