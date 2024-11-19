@@ -74,8 +74,8 @@ namespace StockDory
             }};
 
         public:
-            //Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
-            Board() : Board("2k5/6RP/8/8/8/8/8/4K3 w - - 5 3") {}
+            Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
+            // Board() : Board("8/7P/k1K1b3/2n5/8/8/8/2R5 w - - 0 1") {}
 
             explicit Board(const std::string& fen)
             {
