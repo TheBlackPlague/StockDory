@@ -73,11 +73,24 @@ namespace StockDory
                 {Square::F8, Square::D8}
             }};
 
+            // ----- New Castling Performed Flags -----
+            bool hasWhiteCastledKingside = false;
+            bool hasWhiteCastledQueenside = false;
+            bool hasBlackCastledKingside = false;
+            bool hasBlackCastledQueenside = false;
+
         public:
             Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
             // Board() : Board("8/7P/k1K1b3/2n5/8/8/8/2R5 w - - 0 1") {}
 
+            // Constructor that initializes the board with a given FEN
             explicit Board(const std::string& fen)
+            {
+                SetFEN(fen);
+            }
+
+            // ----- New SetFEN Method -----
+            void SetFEN(const std::string& fen)
             {
                 PieceColor none = PieceColor(NAP, NAC);
                 std::fill(std::begin(PieceAndColor), std::end(PieceAndColor), none);
@@ -87,24 +100,32 @@ namespace StockDory
 
                 std::vector<std::string> splitFen = strutil::split(fen, " ");
 
-                assert(splitFen.size() == 6);
+                if (splitFen.size() != 6) {
+                    throw std::invalid_argument("Invalid FEN string: Must have 6 fields.");
+                }
 
                 std::vector<std::string> splitPosition = strutil::split(splitFen[0], "/");
+                if (splitPosition.size() != 8) {
+                    throw std::invalid_argument("Invalid FEN string: Must have 8 ranks.");
+                }
                 std::reverse(splitPosition.begin(), splitPosition.end());
 
-                assert(splitPosition.size() == 8);
+                // Reset Castling Performed Flags
+                hasWhiteCastledKingside = false;
+                hasWhiteCastledQueenside = false;
+                hasBlackCastledKingside = false;
+                hasBlackCastledQueenside = false;
 
                 for (uint8_t v = 0; v < 8; v++) {
                     std::string& rankStr = splitPosition[v];
                     uint8_t h = 0;
                     for (char p : rankStr) {
                         if (isdigit(p)) {
-                            h += static_cast<uint8_t>(p - 48);
+                            h += static_cast<uint8_t>(p - '0');
                             continue;
                         }
 
                         Color color = Black;
-
                         if (isupper(p)) color = White;
 
                         Piece piece = NAP;
@@ -127,34 +148,50 @@ namespace StockDory
                             case 'k':
                                 piece = King;
                                 break;
+                            default:
+                                throw std::invalid_argument("Invalid piece character in FEN.");
+                        }
+
+                        if (h >= 8) {
+                            throw std::out_of_range("Invalid FEN string: File exceeds 'h'.");
                         }
 
                         uint8_t idx = v * 8 + h;
                         auto sq = static_cast<Square>(idx);
                         Set<true>(BB[color][piece], sq);
                         PieceAndColor[idx] = PieceColor(piece, color);
-                        if (piece == NAP) std::cout << "ERROR" << std::endl;
                         Hash = HashPiece<ZOBRIST>(Hash, piece, color, sq);
 
                         h++;
                     }
+
+                    if (h != 8) {
+                        throw std::invalid_argument("Invalid FEN string: Rank does not sum to 8 squares.");
+                    }
                 }
 
+                // Set Color to Move
                 if (splitFen[1][0] == 'w') {
                     CastlingRightAndColorToMove = White << 4;
                     Hash = HashColorFlip<ZOBRIST>(Hash);
-                } else {
+                } else if (splitFen[1][0] == 'b') {
                     CastlingRightAndColorToMove = Black << 4;
+                } else {
+                    throw std::invalid_argument("Invalid FEN string: Invalid color to move.");
                 }
 
+                // Set Castling Rights
                 std::string& castlingData = splitFen[2];
-                CastlingRightAndColorToMove |= (castlingData.find('K') != std::string::npos ? 0x8 : 0x0);
-                CastlingRightAndColorToMove |= (castlingData.find('Q') != std::string::npos ? 0x4 : 0x0);
-                CastlingRightAndColorToMove |= (castlingData.find('k') != std::string::npos ? 0x2 : 0x0);
-                CastlingRightAndColorToMove |= (castlingData.find('q') != std::string::npos ? 0x1 : 0x0);
+                if (castlingData != "-") {
+                    CastlingRightAndColorToMove |= (castlingData.find('K') != std::string::npos ? WhiteKCastleMask : 0x0);
+                    CastlingRightAndColorToMove |= (castlingData.find('Q') != std::string::npos ? WhiteQCastleMask : 0x0);
+                    CastlingRightAndColorToMove |= (castlingData.find('k') != std::string::npos ? BlackKCastleMask : 0x0);
+                    CastlingRightAndColorToMove |= (castlingData.find('q') != std::string::npos ? BlackQCastleMask : 0x0);
+                }
 
                 Hash = HashCastling<ZOBRIST>(Hash, CastlingRightAndColorToMove & CastlingMask);
 
+                // Set En Passant Target
                 EnPassantTarget = BBDefault;
                 std::string& epData = splitFen[3];
                 if (epData.length() == 2) {
@@ -163,9 +200,14 @@ namespace StockDory
                     if (AttackTable::Pawn[Opposite(ColorToMove())][epSq] & BB[ColorToMove()][Pawn]) {
                         EnPassantTarget = FromSquare(epSq);
                         Hash = HashEnPassant<ZOBRIST>(Hash, epSq);
+                    } else {
+                        throw std::invalid_argument("Invalid En Passant target in FEN.");
                     }
+                } else if (epData != "-") {
+                    throw std::invalid_argument("Invalid En Passant field in FEN.");
                 }
 
+                // Update Color Bitboards
                 ColorBB[Color::White] = BBDefault;
                 ColorBB[Color::Black] = BBDefault;
                 for (Piece p = Pawn; p != NAP; p = Next(p)) {
@@ -173,10 +215,20 @@ namespace StockDory
                     ColorBB[Black] |= BB[Black][p];
                 }
                 ColorBB[NAC] = ~(ColorBB[White] | ColorBB[Black]);
+
+                // Optional: You can parse halfmove clock and fullmove number if needed
+                // For simplicity, they are set to '0' and '1' respectively in the Fen() method
             }
+            // ----- End of SetFEN Method -----
 
+            // ----- Getter Methods for Castling Performed Flags -----
+            bool HasWhiteCastledKingside() const { return hasWhiteCastledKingside; }
+            bool HasWhiteCastledQueenside() const { return hasWhiteCastledQueenside; }
+            bool HasBlackCastledKingside() const { return hasBlackCastledKingside; }
+            bool HasBlackCastledQueenside() const { return hasBlackCastledQueenside; }
+            // ----- End of Getter Methods -----
 
-
+            // ----- Existing Methods -----
             [[nodiscard]]
             inline std::string Fen() const
             {
