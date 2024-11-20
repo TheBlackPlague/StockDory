@@ -73,7 +73,7 @@ public:
             }
         }
 
-        int materialBalance = static_cast<int>(whiteMaterial - blackMaterial);
+        int materialBalance = static_cast<int>(whiteMaterial - blackMaterial);\
 
         int castlingBonus = 0;
 
