@@ -486,7 +486,66 @@ class Engine {
          }
     
         template<Color color, int maxDepth>
-        std::pair<std::array<Move, maxDepth>, float> naiveParallel(const StockDory::Board &chessBoard, float alpha, float beta, int depth) {
+        std::pair<std::array<Move, maxDepth>, float> naiveParallelAlphaBeta(const StockDory::Board &chessBoard, float alpha, float beta, int depth) {
+            std::array<Move, maxDepth> bestLine;
+            float bestScore = -std::numeric_limits<float>::infinity();
+            // create move list for player
+            const StockDory::SimplifiedMoveList<color> moveList(chessBoard);
+             //check for mate
+            if (moveList.Count() == 0 and chessBoard.Checked<color>()) {
+                return std::make_pair(std::array<Move, maxDepth>(), -mateScore-depth);
+            }
+            //stalemate
+            else if (moveList.Count() == 0){
+                return std::make_pair(std::array<Move, maxDepth>(), 0);
+            }
+            if (depth == 0) {
+                float score = evaluation.eval(chessBoard);
+                if (color == Black) {
+                    score *= -1;
+                }
+                return std::make_pair(std::array<Move, maxDepth>(), score);
+            }
+
+            constexpr enum Color Ocolor = Opposite(color);
+
+            //Dynamic schedule since we do not know the ordering of moves or the number of moves in each call
+            #pragma omp parallel for shared(alpha, beta) schedule(dynamic)
+            for (uint8_t i = 0; i < moveList.Count(); i++) {
+                // int thread = omp_get_thread_num();
+                // // printf("%d\n", thread);
+                // printf("I hit the for loop for thread %d \n", thread);
+                if (alpha >= beta) {
+                    continue; // Mimic cutoff because you cannot break in
+                }
+                //Private copy of the board for each thread
+                StockDory::Board threadBoard = chessBoard;
+                Move nextMove = moveList[i];
+                Square from = nextMove.From();
+                Square to = nextMove.To();
+                Piece promotion = nextMove.Promotion();
+                PreviousState prevState = threadBoard.Move<0>(from, to, promotion);
+                std::pair<std::array<Move, maxDepth>, float> localResult = alphaBetaNega<Ocolor, maxDepth>(threadBoard, -beta, -alpha, depth - 1);
+                localResult.second = -localResult.second;
+                threadBoard.UndoMove<0>(prevState, from, to);
+                #pragma omp critical
+                {
+                    if (localResult.second > bestScore) {
+                        bestScore = localResult.second;
+                        bestLine[0] = nextMove;
+                        for (int j = 0; j < depth - 1; j++) {
+                            bestLine[j + 1] = localResult.first[j];
+                        }
+                        alpha = std::max(alpha, bestScore);
+                    }
+                }
+            }
+
+            return std::make_pair(bestLine, bestScore);
+        }
+
+        template<Color color, int maxDepth>
+        std::pair<std::array<Move, maxDepth>, float> naiveParallelYBAlphaBeta(const StockDory::Board &chessBoard, float alpha, float beta, int depth) {
             std::array<Move, maxDepth> bestLine;
             float bestScore = -std::numeric_limits<float>::infinity();
             // create move list for player
@@ -517,7 +576,7 @@ class Engine {
             //create local copy for safety
             StockDory::Board boardCopy = chessBoard;
             PreviousState prevState = boardCopy.Move<0>(from, to, promotion);
-            std::pair<std::array<Move, maxDepth>, float> result = YBWC<Ocolor, maxDepth>(boardCopy, -beta, -alpha, depth - 1);
+            std::pair<std::array<Move, maxDepth>, float> result = naiveParallelYBAlphaBeta<Ocolor, maxDepth>(boardCopy, -beta, -alpha, depth - 1);
             result.second = -result.second;
             boardCopy.UndoMove<0>(prevState, from, to);
             if (result.second > bestScore) {

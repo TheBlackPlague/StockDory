@@ -246,14 +246,14 @@ int main(int argc, char* argv[]) {
             "8/8/k7/2K5/8/2Q5/b1R5/n7 w - - 0 1",
             "8/8/k1K1b3/2n5/8/8/8/2R5 w - - 0 1",
             "8/7P/k1K1b3/2n5/8/8/8/2R5 w - - 0 1",
-            "7k/7n/8/8/8/7B/7R/6RK w - - 0 1"
+            "7k/7n/8/8/8/7B/7R/6RK w - - 0 1",
         };
         std::ofstream resultFile("results.txt");
         if (!resultFile.is_open()) {
             std::cerr << "Error: Unable to open results.txt for writing\n";
             return 0;
         }
-        std::cout << "Testing mate in 3 FENs\n";
+        std::cout << "Testing mate in 2 FENs\n";
         for (const char* fen : mateIn3FENs) {
             StockDory::Board chessBoard(fen);
             resultFile << "Current Fen: " << fen << "\n";
@@ -505,7 +505,7 @@ int main(int argc, char* argv[]) {
                     for (int i = 0; i < 20; i++) {
                         if (chessBoard.ColorToMove() == White) {
                             tstart = omp_get_wtime();
-                            std::pair<std::array<Move, maxDepth>, float> result = engine.naiveParallel<White, maxDepth>(
+                            std::pair<std::array<Move, maxDepth>, float> result = engine.naiveParallelAlphaBeta<White, maxDepth>(
                                 chessBoard,
                                 -std::numeric_limits<float>::infinity(),
                                 std::numeric_limits<float>::infinity(),
@@ -534,7 +534,7 @@ int main(int argc, char* argv[]) {
                         }
                         else if (chessBoard.ColorToMove() == Black) {
                             tstart = omp_get_wtime();
-                            std::pair<std::array<Move, maxDepth>, float> result = engine.naiveParallel<Black, maxDepth>(
+                            std::pair<std::array<Move, maxDepth>, float> result = engine.naiveParallelAlphaBeta<Black, maxDepth>(
                                 chessBoard,
                                 -std::numeric_limits<float>::infinity(),
                                 std::numeric_limits<float>::infinity(),
@@ -565,6 +565,77 @@ int main(int argc, char* argv[]) {
                     averageTime = totalTime/20;
                     std::cout << "Average time for naive alpha beta parallel in 20 iterations is: " << averageTime << " with " << threads << " threads" << "\n";
                     resultFile << "Naive Parallel Alpha Beta," << threads << "," << averageTime << "\n";
+                }
+
+                for (int threads : numThreads) {
+                    omp_set_num_threads(threads);
+                    std::cout << "Algorithm: Naive Alpha Beta Parallel\n" << std::endl;
+
+                    std::cout << "Total number of threads: " << threads << "\n" << std::endl;
+                    totalTime = 0;
+                    for (int i = 0; i < 20; i++) {
+                        if (chessBoard.ColorToMove() == White) {
+                            tstart = omp_get_wtime();
+                            std::pair<std::array<Move, maxDepth>, float> result = engine.naiveParallelYBAlphaBeta<White, maxDepth>(
+                                chessBoard,
+                                -std::numeric_limits<float>::infinity(),
+                                std::numeric_limits<float>::infinity(),
+                                depth
+                            );
+                            tend = omp_get_wtime();
+                            ttaken = tend - tstart;
+                            totalTime += ttaken;
+
+                            printf("Time taken for main part naive alpha beta parallel with YBWC combo: %f\n", ttaken);
+
+                            if (!result.first.empty()) {
+                                Move bestMove = result.first.front();
+                                std::cout << "White Result is: " << squareToString(bestMove.From()) << " to " << squareToString(bestMove.To())
+                                          << " with score " << result.second << "\n";
+
+                                std::cout << "Best line: ";
+                                for (int i = 0; i < depth; i++) {
+                                    Move move = result.first[i];
+                                    std::cout << squareToString(move.From()) << " to " << squareToString(move.To()) << ", ";
+                                }
+                                std::cout << "\n";
+                            } else {
+                                std::cout << "No moves available for White.\n";
+                            }
+                        }
+                        else if (chessBoard.ColorToMove() == Black) {
+                            tstart = omp_get_wtime();
+                            std::pair<std::array<Move, maxDepth>, float> result = engine.naiveParallelYBAlphaBeta<Black, maxDepth>(
+                                chessBoard,
+                                -std::numeric_limits<float>::infinity(),
+                                std::numeric_limits<float>::infinity(),
+                                depth
+                            );
+                            tend = omp_get_wtime();
+                            ttaken = tend - tstart;
+                            totalTime += ttaken;
+
+                            printf("Time taken for main part naive alpha beta parallel with YBWC combo: %f\n", ttaken);
+
+                            if (!result.first.empty()) {
+                                Move bestMove = result.first.front();
+                                std::cout << "White Result is: " << squareToString(bestMove.From()) << " to " << squareToString(bestMove.To())
+                                          << " with score " << result.second << "\n";
+
+                                std::cout << "Best line: ";
+                                for (int i = 0; i < depth; i++) {
+                                    Move move = result.first[i];
+                                    std::cout << squareToString(move.From()) << " to " << squareToString(move.To()) << ", ";
+                                }
+                                std::cout << "\n";
+                            } else {
+                                std::cout << "No moves available for White.\n";
+                            }
+                        }
+                    }
+                    averageTime = totalTime/20;
+                    std::cout << "Average time for naive alpha beta parallel with YBWC combo in 20 iterations is: " << averageTime << " with " << threads << " threads" << "\n";
+                    resultFile << "Naive YBWC Parallel Alpha Beta," << threads << "," << averageTime << "\n";
                 }
 
                 for (int threads : numThreads) {
