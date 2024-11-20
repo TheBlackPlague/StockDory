@@ -42,10 +42,17 @@ add_executable(MulticoreChess main.cpp
         Evaluation.h
         Engine.h
 )
+add_executable(play-bot play-bot.cpp
+        Backend/Move/MoveList.h
+        SimplifiedMoveList.h
+        Evaluation.h
+        Engine.h
+)
 
 find_package(OpenMP REQUIRED)
 if (OpenMP_C_FOUND)
     target_compile_options(MulticoreChess PUBLIC -fopenmp)
     target_link_options(MulticoreChess PUBLIC -fopenmp)
-
+    target_compile_options(play-bot PUBLIC -fopenmp)
+    target_link_options(play-bot PUBLIC -fopenmp)
 endif()
