@@ -35,7 +35,9 @@ rel_depth4_pvs = [0.80, 1.16, 0.62, 0.11]
 plt.figure(figsize=(10, 6))
 plt.plot(threads, depth3_ybwc, marker="o", label="YBWC")
 plt.plot(threads, depth3_naive_ab, marker="o", label="Naive Parallel Alpha Beta")
-plt.plot(threads, depth3_naive_ybwc, marker="o", label="Naive YBWC Parallel Alpha Beta")
+plt.plot(
+    threads, depth3_naive_ybwc, marker="o", label="Naive Parallel Alpha Beta with PV"
+)
 plt.plot(threads, depth3_minimax, marker="o", label="Parallel Minimax")
 plt.plot(threads, depth3_pvs, marker="o", label="PVS")
 plt.title("Nested Inner Speedup Results (Depth 3)")
@@ -50,7 +52,9 @@ plt.show()
 plt.figure(figsize=(10, 6))
 plt.plot(threads, depth4_ybwc, marker="o", label="YBWC")
 plt.plot(threads, depth4_naive_ab, marker="o", label="Naive Parallel Alpha Beta")
-plt.plot(threads, depth4_naive_ybwc, marker="o", label="Naive YBWC Parallel Alpha Beta")
+plt.plot(
+    threads, depth4_naive_ybwc, marker="o", label="Naive Parallel Alpha Beta with PV"
+)
 plt.plot(threads, depth4_minimax, marker="o", label="Parallel Minimax")
 plt.plot(threads, depth4_pvs, marker="o", label="PVS")
 plt.title("Nested Inner Speedup Results (Depth 4)")
@@ -66,7 +70,10 @@ plt.figure(figsize=(10, 6))
 plt.plot(threads, rel_depth3_ybwc, marker="o", label="YBWC")
 plt.plot(threads, rel_depth3_naive_ab, marker="o", label="Naive Parallel Alpha Beta")
 plt.plot(
-    threads, rel_depth3_naive_ybwc, marker="o", label="Naive YBWC Parallel Alpha Beta"
+    threads,
+    rel_depth3_naive_ybwc,
+    marker="o",
+    label="Naive Parallel Alpha Beta with PV",
 )
 plt.plot(threads, rel_depth3_minimax, marker="o", label="Parallel Minimax")
 plt.plot(threads, rel_depth3_pvs, marker="o", label="PVS")
@@ -83,7 +90,10 @@ plt.figure(figsize=(10, 6))
 plt.plot(threads, rel_depth4_ybwc, marker="o", label="YBWC")
 plt.plot(threads, rel_depth4_naive_ab, marker="o", label="Naive Parallel Alpha Beta")
 plt.plot(
-    threads, rel_depth4_naive_ybwc, marker="o", label="Naive YBWC Parallel Alpha Beta"
+    threads,
+    rel_depth4_naive_ybwc,
+    marker="o",
+    label="Naive Parallel Alpha Beta with PV",
 )
 plt.plot(threads, rel_depth4_minimax, marker="o", label="Parallel Minimax")
 plt.plot(threads, rel_depth4_pvs, marker="o", label="PVS")

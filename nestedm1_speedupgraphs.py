@@ -34,7 +34,9 @@ rel_depth2_naive_ab = [0.98, 1.60, 2.54, 3.32]
 # Plot Inner Speedup Results (Depth 1)
 plt.figure(figsize=(10, 6))
 plt.plot(threads, depth1_minimax, marker="o", label="Parallel Minimax")
-plt.plot(threads, depth1_naive_ybwc, marker="o", label="Naive YBWC Parallel Alpha Beta")
+plt.plot(
+    threads, depth1_naive_ybwc, marker="o", label="Naive Parallel Alpha Beta with PV"
+)
 plt.plot(threads, depth1_ybwc, marker="o", label="YBWC")
 plt.plot(threads, depth1_pvs, marker="o", label="PVS")
 plt.plot(threads, depth1_naive_ab, marker="o", label="Naive Parallel Alpha Beta")
@@ -49,7 +51,9 @@ plt.show()
 # Plot Inner Speedup Results (Depth 2)
 plt.figure(figsize=(10, 6))
 plt.plot(threads, depth2_minimax, marker="o", label="Parallel Minimax")
-plt.plot(threads, depth2_naive_ybwc, marker="o", label="Naive YBWC Parallel Alpha Beta")
+plt.plot(
+    threads, depth2_naive_ybwc, marker="o", label="Naive Parallel Alpha Beta with PV"
+)
 plt.plot(threads, depth2_ybwc, marker="o", label="YBWC")
 plt.plot(threads, depth2_pvs, marker="o", label="PVS")
 plt.plot(threads, depth2_naive_ab, marker="o", label="Naive Parallel Alpha Beta")
@@ -65,7 +69,10 @@ plt.show()
 plt.figure(figsize=(10, 6))
 plt.plot(threads, rel_depth1_minimax, marker="o", label="Parallel Minimax")
 plt.plot(
-    threads, rel_depth1_naive_ybwc, marker="o", label="Naive YBWC Parallel Alpha Beta"
+    threads,
+    rel_depth1_naive_ybwc,
+    marker="o",
+    label="Naive Parallel Alpha Beta with PV",
 )
 plt.plot(threads, rel_depth1_ybwc, marker="o", label="YBWC")
 plt.plot(threads, rel_depth1_pvs, marker="o", label="PVS")
@@ -82,7 +89,10 @@ plt.show()
 plt.figure(figsize=(10, 6))
 plt.plot(threads, rel_depth2_minimax, marker="o", label="Parallel Minimax")
 plt.plot(
-    threads, rel_depth2_naive_ybwc, marker="o", label="Naive YBWC Parallel Alpha Beta"
+    threads,
+    rel_depth2_naive_ybwc,
+    marker="o",
+    label="Naive Parallel Alpha Beta with PV",
 )
 plt.plot(threads, rel_depth2_ybwc, marker="o", label="YBWC")
 plt.plot(threads, rel_depth2_pvs, marker="o", label="PVS")

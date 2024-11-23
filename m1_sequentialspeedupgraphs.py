@@ -20,7 +20,9 @@ depth2_pvs = [0.99, 1.58, 2.41, 2.84, 2.89, 2.27, 1.95]
 # Plot Depth 1 results
 plt.figure(figsize=(10, 6))
 plt.plot(threads, depth1_ybwc, marker="o", label="YBWC")
-plt.plot(threads, depth1_naive_ybwc, marker="o", label="Naive YBWC Parallel Alpha Beta")
+plt.plot(
+    threads, depth1_naive_ybwc, marker="o", label="Naive Parallel Alpha Beta with PV"
+)
 plt.plot(threads, depth1_naive_ab, marker="o", label="Naive Parallel Alpha Beta")
 plt.plot(threads, depth1_minimax, marker="o", label="Parallel Minimax")
 plt.plot(threads, depth1_pvs, marker="o", label="PVS")
@@ -36,7 +38,9 @@ plt.show()
 # Plot Depth 2 results
 plt.figure(figsize=(10, 6))
 plt.plot(threads, depth2_ybwc, marker="o", label="YBWC")
-plt.plot(threads, depth2_naive_ybwc, marker="o", label="Naive YBWC Parallel Alpha Beta")
+plt.plot(
+    threads, depth2_naive_ybwc, marker="o", label="Naive Parallel Alpha Beta with PV"
+)
 plt.plot(threads, depth2_naive_ab, marker="o", label="Naive Parallel Alpha Beta")
 plt.plot(threads, depth2_minimax, marker="o", label="Parallel Minimax")
 plt.plot(threads, depth2_pvs, marker="o", label="PVS")

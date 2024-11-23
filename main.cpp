@@ -635,7 +635,7 @@ int main(int argc, char* argv[]) {
                     }
                     averageTime = totalTime/20;
                     std::cout << "Average time for naive alpha beta parallel with YBWC combo in 20 iterations is: " << averageTime << " with " << threads << " threads" << "\n";
-                    resultFile << "Naive YBWC Parallel Alpha Beta," << threads << "," << averageTime << "\n";
+                    resultFile << "Naive Parallel Alpha Beta with PV," << threads << "," << averageTime << "\n";
                 }
 
                 for (int threads : numThreads) {
