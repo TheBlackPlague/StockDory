@@ -29,7 +29,8 @@ void displayAlgorithmOptions() {
     std::cout << "Choose Search Algorithm:\n";
     std::cout << "1. Young Brothers Wait Concept (YBWC)\n";
     std::cout << "2. Principal Variation Search (PVS)\n";
-    std::cout << "Enter your choice (1, 2): ";
+    std::cout << "3. Parallel Minimax\n";
+    std::cout << "Enter your choice (1, 2, 3): ";
 }
 
 int main(int argc, char* argv[]) {
@@ -60,14 +61,14 @@ int main(int argc, char* argv[]) {
         if (std::cin.fail()) {
             std::cin.clear(); // Clear the error flags
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Discard invalid input
-            std::cerr << "Invalid input. Please enter 1, 2.\n";
+            std::cerr << "Invalid input. Please enter 1, 2, or 3.\n";
             continue;
         }
 
-        if (algorithmChoice == 1 || algorithmChoice == 2) {
+        if (algorithmChoice == 1 || algorithmChoice == 2 || algorithmChoice == 3) {
             break; // Valid choice
         } else {
-            std::cerr << "Invalid choice: " << algorithmChoice << ". Please enter 1, 2.\n";
+            std::cerr << "Invalid choice: " << algorithmChoice << ". Please enter 1, 2 or 3.\n";
         }
     }
 
@@ -119,8 +120,8 @@ int main(int argc, char* argv[]) {
                 // Perform YBWC for White
                 result = engine.YBWC<White, maxDepth>(
                     chessBoard,
-                    std::numeric_limits<int>::min(),
-                    std::numeric_limits<int>::max(),
+                    -50000,
+                    50000,
                     depth
                 );
 
@@ -160,8 +161,8 @@ int main(int argc, char* argv[]) {
                 // Perform YBWC for Black
                 result = engine.YBWC<Black, maxDepth>(
                     chessBoard,
-                    std::numeric_limits<int>::min(),
-                    std::numeric_limits<int>::max(),
+                    -50000,
+                    50000,
                     depth
                 );
 
@@ -194,14 +195,86 @@ int main(int argc, char* argv[]) {
                 }
             }
         }
-        else if (algorithmChoice == 2) { // PVS
+        else if (algorithmChoice == 3) { // Parallel Minimax
+            if (currentPlayer == White) {
+                std::cout << "Performing Parallel Minimax for White...\n";
+                // Perform Parallel Minimax for White
+                std::pair<std::array<Move, maxDepth>, int> result = engine.parallelMinimax<White, maxDepth>(
+                    chessBoard,
+                    depth
+                );
+
+                Move bestMove = result.first.front();
+                std::cout << "White's Best Move (Parallel Minimax): "
+                          << squareToString(bestMove.From()) << " to "
+                          << squareToString(bestMove.To())
+                          << " with score " << result.second << "\n";
+
+                // Print the entire sequence of moves (best line)
+                std::cout << "Best Line: ";
+                for (const Move &move : result.first) {
+                    if (move.From() == move.To()) {
+                        break;
+                    }
+                    std::cout << squareToString(move.From()) << " to "
+                              << squareToString(move.To()) << ", ";
+                }
+                std::cout << "\n";
+
+                // Execute the move on the board using the existing Move<0> method
+                try {
+                    chessBoard.Move<0>(bestMove.From(), bestMove.To());
+                    std::cout << "Move executed successfully.\n";
+                }
+                catch (const std::exception& e) {
+                    std::cerr << "Error executing move: " << e.what() << "\n";
+                    return 1;
+                }
+            }
+            else if (currentPlayer == Black) {
+                std::cout << "Performing Parallel Minimax for Black...\n";
+                // Perform Parallel Minimax for Black
+                std::pair<std::array<Move, maxDepth>, int> result = engine.parallelMinimax<White, maxDepth>(
+                    chessBoard,
+                    depth
+                );
+
+                Move bestMove = result.first.front();
+                std::cout << "Black's Best Move (Parallel Minimax): "
+                          << squareToString(bestMove.From()) << " to "
+                          << squareToString(bestMove.To())
+                          << " with score " << result.second << "\n";
+
+                // Print the entire sequence of moves (best line)
+                std::cout << "Best Line: ";
+                for (const Move &move : result.first) {
+                    if (move.From() == move.To()) {
+                        break;
+                    }
+                    std::cout << squareToString(move.From()) << " to "
+                              << squareToString(move.To()) << ", ";
+                }
+                std::cout << "\n";
+
+                // Execute the move on the board using the existing Move<0> method
+                try {
+                    chessBoard.Move<0>(bestMove.From(), bestMove.To());
+                    std::cout << "Move executed successfully.\n";
+                }
+                catch (const std::exception& e) {
+                    std::cerr << "Error executing move: " << e.what() << "\n";
+                    return 1;
+                }
+            }
+        }
+        else if (algorithmChoice == 2){
             if (currentPlayer == White) {
                 std::cout << "Performing PVS for White...\n";
                 // Perform PVS for White
                 result = engine.PVS<White, maxDepth>(
                     chessBoard,
-                    std::numeric_limits<int>::min(),
-                    std::numeric_limits<int>::max(),
+                    -50000,
+                    50000,
                     depth
                 );
 
@@ -237,8 +310,8 @@ int main(int argc, char* argv[]) {
                 // Perform PVS for Black
                 result = engine.PVS<Black, maxDepth>(
                     chessBoard,
-                    std::numeric_limits<int>::min(),
-                    std::numeric_limits<int>::max(),
+                    -50000,
+                    50000,
                     depth
                 );
 
