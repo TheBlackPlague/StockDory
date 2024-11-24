@@ -12,7 +12,7 @@
 #include "Evaluation.h"
 #include <utility>
 #include <omp.h>
-
+#include <queue>
 
 #include "SimplifiedMoveList.h"
 
@@ -975,7 +975,7 @@ std::pair<std::array<Move, maxDepth>, float> YBWCWS(StockDory::Board &chessBoard
                     bestScore = result.second;
                     bestLine[0] = nextMove;
                     bestLineSize = 1;
-                    for (int j = 0; j < depth - 1; j++) {
+                    for (int j = 0; j < depth - 1 && j < result.first.size(); j++) {
                         bestLine[bestLineSize++] = result.first[j];
                     }
                 }
