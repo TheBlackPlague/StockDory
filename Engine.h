@@ -957,7 +957,7 @@ std::pair<std::array<Move, maxDepth>, float> YBWCWS(StockDory::Board &chessBoard
             }
 
             // Perform the move
-            threadBoard = chessBoard; // Copy board state to ensure no race condition
+            threadBoard = chessBoard; // Copy board state to ensure no race condition ...
             Square from = nextMove.From();
             Square to = nextMove.To();
             Piece promotion = nextMove.Promotion();
