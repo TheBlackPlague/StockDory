@@ -8,7 +8,8 @@
 
 #include "../Move/OrderedMoveList.h"
 #include "TimeControl.h"
-
+#include "../Move/KillerTable.h"
+#include "../Move/HistoryTable.h"
 #include "../../Backend/Board.h"
 
 namespace StockDory
@@ -37,8 +38,8 @@ namespace StockDory
 
             constexpr static uint64_t MoveInstantTime      = 500;
 
-            constexpr static KillerTable  DummyKTable;
-            constexpr static HistoryTable DummyHTable;
+            constexpr static KillerTable  DummyKTable = KillerTable();
+            constexpr static HistoryTable DummyHTable = HistoryTable();
 
         public:
             static TimeControl Default()
