@@ -17,42 +17,41 @@ namespace StockDory
     class RepetitionHistory
     {
 
-        private:
-            std::array<ZobristHash, 4096> Internal = {};
+        std::array<ZobristHash, 4096> Internal = {};
 
-            uint16_t CurrentIndex = 0;
+        uint16_t CurrentIndex = 0;
 
         public:
-            constexpr explicit RepetitionHistory(const ZobristHash hash)
-            {
-                Push(hash);
-            }
+        constexpr explicit RepetitionHistory(const ZobristHash hash)
+        {
+            Push(hash);
+        }
 
-            constexpr inline void Push(const ZobristHash hash)
-            {
-                Internal[CurrentIndex++] = hash;
-            }
+        constexpr inline void Push(const ZobristHash hash)
+        {
+            Internal[CurrentIndex++] = hash;
+        }
 
-            constexpr inline void Pull()
-            {
-                CurrentIndex--;
-            }
+        constexpr inline void Pull()
+        {
+            CurrentIndex--;
+        }
 
-            [[nodiscard]]
-            constexpr inline bool Found(const ZobristHash hash, const uint8_t halfMoveCounter) const
-            {
-                uint8_t count = 0;
-                for (uint16_t i = CurrentIndex - 1; i != 0xFFFF; i--) {
-                    if (i < CurrentIndex - 1 - halfMoveCounter) return false;
+        [[nodiscard]]
+        constexpr inline bool Found(const ZobristHash hash, const uint8_t halfMoveCounter) const
+        {
+            uint8_t count = 0;
+            for (uint16_t i = CurrentIndex - 1; i != 0xFFFF; i--) {
+                if (i < CurrentIndex - 1 - halfMoveCounter) return false;
 
-                    if (Internal[i] == hash) {
-                        count++;
-                        if (count > 2) return true;
-                    }
+                if (Internal[i] == hash) {
+                    count++;
+                    if (count > 2) return true;
                 }
-
-                return false;
             }
+
+            return false;
+        }
 
     };
 

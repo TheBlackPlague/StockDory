@@ -49,17 +49,16 @@ constexpr size_t MB = 1024 * 1024;
 
 constexpr uint8_t ReplacementThreshold = 3;
 
-constexpr Move NoMove = Move();
+constexpr auto NoMove = Move();
 
-constexpr std::array<std::pair<uint16_t, uint16_t>, 5> BestMoveStabilityOptimisationFactor = {
-        {{250, 100},
-         {180, 100},
-         {120, 100},
-         { 99, 100},
-         { 97, 100}}
-};
+constexpr std::array<std::pair<uint16_t, uint16_t>, 5> BestMoveStabilityOptimisationFactor = {{
+    {250, 100},
+    {180, 100},
+    {120, 100},
+    { 99, 100},
+    { 97, 100}
+}};
 
-StockDory::TranspositionTable<StockDory::EngineEntry> TTable =
-        StockDory::TranspositionTable<StockDory::EngineEntry>(16 * MB);
+inline auto TTable = StockDory::TranspositionTable<StockDory::EngineEntry>(16 * MB);
 
 #endif //STOCKDORY_ENGINEPARAMETER_H
