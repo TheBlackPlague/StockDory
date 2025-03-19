@@ -18,45 +18,46 @@ namespace StockDory
     class BenchHash
     {
 
-        private:
-            constexpr static uint8_t BenchLength = 50;
-            constexpr static Limit   BenchLimit  = Limit(static_cast<uint8_t>(13));
+        constexpr static uint8_t BenchLength = 50;
+        constexpr static auto    BenchLimit  = Limit(static_cast<uint8_t>(13));
 
-            static std::array<std::string, BenchLength> Positions;
+        static std::array<std::string, BenchLength> Positions;
 
         public:
-            static void Run()
-            {
-                using BTP = std::chrono::time_point<std::chrono::high_resolution_clock>;
+        static void Run()
+        {
+            using BTP = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
-                uint64_t nodes = 0;
-                TimeControl infinite = TimeManager::Default();
+            uint64_t nodes = 0;
 
-                MS time (0);
+            const TimeControl infinite = TimeManager::Default();
 
-                for (uint8_t i = 0; i < BenchLength; i++) {
-                    std::cout << "Position (" << std::setw(2) << std::setfill('0')
-                              << static_cast<uint16_t>(i + 1) << "/";
-                    std::cout << static_cast<uint16_t>(BenchLength) << "): ";
-                    std::cout << Positions[i] << std::endl;
+            MS time(0);
 
-                    const Board             board   (Positions[i]);
-                    const RepetitionHistory history (board.Zobrist());
-                    Search<NoLogger> search (board, infinite, history, 0);
+            for (uint8_t i = 0; i < BenchLength; i++) {
+                std::cout << "Position (" << std::setw(2) << std::setfill('0')
+                          << static_cast<uint16_t>(   i + 1   ) << "/"  ;
+                std::cout << static_cast<uint16_t>(BenchLength) << "): ";
+                std::cout << Positions[i] << std::endl;
 
-                    const BTP start = std::chrono::high_resolution_clock::now();
-                    search.IterativeDeepening(BenchLimit);
-                    const BTP stop  = std::chrono::high_resolution_clock::now();
+                const Board             board   (Positions[i]);
+                const RepetitionHistory history (board.Zobrist());
 
-                    nodes += search.NodesSearched();
-                    time  += std::chrono::duration_cast<MS>(stop - start);
-                }
+                Search search(board, infinite, history, 0);
 
-                const auto nps =       static_cast<uint64_t>(static_cast<double>(nodes) /
-                        (static_cast<double>(time.count()) / static_cast<double>(1000 )));
+                const BTP start = std::chrono::high_resolution_clock::now();
+                search.IterativeDeepening(BenchLimit);
+                const BTP stop = std::chrono::high_resolution_clock::now();
 
-                std::cout << nodes << " nodes " << nps << " nps" << std::endl;
+                nodes += search.NodesSearched();
+                time  += std::chrono::duration_cast<MS>(stop - start);
             }
+
+            const auto nps = static_cast<uint64_t>(static_cast<double>(nodes) /
+              (static_cast<double>(time.count()) / static_cast<double>(1000)));
+
+            std::cout << nodes << " nodes " << nps << " nps" << std::endl;
+        }
 
     };
 

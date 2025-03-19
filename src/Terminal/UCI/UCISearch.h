@@ -17,44 +17,45 @@ namespace StockDory
     {
 
         public:
-            static void LogDepthIteration(const uint8_t depth, const uint8_t selectiveDepth, const int32_t evaluation,
-                                          const uint64_t nodes, const uint64_t ttNodes,
-                                          const MS time, const std::string& pv)
-            {
-                std::stringstream output;
+        static void LogDepthIteration(const uint8_t  depth, const uint8_t      selectiveDepth, const int32_t evaluation,
+                                      const uint64_t nodes, const uint64_t     ttNodes,
+                                      const MS       time,  const std::string& pv)
+        {
+            std::stringstream output;
 
-                int64_t displayedTime = time.count();
-                displayedTime = std::max(displayedTime, static_cast<int64_t>(1));
+            int64_t displayedTime = time.count();
+            displayedTime         = std::max(displayedTime, static_cast<int64_t>(1));
 
-                const auto nps =        static_cast<uint64_t>(static_cast<double>(nodes) /
-                        (static_cast<double>(displayedTime) / static_cast<double>(1000)));
+            const auto nps = static_cast<uint64_t>(static_cast<double>(nodes) /
+             (static_cast<double>(displayedTime) / static_cast<double>(1000)));
 
-                output << "info ";
-                output << "depth " << static_cast<uint16_t>(depth) << " ";
-                output << "seldepth " << static_cast<uint16_t>(selectiveDepth) << " ";
-                output << "score ";
+            output << "info ";
+            output <<    "depth " << static_cast<uint16_t>(         depth) << " ";
+            output << "seldepth " << static_cast<uint16_t>(selectiveDepth) << " ";
+            output << "score ";
 
-                if (abs(evaluation) > Infinity - MaxDepth)
-                    output << "mate " << (evaluation > 0 ? Infinity - evaluation : -Infinity - evaluation) / 2 << " ";
-                else
-                    output << "cp " << evaluation << " ";
+            if (abs(evaluation) > Infinity - MaxDepth)
+                output << "mate " << (evaluation > 0 ? Infinity - evaluation : -Infinity - evaluation) / 2 << " ";
+            else
+                output << "cp " << evaluation << " ";
 
-                output << "nodes " << nodes << " ";
-                output << "ttnodes " << ttNodes << " ";
-                output << "time " << displayedTime << " ";
-                output << "nps " << nps << " ";
-                output << "pv " << pv;
+            output <<   "nodes " <<   nodes << " ";
+            output << "ttnodes " << ttNodes << " ";
 
-                std::cout << output.str() << std::endl;
-            }
+            output << "time " << displayedTime << " ";
+            output << "nps " << nps << " ";
+            output << "pv " << pv;
 
-            static void LogBestMove(const Move& move)
-            {
-                std::stringstream output;
-                output << "bestmove " << move.ToString();
+            std::cout << output.str() << std::endl;
+        }
 
-                std::cout << output.str() << std::endl;
-            }
+        static void LogBestMove(const Move& move)
+        {
+            std::stringstream output;
+            output << "bestmove " << move.ToString();
+
+            std::cout << output.str() << std::endl;
+        }
 
     };
 
@@ -63,40 +64,40 @@ namespace StockDory
 
         using Search = Search<UCISearchLogger>;
 
-        private:
-            Search EngineSearch;
+        Search EngineSearch;
 
-            bool Running = false;
+        bool Running = false;
 
         public:
-            UCISearch() = default;
+        UCISearch() = default;
 
-            UCISearch(const Board& board, const TimeControl& timeControl,
-                      const RepetitionHistory& repetitionHistory, const uint8_t halfMoveCounter)
-                      : EngineSearch(Search(board, timeControl, repetitionHistory, halfMoveCounter)) {}
+        UCISearch(const Board&             board,             const TimeControl& timeControl,
+                  const RepetitionHistory& repetitionHistory, const uint8_t      halfMoveCounter)
+            : EngineSearch(Search(board, timeControl, repetitionHistory, halfMoveCounter)) {}
 
-            void Start(const Limit limit)
-            {
-                std::future<void> _ = ThreadPool.submit(
-                    [this](const Limit limit) {
-                        Running = true;
-                        EngineSearch.IterativeDeepening(limit);
-                        Running = false;
-                    },
-                    limit
-                );
-            }
+        void Start(const Limit limit)
+        {
+            std::future<void> _ = ThreadPool.submit(
+                [this](const Limit depthLimit)
+                {
+                    Running = true;
+                    EngineSearch.IterativeDeepening(depthLimit);
+                    Running = false;
+                },
+                limit
+            );
+        }
 
-            void Stop()
-            {
-                EngineSearch.ForceStop();
-            }
+        void Stop()
+        {
+            EngineSearch.ForceStop();
+        }
 
-            [[nodiscard]]
-            bool IsRunning() const
-            {
-                return Running;
-            }
+        [[nodiscard]]
+        bool IsRunning() const
+        {
+            return Running;
+        }
 
     };
 

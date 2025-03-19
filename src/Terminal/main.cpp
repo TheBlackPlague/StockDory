@@ -20,15 +20,17 @@ void DisplayTitle()
     std::cerr << ss.str() << std::endl;
 }
 
-int main(int argc, char* argv[])
+int main(const int argc, const char* argv[])
 {
     DisplayTitle();
 
     if (argc > 1) {
-        if        (strutil::compare_ignore_case(argv[1], "bench")) {
+        if (strutil::compare_ignore_case(argv[1], "bench"  )) {
             StockDory::BenchHash::Run();
             return EXIT_SUCCESS;
-        } else if (strutil::compare_ignore_case(argv[1], "convert")) {
+        }
+
+        if (strutil::compare_ignore_case(argv[1], "convert")) {
             StockDory::NetworkConverter::Launch();
             return EXIT_SUCCESS;
         }
