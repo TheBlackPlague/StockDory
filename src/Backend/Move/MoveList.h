@@ -84,7 +84,7 @@ namespace StockDory
                 const BitBoard enPassant  = board.EnPassant() & pawnAttack;
                 const BitBoard normal     = pawnAttack & board[Opposite(Color)];
 
-                InternalContainer |= (enPassant & pin.Diagonal) | (normal & pin.Diagonal & check.Check);
+                InternalContainer |= enPassant & pin.Diagonal | normal & pin.Diagonal & check.Check;
 
                 if (enPassant) {
                     const Square epTarget  = board.EnPassantSquare();
@@ -213,8 +213,8 @@ namespace StockDory
 
             if (!KingMoveLegal(board, sq)) return;
 
-            const bool kingSide  = board.CastlingRightK<Color>();
-            const bool queenSide = board.CastlingRightQ<Color>();
+            const bool  kingSide = board.CastlingRightK<Color>(),
+                       queenSide = board.CastlingRightQ<Color>();
 
             if (queenSide &&
                 Get(king, static_cast<Square>(sq - 1)) &&
@@ -241,7 +241,7 @@ namespace StockDory
             if (AttackTable::Knight[target] & board.PieceBoard(Piece::Knight, by))
                 return false;
 
-            const BitBoard occupied = ~board[Color::NAC] & ~board.PieceBoard(Piece::King, Color);
+            const BitBoard occupied = ~board[NAC] & ~board.PieceBoard(Piece::King, Color);
 
             const BitBoard queen = board.PieceBoard(Piece::Queen, by);
 

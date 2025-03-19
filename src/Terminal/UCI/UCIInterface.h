@@ -75,9 +75,9 @@ namespace StockDory
 
         static void RegisterOptions()
         {
-            std::shared_ptr<UCIOption<uint64_t> > hash =
-                    std::make_shared<UCIOption<uint64_t> >
-                    ("Hash", 16, 1, 16384, [](const uint64_t& value)
+            auto hash =
+                std::make_shared<UCIOption<uint64_t>>
+                ("Hash", 16, 1, 16384, [](const uint64_t& value)
                     {
                         if (value < 1) {
                             std::cerr << "ERROR: Hash must be at least 1 MB" << std::endl;
@@ -89,16 +89,16 @@ namespace StockDory
                         }
 
                         TTable.Resize(value * MB);
-                    });
+                    }
+                );
 
-            std::shared_ptr<UCIOption<uint8_t> > threads =
-                    std::make_shared<UCIOption<uint8_t> >
-                    ("Threads", 1, 1, 128, [](const uint8_t& value)
+            auto threads =
+                std::make_shared<UCIOption< uint8_t>>
+                ("Threads", 1, 1, 128, [](const uint8_t& value)
                     {
-                        if (value != 1) {
-                            std::cerr << "ERROR: Multithreading is not supported yet" << std::endl;
-                        }
-                    });
+                        if (value != 1) std::cerr << "ERROR: Multithreading is not supported yet" << std::endl;
+                    }
+                );
 
             UCIOptionSwitch.emplace(   hash->GetName(), hash   );
             UCIOptionSwitch.emplace(threads->GetName(), threads);
@@ -218,10 +218,9 @@ namespace StockDory
             } else return;
 
             if (args.size() >= moveStrIndex &&
-                strutil::compare_ignore_case(args[moveStrIndex - 1], "moves")) {
-                const Arguments movesToken = {args.begin() + moveStrIndex, args.end()};
-
-                for (const std::string& moveStr: movesToken) {
+                strutil::compare_ignore_case(args[moveStrIndex - 1], "moves"))
+                for (const Arguments movesToken = {args.begin() + moveStrIndex, args.end()};
+                     const std::string& moveStr: movesToken) {
                     const Move move = Move::FromString(moveStr);
 
                     if (MainBoard[move.To()].Piece() != NAP || MainBoard[move.From()].Piece() == Pawn)
@@ -231,7 +230,6 @@ namespace StockDory
                     MainBoard.Move<ZOBRIST>(move.From(), move.To(), move.Promotion());
                     MainHistory.Push(MainBoard.Zobrist());
                 }
-            }
         }
 
         template<typename T>
@@ -258,7 +256,7 @@ namespace StockDory
             }
 
             TimeControl timeControl = TimeManager::Default();
-            Limit       limit       = Limit();
+            auto        limit       = Limit();
 
             if (args.size() == 2) {
                 if (     strutil::compare_ignore_case(args[0], "movetime"))

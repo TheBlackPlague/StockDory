@@ -112,17 +112,17 @@ std::array<BitBoard, 87988> StockDory::AttackTable::Sliding = []
 {
     auto temp = std::array<BitBoard, 87988>();
 
-    constexpr std::array<std::array<std::pair<int8_t, int8_t>, 4>, 2> deltaStride = {{
-        {{
-            {1, 1}, {1, -1}, {-1, -1}, {-1, 1}
-        }}, {{
-            {1, 0}, {0, -1}, {-1, 0}, {0, 1}
-        }}
-    }};
-
     using MagicPair = std::pair<BitBoard, BitBoard>;
 
     for (uint8_t i = 0; i < 2; i++) {
+        constexpr std::array<std::array<std::pair<int8_t, int8_t>, 4>, 2> deltaStride = {{
+            {{
+                {1, 1}, {1, -1}, {-1, -1}, {-1, 1}
+            }}, {{
+                {1, 0}, {0, -1}, {-1, 0}, {0, 1}
+            }}
+        }};
+
         const auto                                           p     = static_cast<Piece>(i + 2);
         const std::array<std::pair<MagicPair, int32_t>, 64>& magic = BlackMagicFactory::Magic[i];
         const std::array<std::pair<int8_t, int8_t>, 4>&      delta = deltaStride[i];

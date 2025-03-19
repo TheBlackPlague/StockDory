@@ -97,7 +97,7 @@ namespace StockDory
             for (uint8_t v = 0; v < 8; v++) {
                 std::string& rankStr = splitPosition[v];
                 uint8_t      h       = 0;
-                for (char p: rankStr) {
+                for (const char p: rankStr) {
                     if (isdigit(p)) {
                         h += static_cast<uint8_t>(p - 48);
                         continue;
@@ -161,11 +161,9 @@ namespace StockDory
             Hash = HashCastling<ZOBRIST>(Hash, CastlingRightAndColorToMove & CastlingMask);
 
             EnPassantTarget     = BBDefault;
-            std::string& epData = splitFen[3];
-            if (epData.length() == 2) {
-                Square epSq = Util::StringToSquare(epData);
-
-                if (AttackTable::Pawn[Opposite(ColorToMove())][epSq] & BB[ColorToMove()][Pawn]) {
+            if (const std::string& epData = splitFen[3]; epData.length() == 2) {
+                if (const Square epSq = Util::StringToSquare(epData);
+                    AttackTable::Pawn[Opposite(ColorToMove())][epSq] & BB[ColorToMove()][Pawn]) {
                     EnPassantTarget = FromSquare(epSq);
                     Hash            = HashEnPassant<ZOBRIST>(Hash, epSq);
                 }
@@ -470,17 +468,15 @@ namespace StockDory
 
             // Iterate through the attacks and check if the attack is a diagonally pinning one.
             BitBoardIterator iterator(diagonalCheck);
-            for (Square attSq = iterator.Value(); attSq != NASQ; attSq = iterator.Value()) {
-                const BitBoard possiblePin = UtilityTable::Between[sq][attSq] | FromSquare(attSq);
-                if (Count(possiblePin & ColorBB[We]) == 1) pin.Diagonal |= possiblePin;
-            }
+            for (Square attSq = iterator.Value(); attSq != NASQ; attSq = iterator.Value())
+                if (const BitBoard possiblePin = UtilityTable::Between[sq][attSq] | FromSquare(attSq);
+                    Count(possiblePin & ColorBB[We]) == 1) pin.Diagonal |= possiblePin;
 
             // Iterate through the attacks and check if the attack is a straight pinning one.
             iterator = BitBoardIterator(straightCheck);
-            for (Square attSq = iterator.Value(); attSq != NASQ; attSq = iterator.Value()) {
-                const BitBoard possiblePin = UtilityTable::Between[sq][attSq] | FromSquare(attSq);
-                if (Count(possiblePin & ColorBB[We]) == 1) pin.Straight |= possiblePin;
-            }
+            for (Square attSq = iterator.Value(); attSq != NASQ; attSq = iterator.Value())
+                if (const BitBoard possiblePin = UtilityTable::Between[sq][attSq] | FromSquare(attSq);
+                    Count(possiblePin & ColorBB[We]) == 1) pin.Straight |= possiblePin;
 
             return pin;
         }

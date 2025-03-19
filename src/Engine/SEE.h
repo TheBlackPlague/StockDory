@@ -68,7 +68,7 @@ namespace StockDory
 
                 value = -value - 1 - Internal[piece];
                 if (value >= 0) {
-                    if (piece == King && (att & board[ctm])) ctm = Opposite(ctm);
+                    if (piece == King && att & board[ctm]) ctm = Opposite(ctm);
 
                     break;
                 }

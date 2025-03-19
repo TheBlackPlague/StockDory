@@ -58,7 +58,7 @@ namespace StockDory
             NN.EfficientlyUpdateAccumulator(piece, color, from, to);
         }
 
-        static inline int32_t Evaluate(Color color)
+        static inline int32_t Evaluate(const Color color)
         {
             return NN.Evaluate(color);
         }
@@ -73,7 +73,7 @@ namespace StockDory
 
 } // StockDory
 
-Aurora StockDory::Evaluation::NN = []()
+Aurora StockDory::Evaluation::NN = []
 {
     MantaRay::BinaryMemoryStream stream (_NeuralNetworkBinaryData, _NeuralNetworkBinarySize);
     return Aurora(stream);

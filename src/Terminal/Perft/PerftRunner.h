@@ -116,7 +116,7 @@ namespace StockDory
         {
             uint64_t nodes = 0;
             using PLayer   = PerftLayer<Opposite(Color), false, Sync, TT>;
-            using BLayer   = BoardLayer<TT ? (PERFT | ZOBRIST) : STANDARD>;
+            using BLayer   = BoardLayer<TT ? PERFT | ZOBRIST : STANDARD>;
 
             if (depth == 1)
                 for (Square sq = pIterator.Value(); sq != NASQ; sq = pIterator.Value()) {

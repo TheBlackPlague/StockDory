@@ -157,8 +157,8 @@ namespace StockDory
         inline std::string PvLine() const
         {
             std::stringstream line;
-            uint8_t           ply = PvTable.Count();
 
+            const uint8_t ply = PvTable.Count();
             for (uint8_t i = 0; i < ply; i++) {
                 line << PvTable[i].ToString();
                 if (i != ply - 1) line << " ";
@@ -205,7 +205,8 @@ namespace StockDory
                 if (beta  >  AspirationBound) beta  =  Infinity;
                 //endregion
 
-                int32_t bestEvaluation = AlphaBeta<Color, true, true>(0, depth, alpha, beta);
+                // ReSharper disable once CppTooWideScopeInitStatement
+                const int32_t bestEvaluation = AlphaBeta<Color, true, true>(0, depth, alpha, beta);
 
                 //region Modify Window
                 if (bestEvaluation <= alpha) {
@@ -447,7 +448,7 @@ namespace StockDory
         }
 
         template<Color Color, bool Pv>
-        int32_t Q(const uint8_t ply, int32_t alpha, int32_t beta)
+        int32_t Q(const uint8_t ply, int32_t alpha, const int32_t beta)
         {
             constexpr auto OColor = Opposite(Color);
 
@@ -458,6 +459,7 @@ namespace StockDory
             //region Transposition Table Lookup
             if (!Pv) {
                 const ZobristHash  hash  = Board.Zobrist();
+                // ReSharper disable once CppTooWideScopeInitStatement
                 const EngineEntry& entry = TTable[hash];
 
                 if   (entry.Hash == hash           &&
@@ -491,7 +493,7 @@ namespace StockDory
 
                 const PreviousState state = EngineMove<false>(move, ply);
 
-                int32_t evaluation = -Q<OColor, Pv>(ply + 1, -beta, -alpha);
+                const int32_t evaluation = -Q<OColor, Pv>(ply + 1, -beta, -alpha);
 
                 EngineUndoMove<false>(state, move);
 
@@ -591,6 +593,7 @@ namespace StockDory
 
         static inline void InsertEntry(const ZobristHash hash, const EngineEntry& entry)
         {
+            // ReSharper disable once CppTooWideScopeInitStatement
             const EngineEntry& old = TTable[hash];
             if (entry.Type == Exact || entry.Hash != old.Hash ||
                (old.  Type == AlphaUnchanged &&
@@ -604,6 +607,7 @@ namespace StockDory
         {
             if (entry.Type == Exact) return entry.Evaluation;
 
+            // ReSharper disable once CppTooWideScopeInitStatement
             const int32_t staticEvaluation = Evaluation::Evaluate<Color>();
 
             if ((staticEvaluation > entry.Evaluation && entry.Type == BetaCutoff    )  ||

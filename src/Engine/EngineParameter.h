@@ -6,8 +6,6 @@
 #ifndef STOCKDORY_ENGINEPARAMETER_H
 #define STOCKDORY_ENGINEPARAMETER_H
 
-#include <cstdint>
-
 #include "EngineEntry.h"
 #include "../Backend/TranspositionTable.h"
 
