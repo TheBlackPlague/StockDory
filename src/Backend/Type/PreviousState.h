@@ -1,5 +1,3 @@
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "cppcoreguidelines-pro-type-member-init"
 //
 // Copyright (c) 2023 StockDory authors. See the list of authors for more details.
 // Licensed under LGPL-3.0.
@@ -27,8 +25,8 @@ struct PreviousState
 
         ZobristHash Hash;
 
-        constexpr PreviousState(const PieceColor movedPiece , const PieceColor capturedPiece              ,
-                                const Square     enPassant, const uint8_t    castlingRightAndColorToMove,
+        constexpr PreviousState(const PieceColor  movedPiece , const PieceColor capturedPiece              ,
+                                const Square      enPassant  , const uint8_t    castlingRightAndColorToMove,
                                 const ZobristHash hash)
         {
             MovedPiece                  = movedPiece;
@@ -60,5 +58,3 @@ struct PreviousStateNull
 };
 
 #endif //STOCKDORY_PREVIOUSSTATE_H
-
-#pragma clang diagnostic pop

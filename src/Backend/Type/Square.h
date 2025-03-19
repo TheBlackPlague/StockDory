@@ -3,8 +3,6 @@
 // Licensed under MIT.
 //
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 #ifndef STOCKDORY_SQUARE_H
 #define STOCKDORY_SQUARE_H
 
@@ -64,5 +62,3 @@ inline constexpr char Rank(const Square sq)
 }
 
 #endif //STOCKDORY_SQUARE_H
-
-#pragma clang diagnostic pop

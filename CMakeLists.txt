@@ -10,7 +10,7 @@ else()
     set(CI FALSE)
 endif()
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 if(CMAKE_CXX_FLAGS STREQUAL "")
     set(CMAKE_CXX_FLAGS "-march=native")
 endif()
@@ -32,7 +32,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
 
-set(CPM_DOWNLOAD_VERSION 0.38.0)
+set(CPM_DOWNLOAD_VERSION 0.40.8)
 
 if(CPM_SOURCE_CACHE)
     set(CPM_DOWNLOAD_LOCATION "${CPM_SOURCE_CACHE}/cpm/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
@@ -41,7 +41,7 @@ elseif(DEFINED ENV{CPM_SOURCE_CACHE})
     set(CPM_DOWNLOAD_LOCATION "$ENV{CPM_SOURCE_CACHE}/cpm/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
     message(STATUS "Setting CPM.cmake location to ${CPM_DOWNLOAD_LOCATION}")
 else()
-    set(CPM_DOWNLOAD_LOCATION "${CMAKE_BINARY_DIR}/cmake/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
+    set(CPM_DOWNLOAD_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
     message(STATUS "Setting CPM.cmake location to ${CPM_DOWNLOAD_LOCATION}")
 endif()
 
@@ -51,9 +51,9 @@ foreach(DOWNLOAD_ATTEMPT RANGE 1 ${CPM_DOWNLOAD_RETRY_COUNT})
         message(STATUS "CPM.cmake was not found at ${CPM_DOWNLOAD_LOCATION}")
         message(STATUS "Attempt: ${DOWNLOAD_ATTEMPT}/${CPM_DOWNLOAD_RETRY_COUNT}: Downloading CPM.cmake...")
         file(DOWNLOAD
-             https://github.com/TheLartians/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake
-             ${CPM_DOWNLOAD_LOCATION}
-             STATUS DOWNLOAD_STAT
+            https://github.com/cpm-cmake/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake
+            ${CPM_DOWNLOAD_LOCATION}
+            STATUS DOWNLOAD_STAT
         )
         list(GET DOWNLOAD_STAT 0 DOWNLOAD_RES)
         if(NOT DOWNLOAD_RES EQUAL 0)
@@ -76,7 +76,7 @@ endforeach()
 
 include(${CPM_DOWNLOAD_LOCATION})
 
-CPMAddPackage("gh:TheBlackPlague/MantaRay#4038386a746ae65881e7d1f02673e1805f729cc9")
+CPMAddPackage("gh:TheBlackPlague/MantaRay#81b2bbe86d2959cba4a8ff93fe18c50bdb3a9bf7")
 
 include(BinaryResource.cmake)
 

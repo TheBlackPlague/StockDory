@@ -58,8 +58,6 @@ namespace StockDory
 
     };
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedValue"
     class UCISearch
     {
 
@@ -73,7 +71,7 @@ namespace StockDory
         public:
             UCISearch() = default;
 
-            UCISearch(const Board& board, const StockDory::TimeControl& timeControl,
+            UCISearch(const Board& board, const TimeControl& timeControl,
                       const RepetitionHistory& repetitionHistory, const uint8_t halfMoveCounter)
                       : EngineSearch(Search(board, timeControl, repetitionHistory, halfMoveCounter)) {}
 
@@ -101,7 +99,6 @@ namespace StockDory
             }
 
     };
-#pragma clang diagnostic pop
 
 } // StockDory
 
