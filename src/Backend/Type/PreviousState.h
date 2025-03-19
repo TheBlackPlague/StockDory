@@ -13,47 +13,45 @@
 struct PreviousState
 {
 
-    public:
-        PieceColor MovedPiece                 ;
-        PieceColor CapturedPiece              ;
-        Piece      PromotedPiece              ;
-        bool       EnPassantCapture           ;
-        Square     EnPassant                  ;
-        Square     CastlingFrom               ;
-        Square     CastlingTo                 ;
-        uint8_t    CastlingRightAndColorToMove;
+    PieceColor MovedPiece                 ;
+    PieceColor CapturedPiece              ;
+    Piece      PromotedPiece              ;
+    bool       EnPassantCapture           ;
+    Square     EnPassant                  ;
+    Square     CastlingFrom               ;
+    Square     CastlingTo                 ;
+    uint8_t    CastlingRightAndColorToMove;
 
-        ZobristHash Hash;
+    ZobristHash Hash;
 
-        constexpr PreviousState(const PieceColor  movedPiece , const PieceColor capturedPiece              ,
-                                const Square      enPassant  , const uint8_t    castlingRightAndColorToMove,
-                                const ZobristHash hash)
-        {
-            MovedPiece                  = movedPiece;
-            CapturedPiece               = capturedPiece;
-            EnPassant                   = enPassant;
-            CastlingRightAndColorToMove = castlingRightAndColorToMove;
+    constexpr PreviousState(const PieceColor  movedPiece, const PieceColor capturedPiece,
+                            const Square      enPassant,  const uint8_t    castlingRightAndColorToMove,
+                            const ZobristHash hash)
+    {
+        MovedPiece                  = movedPiece;
+        CapturedPiece               = capturedPiece;
+        EnPassant                   = enPassant;
+        CastlingRightAndColorToMove = castlingRightAndColorToMove;
 
-            EnPassantCapture = false;
-            PromotedPiece    = NAP;
-            CastlingFrom     = NASQ;
-            CastlingTo       = NASQ;
+        EnPassantCapture = false;
+        PromotedPiece    = NAP;
+        CastlingFrom     = NASQ;
+        CastlingTo       = NASQ;
 
-            Hash = hash;
-        }
+        Hash = hash;
+    }
 
 };
 
 struct PreviousStateNull
 {
 
-    public:
-        Square EnPassant;
+    Square EnPassant;
 
-        constexpr PreviousStateNull(const Square enPassant)
-        {
-            EnPassant = enPassant;
-        }
+    constexpr PreviousStateNull(const Square enPassant)
+    {
+        EnPassant = enPassant;
+    }
 
 };
 

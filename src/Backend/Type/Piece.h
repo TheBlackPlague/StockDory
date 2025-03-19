@@ -27,7 +27,7 @@ inline constexpr Piece Next(const Piece p)
     return static_cast<Piece>(static_cast<uint8_t>(p) + 1);
 }
 
-constexpr std::array<char, 7> P_CHAR = {
+constexpr std::array P_CHAR = {
     'P',
     'N',
     'B',
@@ -42,14 +42,14 @@ constexpr inline char FirstLetter(const Piece p)
     return P_CHAR[p];
 }
 
-std::map<Piece, std::string> P_STRING = {
-    {Pawn, "Pawn"},
+inline std::map<Piece, std::string> P_STRING = {
+    {Pawn  , "Pawn"  },
     {Knight, "Knight"},
     {Bishop, "Bishop"},
-    {Rook, "Rook"},
-    {Queen, "Queen"},
-    {King, "King"},
-    {NAP, "NAP"}
+    {Rook  , "Rook"  },
+    {Queen , "Queen" },
+    {King  , "King"  },
+    {NAP   , "NAP"   }
 };
 
 inline std::string ToString(const Piece p)

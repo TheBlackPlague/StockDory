@@ -15,42 +15,43 @@ struct PieceColor
 {
 
     private:
-        // [    COLOR    ] [    PIECE   ]
-        // [   4 BITS    ] [   4 BITS   ]
-        uint8_t Internal;
+    // [    COLOR    ] [    PIECE   ]
+    // [   4 BITS    ] [   4 BITS   ]
+    uint8_t Internal;
 
-        constexpr static uint8_t PieceColorMask = 0x0F;
+    constexpr static uint8_t PieceColorMask = 0x0F;
 
     public:
-        constexpr PieceColor() {
-            Internal = 0;
-        }
+    constexpr PieceColor()
+    {
+        Internal = 0;
+    }
 
-        constexpr explicit PieceColor(const Piece piece, const Color color)
-        {
-            Internal = piece | (color << 4);
-        }
+    constexpr explicit PieceColor(const Piece piece, const Color color)
+    {
+        Internal = piece | color << 4;
+    }
 
-        [[nodiscard]]
-        constexpr inline Piece Piece() const
-        {
-            return static_cast<enum Piece>(Internal & PieceColorMask);
-        }
+    [[nodiscard]]
+    constexpr inline Piece Piece() const
+    {
+        return static_cast<enum Piece>(Internal & PieceColorMask);
+    }
 
-        [[nodiscard]]
-        constexpr inline Color Color() const
-        {
-            return static_cast<enum Color>(Internal >> 4);
-        }
+    [[nodiscard]]
+    constexpr inline Color Color() const
+    {
+        return static_cast<enum Color>(Internal >> 4);
+    }
 
-        [[nodiscard]]
-        inline std::string ToString() const
-        {
-            enum Piece p = Piece();
-            enum Color c = Color();
+    [[nodiscard]]
+    inline std::string ToString() const
+    {
+        const enum Piece p = Piece();
+        const enum Color c = Color();
 
-            return ::ToString(c) + std::string(" ") + ::ToString(p);
-        }
+        return ::ToString(c) + std::string(" ") + ::ToString(p);
+    }
 
 };
 

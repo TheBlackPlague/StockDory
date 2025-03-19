@@ -7,7 +7,6 @@
 #define STOCKDORY_UTIL_H
 
 #include <sstream>
-#include <vector>
 #include <iomanip>
 
 #include "Type/Square.h"
@@ -19,30 +18,30 @@ namespace StockDory
     {
 
         public:
-            constexpr static inline Square StringToSquare(const std::string& s)
-            {
-                int file = tolower(s[0]) - 97;
-                int rank = tolower(s[1]) - 49;
+        constexpr static inline Square StringToSquare(const std::string& s)
+        {
+            const int file = tolower(s[0]) - 97;
+            const int rank = tolower(s[1]) - 49;
 
-                return static_cast<Square>(rank * 8 + file);
-            }
+            return static_cast<Square>(rank * 8 + file);
+        }
 
-            static inline std::string SquareToString(const Square sq)
-            {
-                std::string s;
-                s += static_cast<char>(tolower(File(sq)));
-                s += Rank(sq);
+        static inline std::string SquareToString(const Square sq)
+        {
+            std::string s;
+            s += static_cast<char>(tolower(File(sq)));
+            s += Rank(sq);
 
-                return s;
-            }
+            return s;
+        }
 
-            static inline std::string ToHex(const uint64_t value)
-            {
-                std::stringstream stream;
-                stream << std::setfill('0') << std::setw(sizeof(uint64_t) * 2);
-                stream << std::uppercase << std::hex << value;
-                return stream.str();
-            }
+        static inline std::string ToHex(const uint64_t value)
+        {
+            std::stringstream stream;
+            stream << std::setfill('0') << std::setw(sizeof(uint64_t) * 2);
+            stream << std::uppercase << std::hex << value;
+            return stream.str();
+        }
 
     };
 

@@ -11,9 +11,8 @@
 struct CheckBitBoard
 {
 
-    public:
-        BitBoard Check       = BBDefault;
-        bool     DoubleCheck = false    ;
+    BitBoard Check       = BBDefault;
+    bool     DoubleCheck = false;
 
 };
 

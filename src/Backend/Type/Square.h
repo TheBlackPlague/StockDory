@@ -8,7 +8,6 @@
 
 #include <cstdint>
 #include <array>
-#include <string>
 
 enum Square : uint8_t
 {
@@ -29,7 +28,7 @@ inline constexpr Square Next(const Square sq)
     return static_cast<Square>(static_cast<uint8_t>(sq) + 1);
 }
 
-constexpr std::array<char, 65> FILE_CHAR {
+constexpr std::array FILE_CHAR {
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
@@ -37,10 +36,10 @@ constexpr std::array<char, 65> FILE_CHAR {
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', ' '
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'X'
 };
 
-constexpr std::array<char, 65> RANK {
+constexpr std::array RANK_CHAR {
     '1', '1', '1', '1', '1', '1', '1', '1',
     '2', '2', '2', '2', '2', '2', '2', '2',
     '3', '3', '3', '3', '3', '3', '3', '3',
@@ -48,7 +47,7 @@ constexpr std::array<char, 65> RANK {
     '5', '5', '5', '5', '5', '5', '5', '5',
     '6', '6', '6', '6', '6', '6', '6', '6',
     '7', '7', '7', '7', '7', '7', '7', '7',
-    '8', '8', '8', '8', '8', '8', '8', '8', ' '
+    '8', '8', '8', '8', '8', '8', '8', '8', '0'
 };
 
 inline constexpr char File(const Square sq)
@@ -58,7 +57,7 @@ inline constexpr char File(const Square sq)
 
 inline constexpr char Rank(const Square sq)
 {
-    return RANK[sq];
+    return RANK_CHAR[sq];
 }
 
 #endif //STOCKDORY_SQUARE_H

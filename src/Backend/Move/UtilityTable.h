@@ -17,13 +17,14 @@ namespace StockDory
     {
 
         public:
-            static std::array<std::array<BitBoard, 64>, 64> Between;
+        static std::array<std::array<BitBoard, 64>, 64> Between;
 
     };
 
 } // StockDory
 
-std::array<std::array<BitBoard, 64>, 64> StockDory::UtilityTable::Between = []() {
+std::array<std::array<BitBoard, 64>, 64> StockDory::UtilityTable::Between = []
+{
     std::array<std::array<BitBoard, 64>, 64> temp = {};
 
     for (Square f = A1; f != NASQ; f = Next(f)) {
@@ -54,6 +55,7 @@ std::array<std::array<BitBoard, 64>, 64> StockDory::UtilityTable::Between = []()
 
             auto absH = static_cast<int8_t>(static_cast<int8_t>(fH) - static_cast<int8_t>(tH));
             auto absV = static_cast<int8_t>(static_cast<int8_t>(fV) - static_cast<int8_t>(tV));
+
             if (absH < 0) absH = static_cast<int8_t>(-absH);
             if (absV < 0) absV = static_cast<int8_t>(-absV);
 
