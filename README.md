@@ -38,7 +38,7 @@ StockDory is written in C++ and uses CMake as its build system.
 
 **Requirements**:
 - 🏭 CMake >= 3.15
-- 🐉 Clang (LLVM) >= 16.0.0
+- 🐉 Clang (LLVM) >= 19.0.0
 - 🥷 Ninja >= 1.10.2
 
 **Steps**:
