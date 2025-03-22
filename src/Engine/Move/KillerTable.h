@@ -6,8 +6,8 @@
 #ifndef STOCKDORY_KILLERTABLE_H
 #define STOCKDORY_KILLERTABLE_H
 
-#include <cstdint>
 #include <array>
+#include <cstdint>
 
 #include "../../Backend/Type/Move.h"
 

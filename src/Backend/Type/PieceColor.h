@@ -8,8 +8,8 @@
 
 #include <cstdint>
 
-#include "Piece.h"
 #include "Color.h"
+#include "Piece.h"
 
 struct PieceColor
 {

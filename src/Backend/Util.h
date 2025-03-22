@@ -6,8 +6,8 @@
 #ifndef STOCKDORY_UTIL_H
 #define STOCKDORY_UTIL_H
 
-#include <sstream>
 #include <iomanip>
+#include <sstream>
 
 #include "Type/Square.h"
 

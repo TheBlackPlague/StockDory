@@ -6,8 +6,8 @@
 #ifndef STOCKDORY_HISTORYTABLE_H
 #define STOCKDORY_HISTORYTABLE_H
 
-#include <cstdint>
 #include <array>
+#include <cstdint>
 
 #include "../../Backend/Type/Color.h"
 

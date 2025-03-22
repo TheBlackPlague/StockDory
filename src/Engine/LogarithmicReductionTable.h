@@ -6,8 +6,8 @@
 #ifndef STOCKDORY_LOGARITHMICREDUCTIONTABLE_H
 #define STOCKDORY_LOGARITHMICREDUCTIONTABLE_H
 
-#include <cstdint>
 #include <array>
+#include <cstdint>
 
 #include "EngineParameter.h"
 

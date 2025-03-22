@@ -6,9 +6,9 @@
 #ifndef STOCKDORY_UTILITYTABLE_H
 #define STOCKDORY_UTILITYTABLE_H
 
-#include "../Type/BitBoard.h"
-#include "BlackMagicFactory.h"
 #include "AttackTable.h"
+#include "BlackMagicFactory.h"
+#include "../Type/BitBoard.h"
 
 namespace StockDory
 {

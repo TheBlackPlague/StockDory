@@ -6,8 +6,8 @@
 #ifndef STOCKDORY_BITBOARD_H
 #define STOCKDORY_BITBOARD_H
 
-#include <cstdint>
 #include <bit>
+#include <cstdint>
 
 #include "Square.h"
 

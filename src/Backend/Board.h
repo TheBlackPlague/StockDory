@@ -7,23 +7,23 @@
 #define STOCKDORY_BOARD_H
 
 #include <array>
-#include <string>
 #include <cassert>
+#include <string>
 
 #include "Type/BitBoard.h"
-#include "Type/Piece.h"
+#include "Type/CheckBitBoard.h"
 #include "Type/Color.h"
+#include "Type/Piece.h"
 #include "Type/PieceColor.h"
 #include "Type/PinBitBoard.h"
-#include "Type/CheckBitBoard.h"
 #include "Type/PreviousState.h"
 #include "Type/Zobrist.h"
 
 #include "Template/MoveType.h"
 
 #include "Move/AttackTable.h"
-#include "Move/UtilityTable.h"
 #include "Move/BlackMagicFactory.h"
+#include "Move/UtilityTable.h"
 
 #include "../External/strutil.h"
 
@@ -85,7 +85,7 @@ namespace StockDory
             for (uint8_t i = 0; i < 3; i++)
                 std::ranges::fill(BB[i], BBDefault);
 
-            std::vector<std::string> splitFen = strutil::split(fen, " ");
+            const std::vector<std::string> splitFen = strutil::split(fen, " ");
 
             assert(splitFen.size() == 6);
 
@@ -216,7 +216,7 @@ namespace StockDory
                         e = 0;
                     }
 
-                    char p;
+                    char p = '';
 
                     switch (pc.Piece()) {
                         case Pawn:

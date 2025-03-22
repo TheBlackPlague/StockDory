@@ -6,8 +6,8 @@
 #ifndef STOCKDORY_NETWORKARCHITECTURE_H
 #define STOCKDORY_NETWORKARCHITECTURE_H
 
-#include <MantaRay/Perspective/PerspectiveNNUE.h>
 #include <MantaRay/Activation/ClippedReLU.h>
+#include <MantaRay/Perspective/PerspectiveNNUE.h>
 
 // Activation Function:
 using CRelu000255 = MantaRay::ClippedReLU<int16_t, 0, 255>;

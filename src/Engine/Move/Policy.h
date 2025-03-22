@@ -6,11 +6,11 @@
 #ifndef STOCKDORY_POLICY_H
 #define STOCKDORY_POLICY_H
 
-#include "../../Backend/Type/Move.h"
 #include "../../Backend/Board.h"
+#include "../../Backend/Type/Move.h"
 
-#include "../SEE.h"
 #include "HistoryTable.h"
+#include "../SEE.h"
 
 namespace StockDory
 {

@@ -8,8 +8,8 @@
 
 #include <cstdint>
 
-#include "Square.h"
 #include "Piece.h"
+#include "Square.h"
 #include "../Util.h"
 
 struct Move

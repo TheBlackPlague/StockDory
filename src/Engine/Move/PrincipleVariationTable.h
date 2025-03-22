@@ -6,8 +6,8 @@
 #ifndef STOCKDORY_PRINCIPLEVARIATIONTABLE_H
 #define STOCKDORY_PRINCIPLEVARIATIONTABLE_H
 
-#include <cstdint>
 #include <array>
+#include <cstdint>
 
 #include "../../Backend/Type/Move.h"
 

@@ -9,11 +9,11 @@
 #include <array>
 
 #include "../Type/BitBoard.h"
-#include "../Type/Piece.h"
-#include "../Type/Color.h"
-#include "../Type/Square.h"
-#include "../Type/PinBitBoard.h"
 #include "../Type/CheckBitBoard.h"
+#include "../Type/Color.h"
+#include "../Type/Piece.h"
+#include "../Type/PinBitBoard.h"
+#include "../Type/Square.h"
 
 #include "../Board.h"
 

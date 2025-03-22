@@ -10,9 +10,9 @@
 
 #include "../Engine/NetworkArchitecture.h"
 
-#include "../External/strutil.h"
-#include "../External/picosha2.h"
 #include "../External/emoji.h"
+#include "../External/picosha2.h"
+#include "../External/strutil.h"
 
 namespace StockDory
 {

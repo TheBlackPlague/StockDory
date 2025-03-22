@@ -6,8 +6,8 @@
 #ifndef STOCKDORY_SEE_H
 #define STOCKDORY_SEE_H
 
-#include <cstdint>
 #include <array>
+#include <cstdint>
 
 #include "../Backend/Board.h"
 #include "../Backend/Type/Move.h"

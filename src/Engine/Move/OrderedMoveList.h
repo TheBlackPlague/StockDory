@@ -9,10 +9,10 @@
 #include <array>
 #include <cassert>
 
-#include "../EngineParameter.h"
-#include "Policy.h"
-#include "KillerTable.h"
 #include "HistoryTable.h"
+#include "KillerTable.h"
+#include "Policy.h"
+#include "../EngineParameter.h"
 
 #include "../../Backend/Move/MoveList.h"
 #include "../../Backend/Type/Move.h"

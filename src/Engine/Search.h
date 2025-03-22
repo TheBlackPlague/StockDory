@@ -10,16 +10,16 @@
 #include "../Backend/Type/Move.h"
 #include "../Backend/Type/Zobrist.h"
 
+#include "EngineParameter.h"
+#include "Evaluation.h"
+#include "LogarithmicReductionTable.h"
+#include "RepetitionHistory.h"
+#include "SEE.h"
+#include "Move/HistoryTable.h"
+#include "Move/KillerTable.h"
 #include "Move/OrderedMoveList.h"
 #include "Move/PrincipleVariationTable.h"
-#include "Move/KillerTable.h"
-#include "Move/HistoryTable.h"
 #include "Time/TimeManager.h"
-#include "Evaluation.h"
-#include "EngineParameter.h"
-#include "LogarithmicReductionTable.h"
-#include "SEE.h"
-#include "RepetitionHistory.h"
 
 namespace StockDory
 {

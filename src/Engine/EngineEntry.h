@@ -6,8 +6,8 @@
 #ifndef STOCKDORY_ENGINEENTRY_H
 #define STOCKDORY_ENGINEENTRY_H
 
-#include "../Backend/Type/Zobrist.h"
 #include "../Backend/Type/Move.h"
+#include "../Backend/Type/Zobrist.h"
 
 namespace StockDory
 {

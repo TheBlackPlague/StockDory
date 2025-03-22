@@ -6,10 +6,10 @@
 #ifndef STOCKDORY_UCIINTERFACE_H
 #define STOCKDORY_UCIINTERFACE_H
 
-#include <vector>
+#include <functional>
 #include <iostream>
 #include <unordered_map>
-#include <functional>
+#include <vector>
 
 #include "Information.h"
 
@@ -18,11 +18,11 @@
 #include "../../Backend/Board.h"
 #include "../../Backend/Util.h"
 
-#include "../../Engine/Time/TimeManager.h"
 #include "../../Engine/Search.h"
+#include "../../Engine/Time/TimeManager.h"
 
-#include "UCISearch.h"
 #include "UCIOption.h"
+#include "UCISearch.h"
 #include "../Perft/PerftRunner.h"
 
 namespace StockDory

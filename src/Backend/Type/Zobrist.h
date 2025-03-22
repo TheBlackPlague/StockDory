@@ -6,11 +6,11 @@
 #ifndef STOCKDORY_ZOBRIST_H
 #define STOCKDORY_ZOBRIST_H
 
-#include <cstdint>
 #include <array>
+#include <cstdint>
 
-#include "Piece.h"
 #include "Color.h"
+#include "Piece.h"
 #include "Square.h"
 
 #include "../Template/MoveType.h"

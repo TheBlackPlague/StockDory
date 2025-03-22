@@ -6,12 +6,12 @@
 #ifndef STOCKDORY_PERFTRUNNER_H
 #define STOCKDORY_PERFTRUNNER_H
 
-#include <iostream>
 #include <chrono>
+#include <iostream>
 
 #include "../../Backend/Board.h"
-#include "../../Backend/Util.h"
 #include "../../Backend/ThreadPool.h"
+#include "../../Backend/Util.h"
 #include "../../Backend/Move/MoveList.h"
 
 #include "PerftEntry.h"

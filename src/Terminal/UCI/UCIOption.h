@@ -7,10 +7,10 @@
 #define STOCKDORY_UCIOPTION_H
 
 #include <cstdint>
-#include <string>
-#include <sstream>
 #include <functional>
 #include <iostream>
+#include <sstream>
+#include <string>
 
 namespace StockDory
 {

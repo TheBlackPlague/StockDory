@@ -9,8 +9,8 @@
 #include <array>
 #include <string>
 
-#include "../Engine/Time/TimeManager.h"
 #include "../Engine/Search.h"
+#include "../Engine/Time/TimeManager.h"
 
 namespace StockDory
 {

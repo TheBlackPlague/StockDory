@@ -7,9 +7,9 @@
 
 #include "Information.h"
 
-#include "UCI/UCIInterface.h"
 #include "BenchHash.h"
 #include "NetworkConverter.h"
+#include "UCI/UCIInterface.h"
 
 void DisplayTitle()
 {

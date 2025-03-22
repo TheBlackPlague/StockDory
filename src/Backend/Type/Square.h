@@ -6,8 +6,8 @@
 #ifndef STOCKDORY_SQUARE_H
 #define STOCKDORY_SQUARE_H
 
-#include <cstdint>
 #include <array>
+#include <cstdint>
 
 enum Square : uint8_t
 {
