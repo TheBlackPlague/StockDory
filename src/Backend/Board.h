@@ -216,7 +216,7 @@ namespace StockDory
                         e = 0;
                     }
 
-                    char p = '';
+                    char p = ' ';
 
                     switch (pc.Piece()) {
                         case Pawn:
