@@ -77,14 +77,13 @@ namespace StockDory
 
         void Start(const Limit limit)
         {
-            std::future<void> _ = ThreadPool.submit(
-                [this](const Limit depthLimit)
+            ThreadPool.detach_task(
+                [this, limit]
                 {
                     Running = true;
-                    EngineSearch.IterativeDeepening(depthLimit);
+                    EngineSearch.IterativeDeepening(limit);
                     Running = false;
-                },
-                limit
+                }
             );
         }
 

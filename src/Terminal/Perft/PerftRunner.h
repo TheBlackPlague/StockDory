@@ -189,7 +189,7 @@ namespace StockDory
                 std::array<std::future<uint64_t>, 64> futures = {};
                 const uint8_t                         count   = pIterator.ToArray(psq);
 
-                BS::blocks blocks(0, count, std::thread::hardware_concurrency());
+                BS::blocks<size_t> blocks(0, count, std::thread::hardware_concurrency());
 
                 auto ParallelComputation = [depth, &board, &pin, &check, &psq, &blocks](const size_t b) -> uint64_t
                 {

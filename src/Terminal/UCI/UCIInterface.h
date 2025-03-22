@@ -262,9 +262,9 @@ namespace StockDory
                 if (     strutil::compare_ignore_case(args[0], "movetime"))
                     timeControl = TimeManager::Fixed(std::stoull(args[1]));
                 else if (strutil::compare_ignore_case(args[0], "depth"))
-                    limit = Limit(static_cast<uint8_t>(std::stoull(args[1])));
+                    limit = Limit(static_cast<uint8_t >(std::stoull(args[1])));
                 else if (strutil::compare_ignore_case(args[0], "nodes"))
-                    limit = Limit(                     std::stoull(args[1]));
+                    limit = Limit(static_cast<uint64_t>(std::stoull(args[1])));
             } else if (args.size() > 2) {
                 const TimeData timeData{
                     .WhiteTime      = TokenToValue<uint64_t>(args, "wtime"    , 0),

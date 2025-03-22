@@ -36,11 +36,6 @@ int main(const int argc, const char* argv[])
         }
     }
 
-    if (argc > 1 && strutil::compare_ignore_case(argv[1], "bench")) {
-        StockDory::BenchHash::Run();
-        return EXIT_SUCCESS;
-    }
-
     StockDory::UCIInterface::Launch();
 
     return EXIT_SUCCESS;

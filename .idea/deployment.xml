@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="Remote LLVM (Ubuntu 24.04) (3e1005f1-527c-40b3-bec5-2f357ea5d1ab)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/tmp.SdiAVqf2xd/StockDory" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-clang" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-clang-linux" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-remote" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release-remote" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release-clang-linux" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release-clang" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>
