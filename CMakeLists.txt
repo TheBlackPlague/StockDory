@@ -4,6 +4,8 @@ project(StockDory)
 set(VERSION  "0.1"     )
 set(CODENAME "Starfish")
 
+option(PYMODULE "Build Python Bindings for StockDory ... will not build an executable" OFF)
+
 if(CI)
     set(CI TRUE)
 else()
@@ -110,13 +112,37 @@ file(GLOB StockDoryFrontendType
         "src/Terminal/UCI/*.h"
         "src/Terminal/*.h")
 
-add_executable(StockDory src/Terminal/main.cpp
-        ${StockDoryBackendType} ${StockDoryEngineType} ${StockDoryExternalType} ${StockDoryFrontendType})
+if(PYMODULE)
+    message(STATUS "Configured to build Python Module")
 
-target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+    set(PYBIND11_FINDPYTHON ON)
+    CPMAddPackage("gh:pybind/pybind11#a2e59f0e7065404b44dfe92a28aca47ba1378dc4")
 
-target_link_libraries(StockDory MantaRay)
+    pybind11_add_module(StockDory src/Python/binding.cpp
+            ${StockDoryBackendType}
+            ${StockDoryEngineType}
+            ${StockDoryExternalType}
+            ${StockDoryFrontendType}
+    )
 
-if(NOT WIN32)
-    target_link_libraries(StockDory pthread)
+    target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+    target_link_libraries(StockDory PRIVATE MantaRay)
+    if(NOT WIN32)
+        target_link_libraries(StockDory PRIVATE pthread)
+    endif()
+else()
+    message(STATUS "Configured to build executable")
+
+    add_executable(StockDory src/Terminal/main.cpp
+            ${StockDoryBackendType}
+            ${StockDoryEngineType}
+            ${StockDoryExternalType}
+            ${StockDoryFrontendType}
+    )
+
+    target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+    target_link_libraries(StockDory MantaRay)
+    if(NOT WIN32)
+        target_link_libraries(StockDory pthread)
+    endif()
 endif()
