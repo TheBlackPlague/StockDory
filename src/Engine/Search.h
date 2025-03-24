@@ -128,8 +128,8 @@ namespace StockDory
                 while (!limit.BeyondLimit(Nodes, currentDepth) && !TC.Finished<false>()) {
                     const Move lastBestMove = BestMove;
 
-                    if (Board.ColorToMove() == White)
-                        Evaluation  = Aspiration<White>(currentDepth);
+                    if (Board.ColorToMove() ==   White)
+                         Evaluation = Aspiration<White>(currentDepth);
                     else Evaluation = Aspiration<Black>(currentDepth);
 
                     BestMove = PvTable[0];

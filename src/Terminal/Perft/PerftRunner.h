@@ -24,6 +24,8 @@ namespace StockDory
     class PerftRunner
     {
 
+        static size_t HardwareConcurrency;
+
         static Board PerftBoard;
         // static TranspositionTable<PEntry> TranspositionTable;
 
@@ -65,6 +67,7 @@ namespace StockDory
 
         };
 
+        public:
         template<Color Color, bool Divide, bool Sync = false, bool TT = false>
         static inline uint64_t Perft(Board& board, const uint8_t depth)
         {
@@ -109,6 +112,7 @@ namespace StockDory
             return nodes;
         }
 
+        private:
         template<Piece Piece, Color Color, bool Divide, bool Sync = false, bool TT = false>
         static inline uint64_t PerftLoop(Board&             board, const uint8_t      depth,
                                          const PinBitBoard& pin, const CheckBitBoard& check,
@@ -189,7 +193,7 @@ namespace StockDory
                 std::array<std::future<uint64_t>, 64> futures = {};
                 const uint8_t                         count   = pIterator.ToArray(psq);
 
-                BS::blocks<size_t> blocks(0, count, std::thread::hardware_concurrency());
+                BS::blocks<size_t> blocks(0, count, HardwareConcurrency);
 
                 auto ParallelComputation = [depth, &board, &pin, &check, &psq, &blocks](const size_t b) -> uint64_t
                 {
@@ -284,6 +288,13 @@ namespace StockDory
             PerftBoard = board;
         }
 
+        static void SetMaximumConcurrency(const size_t concurrency)
+        {
+            const size_t maximumHardwareConcurrency = std::thread::hardware_concurrency();
+
+            HardwareConcurrency = std::min(concurrency, maximumHardwareConcurrency);
+        }
+
         // static void SetTranspositionTable(const uint64_t bytes)
         // {
         //     std::cout << "Allocating table using defined bytes (" << bytes << ")\n";
@@ -295,7 +306,11 @@ namespace StockDory
         template<bool Divide, bool TT = false>
         static void Perft(const uint8_t depth)
         {
-            std::cout << "Running PERFT @ depth " << static_cast<uint32_t>(depth) << ":" << std::endl;
+            static const std::regex comma ("(\\d)(?=(\\d{3})+(?!\\d))");
+
+            std::cout << "Running PERFT @ depth " << static_cast<uint32_t>(depth) << " ";
+            std::cout << "[Maximum Concurrency: " << HardwareConcurrency << "t]:";
+            std::cout << std::endl;
 
             const auto     start = std::chrono::high_resolution_clock::now();
             const uint64_t nodes =
@@ -305,13 +320,24 @@ namespace StockDory
             const auto     stop  = std::chrono::high_resolution_clock::now();
             const auto     time  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
 
-            std::cout << "Searched " << nodes << " nodes. (" << time << "µs)" << std::endl;
+            const double_t t   = static_cast<double_t>(time) / 1000000;
+            const uint64_t nps = static_cast<uint64_t>(nodes / t);
+
+            std::cout << std::endl;
+
+            std::cout << "Nodes searched: " << std::regex_replace(std::to_string(nodes), comma, "$1,");
+            std::cout << std::endl;
+            std::cout << "Time taken: " << t << "s";
+            std::cout << std::endl;
+            std::cout << "Speed: " << std::regex_replace(std::to_string(nps), comma, "$1,") << " nps";
+            std::cout << std::endl;
         }
 
     };
 
 } // Perft
 
+size_t           StockDory::PerftRunner::HardwareConcurrency = std::thread::hardware_concurrency();
 StockDory::Board StockDory::PerftRunner::PerftBoard = Board();
 // StockDory::TranspositionTable<PEntry> StockDory::Perft::PerftRunner::TranspositionTable =
 // StockDory::TranspositionTable<PEntry>(0);

@@ -58,7 +58,7 @@ namespace StockDory
                                 const Policy<Color, CaptureOnly>& policy,
                                 const PinBitBoard&                pin, const CheckBitBoard& check)
         {
-            BitBoardIterator iterator(board.PieceBoard<Color>(Piece));
+            BitBoardIterator iterator (board.PieceBoard<Color>(Piece));
 
             for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
                 const MoveList<Piece, Color> moves (board, sq, pin, check);
@@ -87,7 +87,7 @@ namespace StockDory
                                                              const HistoryTable&               hTable,
                                                              const Policy<Color, CaptureOnly>& policy,
                                                              const Square                      from  ,
-                                                             const Square                          to)
+                                                             const Square                      to    )
         {
             const auto move = Move(from, to, Promotion);
             return {policy.template Score<Piece, Promotion>(board, hTable, move), move};

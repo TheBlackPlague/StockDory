@@ -76,7 +76,7 @@ namespace StockDory
         }
 
         private:
-        constexpr inline void Pawn(const       Board& board, const Square       sq,
+        constexpr inline void Pawn(const       Board& board, const Square         sq   ,
                                    const PinBitBoard& pin  , const CheckBitBoard& check)
         {
             if (Get(pin.Diagonal, sq)) {
@@ -141,16 +141,16 @@ namespace StockDory
             }
         }
 
-        constexpr inline void Knight(const Board&       board, const Square       sq,
-                                     const PinBitBoard& pin, const CheckBitBoard& check)
+        constexpr inline void Knight(const Board&       board, const Square         sq   ,
+                                     const PinBitBoard& pin  , const CheckBitBoard& check)
         {
             if (Get(pin.Straight | pin.Diagonal, sq)) return;
 
             InternalContainer |= AttackTable::Knight[sq] & ~board[Color] & check.Check;
         }
 
-        constexpr inline void Bishop(const Board&       board, const Square       sq,
-                                     const PinBitBoard& pin, const CheckBitBoard& check)
+        constexpr inline void Bishop(const Board&       board, const Square         sq   ,
+                                     const PinBitBoard& pin  , const CheckBitBoard& check)
         {
             if (Get(pin.Straight, sq)) return;
 
@@ -160,8 +160,8 @@ namespace StockDory
             if (Get(pin.Diagonal, sq)) InternalContainer &= pin.Diagonal;
         }
 
-        constexpr inline void Rook(const Board&       board, const Square       sq,
-                                   const PinBitBoard& pin, const CheckBitBoard& check)
+        constexpr inline void Rook(const Board&       board, const Square         sq   ,
+                                   const PinBitBoard& pin  , const CheckBitBoard& check)
         {
             if (Get(pin.Diagonal, sq)) return;
 
@@ -171,8 +171,8 @@ namespace StockDory
             if (Get(pin.Straight, sq)) InternalContainer &= pin.Straight;
         }
 
-        constexpr inline void Queen(const Board&       board, const Square       sq,
-                                    const PinBitBoard& pin, const CheckBitBoard& check)
+        constexpr inline void Queen(const Board&       board, const Square         sq   ,
+                                    const PinBitBoard& pin  , const CheckBitBoard& check)
         {
             const bool straight = Get(pin.Straight, sq);
             const bool diagonal = Get(pin.Diagonal, sq);

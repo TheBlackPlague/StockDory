@@ -8,6 +8,7 @@
 
 #include <array>
 #include <cassert>
+#include <iostream>
 #include <string>
 
 #include "Type/BitBoard.h"
