@@ -189,11 +189,11 @@ namespace StockDory
                     }
                 }
             else {
-                std::array<Square, 64>                psq     = {};
+                std::array<Square               , 64> psq     = {};
                 std::array<std::future<uint64_t>, 64> futures = {};
                 const uint8_t                         count   = pIterator.ToArray(psq);
 
-                BS::blocks<size_t> blocks(0, count, HardwareConcurrency);
+                BS::blocks<size_t> blocks (0, count, HardwareConcurrency);
 
                 auto ParallelComputation = [depth, &board, &pin, &check, &psq, &blocks](const size_t b) -> uint64_t
                 {
@@ -220,14 +220,14 @@ namespace StockDory
                                 BLayer::UndoMove(parallelBoard, state, sq, m);
                                 parallelNodes += queenNodes;
 
-                                if (Divide) LogMove<Queen>(sq, m, queenNodes);
+                                if (Divide) LogMove<Queen >(sq, m, queenNodes);
 
                                 state                      = BLayer::Move (parallelBoard, sq, m, Rook  );
                                 const uint64_t rookNodes   = PLayer::Perft(parallelBoard, nextDepth);
                                 BLayer::UndoMove(parallelBoard, state, sq, m);
                                 parallelNodes += rookNodes;
 
-                                if (Divide) LogMove<Rook>(sq, m, rookNodes);
+                                if (Divide) LogMove<Rook  >(sq, m, rookNodes);
 
                                 state                      = BLayer::Move (parallelBoard, sq, m, Bishop);
                                 const uint64_t bishopNodes = PLayer::Perft(parallelBoard, nextDepth);
