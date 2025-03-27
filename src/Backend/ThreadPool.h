@@ -11,7 +11,7 @@
 namespace StockDory
 {
 
-    inline BS::thread_pool ThreadPool;
+    inline BS::thread_pool<BS::tp::priority> ThreadPool;
 
 } // StockDory
 

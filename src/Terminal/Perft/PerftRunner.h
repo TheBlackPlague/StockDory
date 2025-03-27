@@ -258,7 +258,10 @@ namespace StockDory
 
                 size_t b = 0;
                 while (b < blocks.get_num_blocks()) {
-                    futures[b] = std::async(std::launch::async, ParallelComputation, b);
+                    futures[b] = ThreadPool.submit_task([b, &ParallelComputation] -> uint64_t
+                    {
+                        return ParallelComputation(b);
+                    }, -static_cast<int8_t>(depth));
                     b++;
                 }
 
