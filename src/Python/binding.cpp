@@ -363,11 +363,6 @@ PYBIND11_MODULE(StockDory, m)
             StockDory::PerftRunner::SetBoard(board);
         }, "Set the board for PERFT.");
 
-        perft.def_static("SetMaximumConcurrency", [](const size_t concurrency) -> void
-        {
-            StockDory::PerftRunner::SetMaximumConcurrency(concurrency);
-        }, "Set the maximum level of concurrency allowed for the driver.");
-
         perft.def_static("Perft" , &StockDory::PerftRunner::Perft<false>, "Run PERFT to a certain depth.");
         perft.def_static("PerftD", &StockDory::PerftRunner::Perft<true >, "Run PERFT to a certain depth.");
 
