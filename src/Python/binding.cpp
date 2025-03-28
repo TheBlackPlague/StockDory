@@ -352,7 +352,7 @@ PYBIND11_MODULE(StockDory, m)
 
     /** -- CLASS: PERFT -- **/
     {
-        py::class_<StockDory::PerftRunner> perft (m, "PerftDriver");
+        py::class_<StockDory::PerftRunner> perft (engine, "PerftDriver");
         perft.def_static("SetBoard", [](const std::string& fen) -> void
         {
             StockDory::PerftRunner::SetBoard(fen);
@@ -392,5 +392,23 @@ PYBIND11_MODULE(StockDory, m)
         {
             return StockDory::Evaluation::Evaluate(c);
         }, "Evaluate the currently loaded board from a color's point of view.");
+    }
+
+    /** -- CLASS: ThreadPool -- **/
+    {
+        struct PyThreadPool {};
+
+        py::class_<PyThreadPool> pool (engine, "ThreadPool");
+        pool.def_static("Resize", [](const size_t c) -> void
+        {
+            pool_set_size(
+                StockDory::ThreadPool,
+                std::max<size_t>(1, std::min<size_t>(core_count(), c))
+            );
+        }, "Resize the thread pool. Minimum 1 thread, maximum is the perceived logical processor count.");
+        pool.def_property_readonly_static("Size", [] -> size_t
+        {
+            return pool_size(StockDory::ThreadPool);
+        }, "Size of the thread pool.");
     }
 }

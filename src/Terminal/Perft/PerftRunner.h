@@ -356,14 +356,21 @@ namespace StockDory
             static const std::regex comma ("(\\d)(?=(\\d{3})+(?!\\d))");
 
             std::cout << "Running PERFT @ depth " << static_cast<uint32_t>(depth) << " ";
-            std::cout << "[Maximum Concurrency: " << core_count() << "t]:";
+            std::cout << "[Maximum Concurrency: " << pool_size(ThreadPool) << "t]:";
             std::cout << std::endl;
 
             const auto     start = std::chrono::high_resolution_clock::now();
-            const uint64_t nodes =
-                PerftBoard.ColorToMove() == White
-                ? Perft<White, Divide, false, TT>(PerftBoard, depth)
-                : Perft<Black, Divide, false, TT>(PerftBoard, depth);
+                  uint64_t nodes = 0;
+
+            if (pool_size(ThreadPool) > 1)
+                nodes = PerftBoard.ColorToMove() == White
+                    ? Perft<White, Divide, false, TT>(PerftBoard, depth)
+                    : Perft<Black, Divide, false, TT>(PerftBoard, depth);
+            else
+                nodes = PerftBoard.ColorToMove() == White
+                    ? Perft<White, Divide, true , TT>(PerftBoard, depth)
+                    : Perft<Black, Divide, true , TT>(PerftBoard, depth);
+
             const auto     stop  = std::chrono::high_resolution_clock::now();
             const auto     time  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
 

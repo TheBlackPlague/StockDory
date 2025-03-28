@@ -76,8 +76,8 @@ namespace StockDory
         static void RegisterOptions()
         {
             auto hash =
-                std::make_shared<UCIOption<uint64_t>>
-                ("Hash", 16, 1, 16384, [](const uint64_t& value)
+                std::make_shared<UCIOption<size_t>>
+                ("Hash", 16, 1, 16384, [](const size_t& value) -> void
                     {
                         if (value < 1) {
                             std::cerr << "ERROR: Hash must be at least 1 MB" << std::endl;
@@ -93,10 +93,20 @@ namespace StockDory
                 );
 
             auto threads =
-                std::make_shared<UCIOption< uint8_t>>
-                ("Threads", 1, 1, 128, [](const uint8_t& value)
+                std::make_shared<UCIOption<size_t>>
+                ("Threads", 1, 1, core_count(), [](const size_t& value) -> void
                     {
-                        if (value != 1) std::cerr << "ERROR: Multithreading is not supported yet" << std::endl;
+                        if (value < 1) {
+                            std::cerr << "ERROR: Maximum thread count must be at least 1" << std::endl;
+                            return;
+                        }
+
+                        if (value > core_count()) {
+                            std::cerr << "ERROR: Maximum thread count exceeds number of logical processors" << std::endl;
+                            return;
+                        }
+
+                        pool_set_size(ThreadPool, value);
                     }
                 );
 

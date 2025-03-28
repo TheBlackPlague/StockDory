@@ -24,15 +24,15 @@ namespace StockDory
     {
 
         std::vector<T> Internal;
-        uint64_t       Count = 0;
+        size_t         Count = 0;
 
         public:
-        explicit TranspositionTable(const uint64_t bytes)
+        explicit TranspositionTable(const size_t bytes)
         {
             Resize(bytes);
         }
 
-        void Resize(const uint64_t bytes)
+        void Resize(const size_t bytes)
         {
             Count = bytes / sizeof(T);
 
@@ -66,7 +66,7 @@ namespace StockDory
         }
 
         [[nodiscard]]
-        inline uint64_t Size() const
+        inline size_t Size() const
         {
             return Internal.size();
         }

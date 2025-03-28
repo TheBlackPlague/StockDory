@@ -29,7 +29,7 @@ namespace StockDory
     };
 
     template<typename T>
-    class UCIOption : public UCIOptionBase
+    class UCIOption final : public UCIOptionBase
     {
 
         using Handler = std::function<void(const T&)>;

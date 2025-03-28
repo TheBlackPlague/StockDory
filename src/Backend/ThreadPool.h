@@ -11,7 +11,7 @@
 namespace StockDory
 {
 
-    inline Pool* ThreadPool = pool_create(core_count());
+    inline Pool* ThreadPool = pool_create(1);
 
 } // StockDory
 

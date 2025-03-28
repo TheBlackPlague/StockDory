@@ -88,6 +88,20 @@ CPMAddPackage(
             "NANOTHREAD_STATIC" ON
 )
 
+if(nanothread_ADDED)
+    message(STATUS "Patching ${nanothread_SOURCE_DIR}")
+    set(QUEUE_FILE "${nanothread_SOURCE_DIR}/src/queue.cpp")
+
+    file(READ "${QUEUE_FILE}" QUEUE_SRC)
+
+    string(REPLACE "static void pause()" "static void nanothread_pause()" QUEUE_SRC "${QUEUE_SRC}")
+    string(REPLACE " pause();" " nanothread_pause();" QUEUE_SRC "${QUEUE_SRC}")
+
+    file(WRITE "${QUEUE_FILE}" "${QUEUE_SRC}")
+
+    message(STATUS "Patched ${nanothread_SOURCE_DIR}")
+endif()
+
 include(BinaryResource.cmake)
 
 file(GLOB NNUEBinary
