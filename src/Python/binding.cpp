@@ -406,6 +406,7 @@ PYBIND11_MODULE(StockDory, m)
                 std::max<size_t>(1, std::min<size_t>(core_count(), c))
             );
         }, "Resize the thread pool. Minimum 1 thread, maximum is the perceived logical processor count.");
+
         pool.def_property_readonly_static("Size", [] -> size_t
         {
             return pool_size(StockDory::ThreadPool);
