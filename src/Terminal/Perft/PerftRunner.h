@@ -9,6 +9,8 @@
 #include <chrono>
 #include <iostream>
 
+#include <nanothread/nanothread.h>
+
 #include "../../Backend/Board.h"
 #include "../../Backend/ThreadPool.h"
 #include "../../Backend/Util.h"
@@ -93,12 +95,59 @@ namespace StockDory
                 const BitBoardIterator queens  (board.PieceBoard<Color>(Queen ));
                 const BitBoardIterator kings   (board.PieceBoard<Color>(King  ));
 
-                nodes += PLayer::template PerftLoop<Pawn  >(board, depth, pin, check, pawns  );
-                nodes += PLayer::template PerftLoop<Knight>(board, depth, pin, check, knights);
-                nodes += PLayer::template PerftLoop<Bishop>(board, depth, pin, check, bishops);
-                nodes += PLayer::template PerftLoop<Rook  >(board, depth, pin, check, rooks  );
-                nodes += PLayer::template PerftLoop<Queen >(board, depth, pin, check, queens );
-                nodes += PLayer::template PerftLoop<King  >(board, depth, pin, check, kings  );
+                if (Sync || depth < 5) {
+                    nodes += PLayer::template PerftLoop<Pawn  >(board, depth, pin, check, pawns  );
+                    nodes += PLayer::template PerftLoop<Knight>(board, depth, pin, check, knights);
+                    nodes += PLayer::template PerftLoop<Bishop>(board, depth, pin, check, bishops);
+                    nodes += PLayer::template PerftLoop<Rook  >(board, depth, pin, check, rooks  );
+                    nodes += PLayer::template PerftLoop<Queen >(board, depth, pin, check, queens );
+                    nodes += PLayer::template PerftLoop<King  >(board, depth, pin, check, kings  );
+                } else {
+                    std::array<uint64_t             , 6> result     = {};
+                    std::array<std::function<void()>, 6> perftLoops = {
+                        [pawns  , depth, &board, &pin, &check, &result] -> void
+                        {
+                            Board b = board;
+                            result[Pawn  ] = PLayer::template PerftLoop<Pawn  >(b, depth, pin, check, pawns  );
+                        },
+                        [knights, depth, &board, &pin, &check, &result] -> void
+                        {
+                            Board b = board;
+                            result[Knight] = PLayer::template PerftLoop<Knight>(b, depth, pin, check, knights);
+                        },
+                        [bishops, depth, &board, &pin, &check, &result] -> void
+                        {
+                            Board b = board;
+                            result[Bishop] = PLayer::template PerftLoop<Bishop>(b, depth, pin, check, bishops);
+                        },
+                        [rooks  , depth, &board, &pin, &check, &result] -> void
+                        {
+                            Board b = board;
+                            result[Rook  ] = PLayer::template PerftLoop<Rook  >(b, depth, pin, check, rooks  );
+                        },
+                        [queens , depth, &board, &pin, &check, &result] -> void
+                        {
+                            Board b = board;
+                            result[Queen ] = PLayer::template PerftLoop<Queen >(b, depth, pin, check, queens );
+                        },
+                        [kings  , depth, &board, &pin, &check, &result] -> void
+                        {
+                            Board b = board;
+                            result[King  ] = PLayer::template PerftLoop<King  >(b, depth, pin, check, kings  );
+                        }
+                    };
+
+                    using Block = drjit::blocked_range<uint8_t>;
+                    drjit::parallel_for(
+                        Block (0, 6, 1),
+                        [&perftLoops](const Block block) -> void
+                        {
+                            perftLoops[block.begin()]();
+                        }
+                    );
+
+                    for (size_t i = 0; i < 6; i++) nodes += result[i];
+                }
             }
 
             // if (TT) {
@@ -117,8 +166,9 @@ namespace StockDory
                                          BitBoardIterator   pIterator)
         {
             uint64_t nodes = 0;
-            using PLayer   = PerftLayer<Opposite(Color), false, Sync, TT>;
-            using BLayer   = BoardLayer<TT ? PERFT | ZOBRIST : STANDARD>;
+
+            using PLayer = PerftLayer<Opposite(Color), false, Sync, TT>;
+            using BLayer = BoardLayer<TT ? PERFT | ZOBRIST : STANDARD>;
 
             if (depth == 1)
                 for (Square sq = pIterator.Value(); sq != NASQ; sq = pIterator.Value()) {
@@ -187,27 +237,29 @@ namespace StockDory
                     }
                 }
             else {
-                std::array<Square               , 64> psq     = {};
-                std::array<std::future<uint64_t>, 64> futures = {};
-                const uint8_t                         count   = pIterator.ToArray(psq);
+                std::array<Square  , 8> psq    = {};
+                std::array<uint64_t, 8> result = {};
 
-                BS::blocks<size_t> blocks (0, count, ThreadPool.get_thread_count());
+                const uint8_t count  = pIterator.ToArray(psq);
 
-                auto ParallelComputation = [depth, &board, &pin, &check, &psq, &blocks](const size_t b) -> uint64_t
+                using Block = drjit::blocked_range<uint8_t>;
+
+                auto Loop = [depth, &board, &pin, &check, &psq](const Block block) -> uint64_t
                 {
-                    const uint8_t start = blocks.start(b);
-                    const uint8_t end   = blocks.  end(b);
+                    const uint8_t start = block.begin();
+                    const uint8_t end   = block.  end();
 
-                    uint64_t parallelNodes = 0;
-                    uint8_t  nextDepth     = depth - 1;
+                    const uint8_t nextDepth = depth - 1;
 
                     Board parallelBoard = board;
+
+                    uint64_t parallelNodes = 0;
 
                     for (uint8_t i = start; i < end; i++) {
                         const Square sq = psq[i];
 
                         MoveList<Piece, Color> moves (parallelBoard, sq, pin, check);
-                        if (moves.Count() < 1) return 0;
+                        if (moves.Count() < 1) continue;
 
                         BitBoardIterator mIterator = moves.Iterator();
 
@@ -254,16 +306,15 @@ namespace StockDory
                     return parallelNodes;
                 };
 
-                size_t b = 0;
-                while (b < blocks.get_num_blocks()) {
-                    futures[b] = ThreadPool.submit_task([b, &ParallelComputation] -> uint64_t
+                drjit::parallel_for(
+                    Block(0, count, 1),
+                    [&Loop, &result](const Block block) -> void
                     {
-                        return ParallelComputation(b);
-                    }, -static_cast<int8_t>(depth));
-                    b++;
-                }
+                        result[block.begin()] = Loop(block);
+                    }
+                );
 
-                for (size_t f = 0; f < b; f++) nodes += futures[f].get();
+                for (size_t i = 0; i < 8; i++) nodes += result[i];
             }
 
             return nodes;
@@ -315,7 +366,7 @@ namespace StockDory
             const auto     time  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
 
             const double_t t   = static_cast<double_t>(time) / 1000000;
-            const uint64_t nps = static_cast<uint64_t>(nodes / t);
+            const uint64_t nps = static_cast<uint64_t>(nodes / t     );
 
             std::cout << std::endl;
 

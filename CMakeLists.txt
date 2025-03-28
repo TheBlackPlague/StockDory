@@ -17,7 +17,7 @@ if(CMAKE_CXX_FLAGS STREQUAL "")
     set(CMAKE_CXX_FLAGS "-march=native")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto=full")
 if(PGO MATCHES "True")
     message(STATUS "PGO: Enabled")
     if(EXISTS ${CMAKE_BINARY_DIR}/pgo.profdata)
@@ -84,6 +84,14 @@ CPMAddPackage("gh:bshoshany/thread-pool@5.0.0")
 add_library(BS_thread_pool INTERFACE)
 target_include_directories(BS_thread_pool INTERFACE ${${CPM_LAST_PACKAGE_NAME}_SOURCE_DIR}/include)
 
+CPMAddPackage(
+        NAME nanothread
+        GITHUB_REPOSITORY mitsuba-renderer/nanothread
+        GIT_TAG master
+        OPTIONS
+            "NANOTHREAD_STATIC" ON
+)
+
 include(BinaryResource.cmake)
 
 file(GLOB NNUEBinary
@@ -130,7 +138,7 @@ if(PYMODULE)
     )
 
     target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-    target_link_libraries(StockDory PRIVATE MantaRay BS_thread_pool)
+    target_link_libraries(StockDory PRIVATE MantaRay BS_thread_pool nanothread)
     if(NOT WIN32)
         target_link_libraries(StockDory PRIVATE pthread)
     endif()
@@ -145,8 +153,12 @@ else()
     )
 
     target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-    target_link_libraries(StockDory MantaRay BS_thread_pool)
+    target_link_libraries(StockDory MantaRay BS_thread_pool nanothread)
     if(NOT WIN32)
         target_link_libraries(StockDory pthread)
     endif()
 endif()
+
+message(STATUS "CXX         FLAGS: ${CMAKE_CXX_FLAGS}"        )
+message(STATUS "CXX DEBUG   FLAGS: ${CMAKE_CXX_FLAGS_DEBUG}"  )
+message(STATUS "CXX RELEASE FLAGS: ${CMAKE_CXX_FLAGS_RELEASE}")
