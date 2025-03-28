@@ -6,12 +6,12 @@
 #ifndef STOCKDORY_THREADPOOL_H
 #define STOCKDORY_THREADPOOL_H
 
-#include <BS_thread_pool.hpp>
+#include <nanothread/nanothread.h>
 
 namespace StockDory
 {
 
-    inline BS::thread_pool<BS::tp::priority> ThreadPool;
+    inline Pool* ThreadPool = pool_create(core_count());
 
 } // StockDory
 

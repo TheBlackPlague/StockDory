@@ -80,10 +80,6 @@ include(${CPM_DOWNLOAD_LOCATION})
 
 CPMAddPackage("gh:TheBlackPlague/MantaRay#526e4d9cedf13c8ffd1457cc293261d691cda6c4")
 
-CPMAddPackage("gh:bshoshany/thread-pool@5.0.0")
-add_library(BS_thread_pool INTERFACE)
-target_include_directories(BS_thread_pool INTERFACE ${${CPM_LAST_PACKAGE_NAME}_SOURCE_DIR}/include)
-
 CPMAddPackage(
         NAME nanothread
         GITHUB_REPOSITORY mitsuba-renderer/nanothread
@@ -138,7 +134,7 @@ if(PYMODULE)
     )
 
     target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-    target_link_libraries(StockDory PRIVATE MantaRay BS_thread_pool nanothread)
+    target_link_libraries(StockDory PRIVATE MantaRay nanothread)
     if(NOT WIN32)
         target_link_libraries(StockDory PRIVATE pthread)
     endif()
@@ -153,7 +149,7 @@ else()
     )
 
     target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-    target_link_libraries(StockDory MantaRay BS_thread_pool nanothread)
+    target_link_libraries(StockDory MantaRay nanothread)
     if(NOT WIN32)
         target_link_libraries(StockDory pthread)
     endif()

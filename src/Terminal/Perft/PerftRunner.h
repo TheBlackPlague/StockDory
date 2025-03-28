@@ -143,7 +143,8 @@ namespace StockDory
                         [&perftLoops](const Block block) -> void
                         {
                             perftLoops[block.begin()]();
-                        }
+                        },
+                        ThreadPool
                     );
 
                     for (size_t i = 0; i < 6; i++) nodes += result[i];
@@ -311,7 +312,8 @@ namespace StockDory
                     [&Loop, &result](const Block block) -> void
                     {
                         result[block.begin()] = Loop(block);
-                    }
+                    },
+                    ThreadPool
                 );
 
                 for (size_t i = 0; i < 8; i++) nodes += result[i];
@@ -354,7 +356,7 @@ namespace StockDory
             static const std::regex comma ("(\\d)(?=(\\d{3})+(?!\\d))");
 
             std::cout << "Running PERFT @ depth " << static_cast<uint32_t>(depth) << " ";
-            std::cout << "[Maximum Concurrency: " << ThreadPool.get_thread_count() << "t]:";
+            std::cout << "[Maximum Concurrency: " << core_count() << "t]:";
             std::cout << std::endl;
 
             const auto     start = std::chrono::high_resolution_clock::now();
