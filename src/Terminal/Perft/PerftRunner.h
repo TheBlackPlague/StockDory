@@ -139,7 +139,7 @@ namespace StockDory
 
                     using Block = drjit::blocked_range<uint8_t>;
                     drjit::parallel_for(
-                        Block (0, 6, 1),
+                        Block (0, 6),
                         [&perftLoops](const Block block) -> void
                         {
                             perftLoops[block.begin()]();
@@ -308,7 +308,7 @@ namespace StockDory
                 };
 
                 drjit::parallel_for(
-                    Block(0, count, 1),
+                    Block(0, count),
                     [&Loop, &result](const Block block) -> void
                     {
                         result[block.begin()] = Loop(block);
