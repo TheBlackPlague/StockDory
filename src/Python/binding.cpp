@@ -16,7 +16,11 @@
 #include "../External/strutil.h"
 #include "../Terminal/Perft/PerftRunner.h"
 
+#include "Information.h"
+
 namespace py = pybind11;
+
+constexpr size_t API_VERSION = 0;
 
 class PyMoveList
 {
@@ -163,12 +167,28 @@ class PyMoveList
 
 };
 
+struct PyThreadPool;
+struct PyTranspositionTable;
+
 PYBIND11_MODULE(StockDory, m)
 {
     m.doc() = "Python Bindings for StockDory";
 
     const py::module_ types  = m.def_submodule("Types" , "Python Bindings for some of StockDory's Data Types");
     const py::module_ engine = m.def_submodule("Engine", "Python Bindings for StockDory's Engine");
+
+    /** -- BASE -- **/
+    {
+        m.def("Version", [] -> std::string
+        {
+            return VERSION;
+        });
+
+        m.def("APIVersion", [] -> std::string
+        {
+            return strutil::to_string(API_VERSION);
+        });
+    }
 
     /** -- ENUM: Square -- **/
     {
@@ -396,8 +416,6 @@ PYBIND11_MODULE(StockDory, m)
 
     /** -- CLASS: ThreadPool -- **/
     {
-        struct PyThreadPool {};
-
         py::class_<PyThreadPool> pool (engine, "ThreadPool");
         pool.def_static("Resize", [](const size_t c) -> void
         {
@@ -411,5 +429,24 @@ PYBIND11_MODULE(StockDory, m)
         {
             return pool_size(StockDory::ThreadPool);
         }, "Size of the thread pool.");
+    }
+
+    /** -- CLASS: Transposition Table -- **/
+    {
+        py::class_<PyTranspositionTable> tt (engine, "TranspositionTable");
+        tt.def_static("Resize", [](const size_t c) -> void
+        {
+            TTable.Resize(c);
+        });
+
+        tt.def_static("Size", [] -> size_t
+        {
+            return TTable.Size();
+        });
+
+        tt.def_static("Clear", [] -> void
+        {
+            TTable.Clear();
+        });
     }
 }
