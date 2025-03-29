@@ -6,6 +6,7 @@
 #ifndef STOCKDORY_PERFTENTRY_H
 #define STOCKDORY_PERFTENTRY_H
 
+#include <mutex>
 #include <shared_mutex>
 
 #include "../../Backend/Type/Zobrist.h"
