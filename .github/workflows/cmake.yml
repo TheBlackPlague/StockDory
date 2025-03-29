@@ -12,7 +12,7 @@ jobs:
   build:
     strategy:
       matrix:
-        arch: [ x86-64, x86-64-v2, x86-64-v3, x86-64-v4, apple-m1, apple-m2 ]
+        arch: [ x86-64, x86-64-v2, x86-64-v3, x86-64-v4, apple-m1, apple-m2, apple-m3 ]
         os: [ ubuntu-latest , windows-latest, macos-latest ]
         include:
           - os: windows-latest
@@ -22,10 +22,14 @@ jobs:
             arch: apple-m1
           - os: windows-latest
             arch: apple-m2
+          - os: windows-latest
+            arch: apple-m3
           - os: ubuntu-latest
             arch: apple-m1
           - os: ubuntu-latest
             arch: apple-m2
+          - os: ubuntu-latest
+            arch: apple-m3
           - os: macos-latest
             arch: x86-64
           - os: macos-latest
