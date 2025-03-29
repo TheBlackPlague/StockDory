@@ -1,0 +1,30 @@
+[build-system]
+requires = ["scikit-build-core[pyproject]", "pybind11"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "StockDory"
+version = "0.1-0"
+description = "Python bindings for the StockDory Chess Engine"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "StockDory Authors" }]
+requires-python = ">=3.12"
+
+[project.urls]
+Homepage = "https://github.com/TheBlackPlague/StockDory"
+Repository = "https://github.com/TheBlackPlague/StockDory"
+
+[tool.scikit-build]
+build.verbose = true
+cmake.minimum-version = "3.15"
+
+cmake.args = [
+    "-DCMAKE_BUILD_TYPE=Release",
+    "-DPYMODULE=ON",
+    "-G", "Ninja",
+    "-DCMAKE_MAKE_PROGRAM=ninja",
+    "-DCMAKE_C_COMPILER=clang",
+    "-DCMAKE_CXX_COMPILER=clang++",
+    "-DCMAKE_CXX_FLAGS=-march=native -mno-avx512vnni"
+]
