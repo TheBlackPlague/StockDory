@@ -4,21 +4,22 @@ project(StockDory)
 set(VERSION  "0.1"     )
 set(CODENAME "Starfish")
 
-option(PYMODULE "Build Python Bindings for StockDory ... will not build an executable" OFF)
-
-if(CI)
-    set(CI TRUE)
-else()
-    set(CI FALSE)
-endif()
+option(BUILD_NATIVE "Enable native CPU architecture optimizations" ON)
+option(PYMODULE "Enable if building Python Bindings" OFF)
+option(CI "Enable if building via Continuous Integration such as Github Actions" OFF)
+option(PGO "Enable profile-guided optimization - uses existing profile or creates instrumentation executable" OFF)
 
 set(CMAKE_CXX_STANDARD 23)
-if(CMAKE_CXX_FLAGS STREQUAL "")
-    set(CMAKE_CXX_FLAGS "-march=native")
+
+if(BUILD_NATIVE AND NOT PYMODULE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+else()
+    set(NANOTHREAD_NATIVE_FLAGS "" CACHE STRING "" FORCE)
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto=full")
-if(PGO MATCHES "True")
+
+if(PGO)
     message(STATUS "PGO: Enabled")
     if(EXISTS ${CMAKE_BINARY_DIR}/pgo.profdata)
         message(STATUS "PGO: Using existing profile data at: ${CMAKE_BINARY_DIR}/pgo.profdata")
@@ -31,8 +32,6 @@ endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g -ftime-report")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-
-set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
 
 set(CPM_DOWNLOAD_VERSION 0.40.8)
 
@@ -136,6 +135,9 @@ if(PYMODULE)
     if(NOT WIN32)
         target_link_libraries(StockDory PRIVATE pthread)
     endif()
+
+    message(STATUS "NANOTHREAD_NATIVE_FLAGS: ${NANOTHREAD_NATIVE_FLAGS}")
+    install(TARGETS StockDory DESTINATION .)
 else()
     message(STATUS "Configured to build executable")
 
@@ -153,6 +155,11 @@ else()
     endif()
 endif()
 
+message(STATUS "NANOTHREAD COMPILATION: ${NANOTHREAD_NATIVE_FLAGS}")
+
 message(STATUS "CXX         FLAGS: ${CMAKE_CXX_FLAGS}"        )
-message(STATUS "CXX DEBUG   FLAGS: ${CMAKE_CXX_FLAGS_DEBUG}"  )
-message(STATUS "CXX RELEASE FLAGS: ${CMAKE_CXX_FLAGS_RELEASE}")
+if(CMAKE_BUILD_TYPE MATCHES "Debug")
+    message(STATUS "CXX DEBUG   FLAGS: ${CMAKE_CXX_FLAGS_DEBUG}"  )
+elseif(CMAKE_BUILD_TYPE MATCHES "Release")
+    message(STATUS "CXX RELEASE FLAGS: ${CMAKE_CXX_FLAGS_RELEASE}")
+endif()
