@@ -86,7 +86,7 @@ jobs:
 
     - if: matrix.os == 'macos-latest'
       name: Configure CMake for Apple (ARM64)
-      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCI=ON -DCMAKE_CXX_FLAGS="--target=arm64 -mcpu=${{ matrix.arch }}" -G Ninja
+      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCI=ON -DCMAKE_CXX_FLAGS="-mcpu=${{ matrix.arch }}" -G Ninja
 
     - if: matrix.os != 'macos-latest'
       name: Configure CMake
