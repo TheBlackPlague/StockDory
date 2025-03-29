@@ -109,7 +109,7 @@ jobs:
         mv ${{ github.workspace }}/build/StockDory${{ matrix.extension }} ${{ github.workspace }}/StockDory-${{ env.VERSION }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}
 
     - name: Upload Binary
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: StockDory-${{ env.VERSION }}-${{ matrix.os }}-${{ matrix.arch }}
         path: ${{ github.workspace }}/StockDory-${{ env.VERSION }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}
