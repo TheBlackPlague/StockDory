@@ -26,6 +26,12 @@ jobs:
             arch: apple-m1
           - os: ubuntu-latest
             arch: apple-m2
+          - os: macos-latest
+            arch: x86-64-v2
+          - os: macos-latest
+            arch: x86-64-v3
+          - os: macos-latest
+            arch: x86-64-v4
 
     runs-on: ${{ matrix.os }}
 
