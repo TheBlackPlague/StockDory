@@ -11,7 +11,7 @@ option(PGO "Enable profile-guided optimization - uses existing profile or create
 
 set(CMAKE_CXX_STANDARD 23)
 
-if(BUILD_NATIVE AND NOT PYMODULE)
+if(BUILD_NATIVE AND NOT (PYMODULE OR CI))
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 else()
     set(NANOTHREAD_NATIVE_FLAGS "" CACHE STRING "" FORCE)
