@@ -167,8 +167,8 @@ class PyMoveList
 
 };
 
-struct PyThreadPool;
-struct PyTranspositionTable;
+class PyThreadPool {};
+class PyTranspositionTable {};
 
 PYBIND11_MODULE(StockDory, m)
 {
@@ -368,6 +368,23 @@ PYBIND11_MODULE(StockDory, m)
         {
             return py::make_iterator(self.Begin(), self.Begin() + self.Count());
         }, py::keep_alive<0, 1>());
+
+        moveList.def("__str__", [](const PyMoveList& self) -> std::string
+        {
+            std::stringstream ss;
+            ss << "[";
+
+            const size_t n = self.Count();
+            for (size_t i = 0; i < n; i++) {
+                ss << self[i].ToString();
+
+                if (i != n - 1) ss << ", ";
+            }
+
+            ss << "]";
+
+            return ss.str();
+        });
     }
 
     /** -- CLASS: PERFT -- **/
