@@ -308,7 +308,7 @@ namespace StockDory
                 };
 
                 drjit::parallel_for(
-                    Block(0, count),
+                    Block (0, count),
                     [&Loop, &result](const Block block) -> void
                     {
                         result[block.begin()] = Loop(block);
