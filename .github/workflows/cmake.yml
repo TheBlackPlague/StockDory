@@ -27,7 +27,7 @@ jobs:
           - os: ubuntu-latest
             arch: apple-m2
           - os: macos-latest
-            arch: x86-64-v1
+            arch: x86-64
           - os: macos-latest
             arch: x86-64-v2
           - os: macos-latest
