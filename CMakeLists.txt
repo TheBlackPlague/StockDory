@@ -82,25 +82,9 @@ CPMAddPackage("gh:TheBlackPlague/MantaRay#526e4d9cedf13c8ffd1457cc293261d691cda6
 
 CPMAddPackage(
         NAME nanothread
-        GITHUB_REPOSITORY mitsuba-renderer/nanothread
+        GITHUB_REPOSITORY TheBlackPlague/nanothread
         GIT_TAG master
-        OPTIONS
-            "NANOTHREAD_STATIC" ON
 )
-
-if(nanothread_ADDED)
-    message(STATUS "Patching ${nanothread_SOURCE_DIR}")
-    set(QUEUE_FILE "${nanothread_SOURCE_DIR}/src/queue.cpp")
-
-    file(READ "${QUEUE_FILE}" QUEUE_SRC)
-
-    string(REPLACE "static void pause()" "static void nanothread_pause()" QUEUE_SRC "${QUEUE_SRC}")
-    string(REPLACE " pause();" " nanothread_pause();" QUEUE_SRC "${QUEUE_SRC}")
-
-    file(WRITE "${QUEUE_FILE}" "${QUEUE_SRC}")
-
-    message(STATUS "Patched ${nanothread_SOURCE_DIR}")
-endif()
 
 include(BinaryResource.cmake)
 
