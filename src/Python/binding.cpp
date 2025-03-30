@@ -652,9 +652,9 @@ PYBIND11_MODULE(StockDory, m)
             {
                 PySearchHandler::RegisterDepthIterationHandler(
                     [callback = std::move(callback)](const uint8_t       a, const uint8_t  b, const int32_t c,
-                                                        const uint64_t      d, const uint64_t e,
-                                                        const StockDory::MS f,
-                                                        const StockDory::PrincipleVariationTable& g) -> void
+                                                      const uint64_t      d, const uint64_t e,
+                                                      const StockDory::MS f,
+                                                      const StockDory::PrincipleVariationTable& g) -> void
                     {
                         py::gil_scoped_acquire _;
 
@@ -662,8 +662,15 @@ PYBIND11_MODULE(StockDory, m)
                         callback(a, b, c, d, e, f, g);
                     }
                 );
-            }
+            },
+            py::arg("handler"),
+            R"pbdoc(
+                RegisterDepthIterationHandler(handler: Callable[[int, int, int, int, int, StockDory.Types.MS, StockDory.Engine.PrincipleVariationTable], None]) -> None
+
+                Register a handler to be called when search has concluded a depth iteration.
+            )pbdoc"
         );
+
         handler.def_static(
                   "RegisterBestMoveHandler",
             [](py::function& callback) -> void
@@ -677,7 +684,13 @@ PYBIND11_MODULE(StockDory, m)
                         callback(a                  );
                     }
                 );
-            }
+            },
+            py::arg("handler"),
+            R"pbdoc(
+                RegisterBestMoveHandler(handler: Callable[[StockDory.Types.Move], None]) -> None
+
+                Register a handler to be called when search has concluded to have found the best move.
+            )pbdoc"
         );
     }
 
@@ -699,15 +712,24 @@ PYBIND11_MODULE(StockDory, m)
         search.def_static(
             "Configure",
             [](const StockDory::Board&                  board, const StockDory::TimeControl& tc,
-                 const StockDory::RepetitionHistory& repetition, const uint8_t                 hm) -> void
+               const StockDory::RepetitionHistory& repetition, const uint8_t                 hm) -> void
             {
                 SEARCH = PySearch(board, tc, repetition, hm);
-            }
+            },
+            py::arg("board"),
+            py::arg("time_control"),
+            py::arg("repetition_history"),
+            py::arg("half_move_count"),
+            R"pbdoc(
+                Configure(board: StockDory.Board, time_control: StockDory.Engine.TimeControl, repetition_history: StockDory.Engine.RepetitionHistory, hm: int) -> None
+
+                Configures the search.
+            )pbdoc"
         );
 
         search.def_static(
-            "Run",
-            [](const StockDory::Limit& limit) -> void
+            "Start",
+            [](const StockDory::Limit& limit = StockDory::Limit()) -> void
             {
                 drjit::do_async([limit] -> void
                 {
@@ -715,7 +737,14 @@ PYBIND11_MODULE(StockDory, m)
                     SEARCH.IterativeDeepening(limit);
                     SEARCH_RUNNING = false;
                 }, {}, StockDory::ThreadPool);
-            }
+            },
+            py::arg("limit") = StockDory::Limit(),
+            R"pbdoc(
+                Run(limit: StockDory.Engine.SearchLimit = StockDory.Engine.SearchLimit()) -> None
+
+                Starts the asynchronous search using the provided search limit constraints,
+                using the default constraints if none are provided.
+            )pbdoc"
         );
 
         search.def_static(
@@ -723,9 +752,22 @@ PYBIND11_MODULE(StockDory, m)
             [] -> void
             {
                 SEARCH.ForceStop();
-            }
+            },
+            R"pbdoc(
+                Stop() -> None
+
+                Gracefully halts the ongoing search if it's running.
+            )pbdoc"
         );
 
-        search.def_static("Running", []() -> bool { return SEARCH_RUNNING; });
+        search.def_static(
+            "Running",
+            []() -> bool { return SEARCH_RUNNING; },
+            R"pbdoc(
+                Running() -> bool
+
+                Returns true if a search is running, otherwise false.
+            )pbdoc"
+        );
     }
 }
