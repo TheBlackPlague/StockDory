@@ -5,6 +5,7 @@
 
 #include <pybind11/pybind11.h>
 
+#include "Information.h"
 #include "../Backend/Board.h"
 #include "../Backend/Util.h"
 #include "../Backend/Move/MoveList.h"
@@ -13,10 +14,9 @@
 #include "../Backend/Type/Piece.h"
 #include "../Backend/Type/Square.h"
 #include "../Engine/EngineParameter.h"
+#include "../Engine/Time/TimeManager.h"
 #include "../External/strutil.h"
 #include "../Terminal/Perft/PerftRunner.h"
-
-#include "Information.h"
 
 namespace py = pybind11;
 
@@ -448,7 +448,7 @@ PYBIND11_MODULE(StockDory, m)
         }, "Size of the thread pool.");
     }
 
-    /** -- CLASS: Transposition Table -- **/
+    /** -- CLASS: TranspositionTable -- **/
     {
         py::class_<PyTranspositionTable> tt (engine, "TranspositionTable");
         tt.def_static("Resize", [](const size_t c) -> void
@@ -465,5 +465,80 @@ PYBIND11_MODULE(StockDory, m)
         {
             TTable.Clear();
         });
+    }
+
+    /** -- STRUCT: TimeData -- **/
+    {
+        py::class_<StockDory::TimeData> td (engine, "TimeData");
+        td.def(py::init());
+
+        td.def_property(
+            "WhiteTime",
+            [](const StockDory::TimeData& self) -> uint64_t
+            {
+                return self.WhiteTime;
+            },
+            [](StockDory::TimeData& self, const uint64_t whiteTime) -> void
+            {
+                self.WhiteTime = whiteTime;
+            }
+        );
+
+        td.def_property(
+            "BlackTime",
+            [](const StockDory::TimeData& self) -> uint64_t
+            {
+                return self.BlackTime;
+            },
+            [](StockDory::TimeData& self, const uint64_t blackTime) -> void
+            {
+                self.BlackTime = blackTime;
+            }
+        );
+
+        td.def_property(
+            "WhiteIncrement",
+            [](const StockDory::TimeData& self) -> uint64_t
+            {
+                return self.WhiteIncrement;
+            },
+            [](StockDory::TimeData& self, const uint64_t whiteIncrement) -> void
+            {
+                self.WhiteIncrement = whiteIncrement;
+            }
+        );
+
+        td.def_property(
+            "BlackIncrement",
+            [](const StockDory::TimeData& self) -> uint64_t
+            {
+                return self.BlackIncrement;
+            },
+            [](StockDory::TimeData& self, const uint64_t blackIncrement) -> void
+            {
+                self.BlackIncrement = blackIncrement;
+            }
+        );
+
+        td.def_property(
+            "MovesToGo",
+            [](const StockDory::TimeData& self) -> uint16_t
+            {
+                return self.MovesToGo;
+            },
+            [](StockDory::TimeData& self, const uint16_t movesToGo) -> void
+            {
+                self.MovesToGo = movesToGo;
+            }
+        );
+    }
+
+    /** -- CLASS TimeControl & TimeManager -- **/
+    {
+        py::class_<StockDory::TimeControl> tc (engine, "TimeControl");
+        py::class_<StockDory::TimeManager> tm (engine, "TimeManager");
+        tm.def_static("Default", &StockDory::TimeManager::Default);
+        tm.def_static("Fixed"  , &StockDory::TimeManager::Fixed  );
+        tm.def_static("Optimal", &StockDory::TimeManager::Optimal);
     }
 }
