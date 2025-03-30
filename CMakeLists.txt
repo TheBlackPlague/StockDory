@@ -11,6 +11,8 @@ option(PGO "Enable profile-guided optimization - uses existing profile or create
 
 set(CMAKE_CXX_STANDARD 23)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CMAKE_CXX_FLAGS}")
+
 if(BUILD_NATIVE AND NOT (PYMODULE OR CI))
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 else()

@@ -100,12 +100,12 @@ jobs:
       - name: CMake Arguments
         if: matrix.os == 'macos-latest'
         run: |
-          echo "CMAKE_ARGS=-DCMAKE_CXX_FLAGS='-mcpu=${{ matrix.arch }}'" >> $GITHUB_ENV
+          echo "CMAKE_CXX_FLAGS=-mcpu=${{ matrix.arch }}" >> $GITHUB_ENV
 
       - name: CMake Arguments
         if: matrix.os != 'macos-latest'
         run: |
-          echo "CMAKE_ARGS=-DCMAKE_CXX_FLAGS='-march=${{ matrix.arch }}'" >> $GITHUB_ENV
+          echo "CMAKE_CXX_FLAGS=-march=${{ matrix.arch }}" >> $GITHUB_ENV
 
       - name: Build Wheel
         run: |
