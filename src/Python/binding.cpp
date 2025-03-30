@@ -15,6 +15,7 @@
 #include "../Backend/Type/Square.h"
 #include "../Engine/EngineParameter.h"
 #include "../Engine/RepetitionHistory.h"
+#include "../Engine/Search.h"
 #include "../Engine/Move/PrincipleVariationTable.h"
 #include "../Engine/Time/TimeManager.h"
 #include "../External/strutil.h"
@@ -171,6 +172,57 @@ class PyMoveList
 
 class PyThreadPool {};
 class PyTranspositionTable {};
+
+class PySearchHandler
+{
+
+    using PV = StockDory::PrincipleVariationTable;
+
+    using DepthIterationHandler = std::function<void(
+        uint8_t ,
+        uint8_t ,
+         int32_t,
+        uint64_t,
+        uint64_t,
+        StockDory::MS,
+        const PV&
+    )>;
+
+    using BestMoveHandler = std::function<void(Move)>;
+
+    static inline DepthIterationHandler DepthIterationMethod = [](const uint8_t ,
+                                                                  const uint8_t ,
+                                                                  const  int32_t,
+                                                                  const uint64_t,
+                                                                  const uint64_t,
+                                                                  const StockDory::MS,
+                                                                  const PV& ) -> void {};
+    static inline       BestMoveHandler       BestMoveMethod = [](const Move) -> void {};
+
+    public:
+    static void RegisterDepthIterationHandler(const DepthIterationHandler&& handler)
+    {
+        DepthIterationMethod = std::move(handler);
+    }
+
+    static void       RegisterBestMoveHandler(const       BestMoveHandler&& handler)
+    {
+              BestMoveMethod = std::move(handler);
+    }
+
+    static void HandleDepthIteration(const uint8_t       a, const uint8_t  b, const int32_t c,
+                                     const uint64_t      d, const uint64_t e,
+                                     const StockDory::MS f, const PV&      g)
+    {
+        DepthIterationMethod(a, b, c, d, e, f, g);
+    }
+
+    static void HandleBestMove(const Move a)
+    {
+              BestMoveMethod(a                  );
+    }
+
+};
 
 PYBIND11_MODULE(StockDory, m)
 {
@@ -576,5 +628,45 @@ PYBIND11_MODULE(StockDory, m)
         pv.def("__len__", &StockDory::PrincipleVariationTable::Count);
 
         pv.def("__getitem__", &StockDory::PrincipleVariationTable::operator[]);
+    }
+
+    /** -- CLASS: SearchHandler -- **/
+    {
+        py::class_<PySearchHandler> handler (engine, "SearchHandler");
+
+        handler.def_static(
+            "RegisterDepthIterationHandler",
+            [](py::function callback) -> void
+            {
+                PySearchHandler::RegisterDepthIterationHandler(
+                    [callback](const uint8_t a, const uint8_t b, const int32_t c, const uint64_t d, const uint64_t e,
+                                  const StockDory::MS f,            const StockDory::PrincipleVariationTable& g) -> void
+                    {
+                        const py::gil_scoped_acquire _;
+                        // ReSharper disable once CppExpressionWithoutSideEffects
+                        callback(a, b, c, d, e, f, g);
+                    }
+                );
+            }
+        );
+        handler.def_static(
+                  "RegisterBestMoveHandler",
+            [](py::function callback) -> void
+            {
+                PySearchHandler::     RegisterBestMoveHandler(
+                    [callback](const Move a) -> void
+                    {
+                        const py::gil_scoped_acquire _;
+                        // ReSharper disable once CppExpressionWithoutSideEffects
+                        callback(a                  );
+                    }
+                );
+            }
+        );
+    }
+
+    /** -- CLASS: Search -- **/
+    {
+        py::class_<StockDory::Search<PySearchHandler>> search (engine, "Search");
     }
 }

@@ -65,7 +65,7 @@ namespace StockDory
             std::cout << output.str() << std::endl;
         }
 
-        static void HandleBestMove(const Move& move)
+        static void HandleBestMove(const Move move)
         {
             std::stringstream output;
             output << "bestmove " << move.ToString();

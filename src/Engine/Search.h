@@ -64,7 +64,7 @@ namespace StockDory
                                          [[maybe_unused]] const MS                       time,
                                          [[maybe_unused]] const PrincipleVariationTable& pv) {}
 
-        static void HandleBestMove([[maybe_unused]] const Move& move) {}
+        static void HandleBestMove([[maybe_unused]] const Move move) {}
 
     };
 
