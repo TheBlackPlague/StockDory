@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest , windows-latest, macos-latest ]
-        python: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
 
     runs-on: ${{ matrix.os }}
 
@@ -78,5 +78,5 @@ jobs:
       - name: Upload Wheel
         uses: actions/upload-artifact@v4
         with:
-          name: StockDory-wheel-${{ matrix.os }}-${{ strategy.job-index }}
+          name: StockDory-wheel-cp${{ matrix.python }}-${{ matrix-os }}.whl
           path: ./dist/*.whl
