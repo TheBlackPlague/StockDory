@@ -1,0 +1,72 @@
+name: PyBinding
+
+on:
+  push:
+    branches: [ "master", "cpp23-clang20" ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest , windows-latest, macos-latest ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - if: matrix.os == 'ubuntu-latest'
+        name: Install Linux Dependencies
+        run: |
+          sudo apt install ninja-build
+          sudo apt remove python3-lldb-14
+      - if: matrix.os == 'windows-latest'
+        name: Install Windows Dependencies
+        run: |
+          choco install ninja
+
+      - if: matrix.os == 'ubuntu-latest'
+        name: Install Clang 20 (Ubuntu)
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          sudo chmod +x llvm.sh
+          sudo ./llvm.sh 20
+          sudo rm -rf llvm.sh
+      - if: matrix.os == 'windows-latest'
+        name: Install Clang 20 (Windows)
+        run: |
+          choco install llvm --version 20.1.0 -y
+      - if: matrix.os == 'macos-latest'
+        name: Install Clang 19 (MacOS)
+        run: |
+          brew install llvm@19
+
+      - if: matrix.os == 'ubuntu-latest'
+        name: Set CC and CXX for Linux
+        run: |
+          echo "CC=clang-20" >> $GITHUB_ENV
+          echo "CXX=clang++-20" >> $GITHUB_ENV
+      - if: matrix.os == 'windows-latest'
+        name: Set CC and CXX for Windows
+        shell: powershell
+        run: |
+          echo "CC=clang" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CXX=clang++" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - if: matrix.os == 'macos-latest'
+        name: Set CC and CXX for MacOS
+        run: |
+          echo "CC=/opt/homebrew/opt/llvm/bin/clang" >> $GITHUB_ENV
+          echo "CXX=/opt/homebrew/opt/llvm/bin/clang++" >> $GITHUB_ENV
+          echo "PATH=/opt/homebrew/opt/llvm/bin:$PATH" >> $GITHUB_ENV
+
+      - name: Build Wheels (${{ matrix.os }})
+        uses: pypa/cibuildwheel@v2.23.2
+        with:
+          config-file: 'pyproject.toml'
+          output-dir: 'dist'
+
+      - name: Upload Wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: StockDory-wheel-${{ matrix.os }}-${{ strategy.job-index }}
+          path: ./dist/*.whl
