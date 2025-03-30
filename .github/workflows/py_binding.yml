@@ -8,8 +8,34 @@ jobs:
   build:
     strategy:
       matrix:
+        arch: [ x86-64, x86-64-v2, x86-64-v3, x86-64-v4, apple-m1, apple-m2, apple-m3, apple-m4 ]
         os: [ ubuntu-latest , windows-latest, macos-latest ]
-        python: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python: [ "3.8", "3.9", "3.10", "3.11", "3.12", "3.13" ]
+        exclude:
+          - os: windows-latest
+            arch: apple-m1
+          - os: windows-latest
+            arch: apple-m2
+          - os: windows-latest
+            arch: apple-m3
+          - os: windows-latest
+            arch: apple-m4
+          - os: ubuntu-latest
+            arch: apple-m1
+          - os: ubuntu-latest
+            arch: apple-m2
+          - os: ubuntu-latest
+            arch: apple-m3
+          - os: ubuntu-latest
+            arch: apple-m4
+          - os: macos-latest
+            arch: x86-64
+          - os: macos-latest
+            arch: x86-64-v2
+          - os: macos-latest
+            arch: x86-64-v3
+          - os: macos-latest
+            arch: x86-64-v4
 
     runs-on: ${{ matrix.os }}
 
@@ -71,6 +97,16 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install scikit-build-core build twine pybind11 setuptools build
 
+      - name: CMake Arguments
+        if: matrix.os == 'macos-latest'
+        run: |
+          echo "CMAKE_ARGS=-DCMAKE_CXX_FLAGS='-mcpu=${{ matrix.arch }}'" >> $GITHUB_ENV
+
+      - name: CMake Arguments
+        if: matrix.os != 'macos-latest'
+        run: |
+          echo "CMAKE_ARGS=-DCMAKE_CXX_FLAGS='-march=${{ matrix.arch }}'" >> $GITHUB_ENV
+
       - name: Build Wheel
         run: |
           python -m build
@@ -78,5 +114,5 @@ jobs:
       - name: Upload Wheel
         uses: actions/upload-artifact@v4
         with:
-          name: StockDory-wheel-cp${{ matrix.python }}-${{ matrix.os }}.whl
+          name: StockDory-wheel-cp${{ matrix.python }}-${{ matrix.os }}-${{ matrix.arch }}.whl
           path: ./dist/*.whl
