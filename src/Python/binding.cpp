@@ -229,6 +229,8 @@ using PySearch = StockDory::Search<PySearchHandler>;
 auto SEARCH         = PySearch();
 auto SEARCH_RUNNING = false     ;
 
+Task* SEARCH_TASK = nullptr;
+
 PYBIND11_MODULE(StockDory, m)
 {
     m.doc() = "Python Bindings for StockDory";
@@ -712,7 +714,7 @@ PYBIND11_MODULE(StockDory, m)
             "Start",
             [](const StockDory::Limit& limit = StockDory::Limit()) -> void
             {
-                drjit::do_async([limit] -> void
+                SEARCH_TASK = drjit::do_async([limit] -> void
                 {
                     SEARCH_RUNNING = true ;
                     SEARCH.IterativeDeepening(limit);
@@ -723,6 +725,8 @@ PYBIND11_MODULE(StockDory, m)
         );
 
         search.def_static("Stop", [] -> void { SEARCH.ForceStop(); } );
+
+        search.def_static("Wait", [] -> void { if (SEARCH_TASK) task_wait_and_release(SEARCH_TASK); });
 
         search.def_static("Running", [] -> bool { return SEARCH_RUNNING; });
     }
