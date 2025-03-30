@@ -111,8 +111,31 @@ jobs:
         run: |
           python -m build
 
+      - name: Generate name
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            OS_SHORT="linux"
+          elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            OS_SHORT="win"
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            OS_SHORT="macos"
+          else
+          echo "Unknown OS: ${{ matrix.os }}"
+          exit 1
+          fi
+          
+          PY_SHORT="${{ matrix.python }}"
+          PY_SHORT="cp${PY_SHORT//.}"
+          
+          ARCH_SHORT="${{ matrix.arch }}"
+          ARCH_SHORT="${ARCH_SHORT//-/_}"
+          
+          ARTIFACT_NAME="stockdory-0.1.api0-${PY_SHORT}-${OS_SHORT}-${ARCH_SHORT}"
+          echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> "$GITHUB_ENV"
+
       - name: Upload Wheel
         uses: actions/upload-artifact@v4
         with:
-          name: StockDory-wheel-cp${{ matrix.python }}-${{ matrix.os }}-${{ matrix.arch }}.whl
+          name: ${{ env.ARTIFACT_NAME }}
           path: ./dist/*.whl
