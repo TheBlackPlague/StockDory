@@ -137,5 +137,5 @@ jobs:
       - name: Upload Wheel
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.ARTIFACT_NAME }}
+          name: ${{ env.ARTIFACT_NAME }}.whl
           path: ./dist/*.whl
