@@ -14,6 +14,8 @@
 #include "../Backend/Type/Piece.h"
 #include "../Backend/Type/Square.h"
 #include "../Engine/EngineParameter.h"
+#include "../Engine/RepetitionHistory.h"
+#include "../Engine/Move/PrincipleVariationTable.h"
 #include "../Engine/Time/TimeManager.h"
 #include "../External/strutil.h"
 #include "../Terminal/Perft/PerftRunner.h"
@@ -193,6 +195,7 @@ PYBIND11_MODULE(StockDory, m)
     /** -- ENUM: Square -- **/
     {
         py::enum_<Square> square (types, "Square");
+
         for (Square sq = A1; sq <= NASQ; sq = Next(sq))
             square.value(
                 strutil::capitalize(StockDory::Util::SquareToString(sq)).c_str(),
@@ -208,6 +211,7 @@ PYBIND11_MODULE(StockDory, m)
     /** -- ENUM: Piece -- **/
     {
         py::enum_<Piece> piece (types, "Piece");
+
         for (Piece p = Pawn; p <= NAP; p = Next(p))
             piece.value(
                 strutil::capitalize(ToString(p)).c_str(),
@@ -223,6 +227,7 @@ PYBIND11_MODULE(StockDory, m)
     /** -- ENUM: Color -- **/
     {
         py::enum_<Color> color (types, "Color");
+
         for (Color c = White; c <= NAC; c = Next(c))
             color.value(
                 strutil::capitalize(ToString(c)).c_str(),
@@ -246,6 +251,7 @@ PYBIND11_MODULE(StockDory, m)
     /** -- CLASS: Board -- **/
     {
         py::class_<StockDory::Board> board(m, "Board");
+
         board.def(py::init());
 
         board.def(py::init<const std::string&>(), py::arg("fen"));
@@ -323,6 +329,7 @@ PYBIND11_MODULE(StockDory, m)
     /** -- STRUCT: Move & MoveList -- **/
     {
         py::class_<Move> move (types, "Move");
+
         move.def(py::init());
 
         move.def(
@@ -347,6 +354,7 @@ PYBIND11_MODULE(StockDory, m)
     }
     {
         py::class_<PyMoveList> moveList (types, "MoveList");
+
         moveList.def(
             py::init<const StockDory::Board&, const Piece, const Color>(),
             py::arg("board"),
@@ -390,6 +398,7 @@ PYBIND11_MODULE(StockDory, m)
     /** -- CLASS: PERFT -- **/
     {
         py::class_<StockDory::PerftRunner> perft (engine, "PerftDriver");
+
         perft.def_static("SetBoard", [](const std::string& fen) -> void
         {
             StockDory::PerftRunner::SetBoard(fen);
@@ -425,6 +434,7 @@ PYBIND11_MODULE(StockDory, m)
     /** -- CLASS: Evaluation -- **/
     {
         py::class_<StockDory::Evaluation> evaluation (engine, "Evaluation");
+
         evaluation.def_static("Evaluate", [](const Color c) -> int32_t
         {
             return StockDory::Evaluation::Evaluate(c);
@@ -434,6 +444,7 @@ PYBIND11_MODULE(StockDory, m)
     /** -- CLASS: ThreadPool -- **/
     {
         py::class_<PyThreadPool> pool (engine, "ThreadPool");
+
         pool.def_static("Resize", [](const size_t c) -> void
         {
             pool_set_size(
@@ -451,6 +462,7 @@ PYBIND11_MODULE(StockDory, m)
     /** -- CLASS: TranspositionTable -- **/
     {
         py::class_<PyTranspositionTable> tt (engine, "TranspositionTable");
+
         tt.def_static("Resize", [](const size_t c) -> void
         {
             TTable.Resize(c);
@@ -470,6 +482,7 @@ PYBIND11_MODULE(StockDory, m)
     /** -- STRUCT: TimeData -- **/
     {
         py::class_<StockDory::TimeData> td (engine, "TimeData");
+
         td.def(py::init());
 
         td.def_property(
@@ -533,12 +546,35 @@ PYBIND11_MODULE(StockDory, m)
         );
     }
 
-    /** -- CLASS TimeControl & TimeManager -- **/
+    /** -- CLASS: TimeControl & TimeManager -- **/
     {
         py::class_<StockDory::TimeControl> tc (engine, "TimeControl");
+    }
+    {
         py::class_<StockDory::TimeManager> tm (engine, "TimeManager");
+
         tm.def_static("Default", &StockDory::TimeManager::Default);
         tm.def_static("Fixed"  , &StockDory::TimeManager::Fixed  );
         tm.def_static("Optimal", &StockDory::TimeManager::Optimal);
+    }
+
+    /** -- CLASS: RepetitionHistory -- **/
+    {
+        py::class_<StockDory::RepetitionHistory> rh (engine, "RepetitionHistory");
+
+        rh.def(py::init<const ZobristHash>(), py::arg("hash"));
+
+        rh.def("Push" , &StockDory::RepetitionHistory::Push );
+        rh.def("Pull" , &StockDory::RepetitionHistory::Pull );
+        rh.def("Found", &StockDory::RepetitionHistory::Found);
+    }
+
+    /** -- CLASS: PrincipleVariationTable -- **/
+    {
+        py::class_<StockDory::PrincipleVariationTable> pv (engine, "PrincipleVariationTable");
+
+        pv.def("__len__", &StockDory::PrincipleVariationTable::Count);
+
+        pv.def("__getitem__", &StockDory::PrincipleVariationTable::operator[]);
     }
 }
