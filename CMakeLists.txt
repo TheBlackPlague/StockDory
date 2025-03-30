@@ -120,6 +120,12 @@ file(GLOB StockDoryFrontendType
 if(PYMODULE)
     message(STATUS "Configured to build Python Module")
 
+    if(UNIX AND NOT APPLE)
+        message(STATUS "Enabling Position-Independent Code")
+        set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+        set_target_properties(nanothread PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    endif()
+
     set(PYBIND11_FINDPYTHON ON)
     CPMAddPackage("gh:pybind/pybind11#a2e59f0e7065404b44dfe92a28aca47ba1378dc4")
 
