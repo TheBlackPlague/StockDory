@@ -78,5 +78,5 @@ jobs:
       - name: Upload Wheel
         uses: actions/upload-artifact@v4
         with:
-          name: StockDory-wheel-cp${{ matrix.python }}-${{ matrix-os }}.whl
+          name: StockDory-wheel-cp${{ matrix.python }}-${{ matrix.os }}.whl
           path: ./dist/*.whl
