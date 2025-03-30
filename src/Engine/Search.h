@@ -52,23 +52,23 @@ namespace StockDory
 
     };
 
-    class NoLogger
+    class NoHandle
     {
 
         public:
-        static void LogDepthIteration([[maybe_unused]] const uint8_t      depth,
-                                      [[maybe_unused]] const uint8_t      selectiveDepth,
-                                      [[maybe_unused]] const int32_t      evaluation,
-                                      [[maybe_unused]] const uint64_t     nodes,
-                                      [[maybe_unused]] const uint64_t     ttNodes,
-                                      [[maybe_unused]] const MS           time,
-                                      [[maybe_unused]] const std::string& pv) {}
+        static void HandleDepthIteration([[maybe_unused]] const uint8_t                  depth,
+                                         [[maybe_unused]] const uint8_t                  selectiveDepth,
+                                         [[maybe_unused]] const int32_t                  evaluation,
+                                         [[maybe_unused]] const uint64_t                 nodes,
+                                         [[maybe_unused]] const uint64_t                 ttNodes,
+                                         [[maybe_unused]] const MS                       time,
+                                         [[maybe_unused]] const PrincipleVariationTable& pv) {}
 
-        static void LogBestMove([[maybe_unused]] const Move& move) {}
+        static void HandleBestMove([[maybe_unused]] const Move& move) {}
 
     };
 
-    template<class Logger = NoLogger>
+    template<class EventHandler = NoHandle>
     class Search
     {
 
@@ -136,35 +136,26 @@ namespace StockDory
 
                     BestMoveStabilityOptimisation(lastBestMove);
 
-                    Logger::LogDepthIteration(currentDepth, SelectiveDepth,
-                                              Evaluation,
-                                              Nodes, TTNodes,
-                                              TC.Elapsed(), PvLine());
+                    EventHandler::HandleDepthIteration(
+                        currentDepth,
+                        SelectiveDepth,
+                        Evaluation,
+                        Nodes,
+                        TTNodes,
+                        TC.Elapsed(),
+                        PvTable
+                    );
                     currentDepth++;
                 }
             } catch (SearchStopException&) {}
 
-            Logger::LogBestMove(BestMove);
+            EventHandler::HandleBestMove(BestMove);
         }
 
         [[nodiscard]]
         inline uint64_t NodesSearched() const
         {
             return Nodes;
-        }
-
-        [[nodiscard]]
-        inline std::string PvLine() const
-        {
-            std::stringstream line;
-
-            const uint8_t ply = PvTable.Count();
-            for (uint8_t i = 0; i < ply; i++) {
-                line << PvTable[i].ToString();
-                if (i != ply - 1) line << " ";
-            }
-
-            return line.str();
         }
 
         inline void ForceStop()

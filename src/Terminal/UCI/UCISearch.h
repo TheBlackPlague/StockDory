@@ -13,13 +13,29 @@
 namespace StockDory
 {
 
-    class UCISearchLogger
+    class UCIHandler
     {
 
+        using PV = PrincipleVariationTable;
+
+        [[nodiscard]]
+        static inline std::string PvLine(const PV& pv)
+        {
+            std::stringstream line;
+
+            const uint8_t ply = pv.Count();
+            for (uint8_t i = 0; i < ply; i++) {
+                line << pv[i].ToString();
+                if (i != ply - 1) line << " ";
+            }
+
+            return line.str();
+        }
+
         public:
-        static void LogDepthIteration(const uint8_t  depth, const uint8_t      selectiveDepth, const int32_t evaluation,
-                                      const uint64_t nodes, const uint64_t     ttNodes,
-                                      const MS       time,  const std::string& pv)
+        static void HandleDepthIteration(const uint8_t  depth, const uint8_t  selectiveDepth, const int32_t evaluation,
+                                         const uint64_t nodes, const uint64_t ttNodes,
+                                         const MS       time,  const PV&      pv)
         {
             std::stringstream output;
 
@@ -44,12 +60,12 @@ namespace StockDory
 
             output << "time " << displayedTime << " ";
             output << "nps " << nps << " ";
-            output << "pv " << pv;
+            output << "pv " << PvLine(pv);
 
             std::cout << output.str() << std::endl;
         }
 
-        static void LogBestMove(const Move& move)
+        static void HandleBestMove(const Move& move)
         {
             std::stringstream output;
             output << "bestmove " << move.ToString();
@@ -62,7 +78,7 @@ namespace StockDory
     class UCISearch
     {
 
-        using Search = Search<UCISearchLogger>;
+        using Search = Search<UCIHandler>;
 
         Search EngineSearch;
 
