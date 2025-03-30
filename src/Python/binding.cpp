@@ -224,6 +224,11 @@ class PySearchHandler
 
 };
 
+using PySearch = StockDory::Search<PySearchHandler>;
+
+auto SEARCH         = PySearch();
+auto SEARCH_RUNNING = false     ;
+
 PYBIND11_MODULE(StockDory, m)
 {
     m.doc() = "Python Bindings for StockDory";
@@ -531,6 +536,13 @@ PYBIND11_MODULE(StockDory, m)
         });
     }
 
+    /** -- CLASS: MS -- **/
+    {
+        py::class_<StockDory::MS> ms (types, "MS");
+
+        ms.def("Get", &StockDory::MS::count);
+    }
+
     /** -- STRUCT: TimeData -- **/
     {
         py::class_<StockDory::TimeData> td (engine, "TimeData");
@@ -636,13 +648,16 @@ PYBIND11_MODULE(StockDory, m)
 
         handler.def_static(
             "RegisterDepthIterationHandler",
-            [](py::function callback) -> void
+            [](py::function& callback) -> void
             {
                 PySearchHandler::RegisterDepthIterationHandler(
-                    [callback](const uint8_t a, const uint8_t b, const int32_t c, const uint64_t d, const uint64_t e,
-                                  const StockDory::MS f,            const StockDory::PrincipleVariationTable& g) -> void
+                    [callback = std::move(callback)](const uint8_t       a, const uint8_t  b, const int32_t c,
+                                                        const uint64_t      d, const uint64_t e,
+                                                        const StockDory::MS f,
+                                                        const StockDory::PrincipleVariationTable& g) -> void
                     {
-                        const py::gil_scoped_acquire _;
+                        py::gil_scoped_acquire _;
+
                         // ReSharper disable once CppExpressionWithoutSideEffects
                         callback(a, b, c, d, e, f, g);
                     }
@@ -651,12 +666,13 @@ PYBIND11_MODULE(StockDory, m)
         );
         handler.def_static(
                   "RegisterBestMoveHandler",
-            [](py::function callback) -> void
+            [](py::function& callback) -> void
             {
                 PySearchHandler::     RegisterBestMoveHandler(
-                    [callback](const Move a) -> void
+                    [callback = std::move(callback)](const Move a) -> void
                     {
-                        const py::gil_scoped_acquire _;
+                        py::gil_scoped_acquire _;
+
                         // ReSharper disable once CppExpressionWithoutSideEffects
                         callback(a                  );
                     }
@@ -665,8 +681,51 @@ PYBIND11_MODULE(StockDory, m)
         );
     }
 
+    /** -- STRUCT: SearchLimit -- **/
+    {
+        py::class_<StockDory::Limit> limit (engine, "SearchLimit");
+
+        limit.def(py::init());
+
+        limit.def(py::init<uint64_t>(), py::arg("nodes"));
+
+        limit.def(py::init<uint8_t >(), py::arg("depth"));
+    }
+
     /** -- CLASS: Search -- **/
     {
-        py::class_<StockDory::Search<PySearchHandler>> search (engine, "Search");
+        py::class_<PySearch> search (engine, "Search");
+
+        search.def_static(
+            "Configure",
+            [](const StockDory::Board&                  board, const StockDory::TimeControl& tc,
+                 const StockDory::RepetitionHistory& repetition, const uint8_t                 hm) -> void
+            {
+                SEARCH = PySearch(board, tc, repetition, hm);
+            }
+        );
+
+        search.def_static(
+            "Run",
+            [](const StockDory::Limit& limit) -> void
+            {
+                drjit::do_async([limit] -> void
+                {
+                    SEARCH_RUNNING = true ;
+                    SEARCH.IterativeDeepening(limit);
+                    SEARCH_RUNNING = false;
+                }, {}, StockDory::ThreadPool);
+            }
+        );
+
+        search.def_static(
+            "Stop",
+            [] -> void
+            {
+                SEARCH.ForceStop();
+            }
+        );
+
+        search.def_static("Running", []() -> bool { return SEARCH_RUNNING; });
     }
 }
