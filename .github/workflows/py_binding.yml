@@ -109,6 +109,7 @@ jobs:
 
       - name: CMake Arguments (Windows)
         if: matrix.os == 'windows-latest'
+        shell: powershell
         run: |
           echo "CMAKE_CXX_FLAGS=-march=${{ matrix.arch }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -121,6 +122,36 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: |
           echo "ARCHITECTURE=${{ matrix.arch }}" >> $GITHUB_ENV
+
+      - name: Extract C++ Standard Library Version (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          $cxx_version = & $env:CXX -dM -E -x c++ NUL 2>$null | Select-String '_MSC_VER' | ForEach-Object {
+            if ($_ -match '_MSC_VER\s+(\d+)') {
+              "msvc$($matches[1])"
+            }
+          }
+          
+          echo "CXX_VERSION=$cxx_version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Extract C++ Standard Library Version (Linux & MacOS)
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          cxx_version = $(
+            $CXX -dM -E -x c++ /dev/null 2>/dev/null | \
+            grep -E '__GLIBCXX__|_LIBCPP_VERSION' | \
+            awk '
+            /__GLIBCXX__/ {
+              printf("libstdcxx%s.%s.%s\n", substr($2,1,4), substr($2,5,2), substr($2,7,2))
+            }
+            /_LIBCPP_VERSION/ {
+              printf("libcxx%d.%d.%d\n", substr($2,1,2)+0, substr($2,3,2)+0, substr($2,5,2)+0)
+            }`
+          )
+          
+          echo "CXX_VERSION=$cxx_version" >> $GITHUB_ENV
           
       - name: Define version
         shell: python
@@ -129,11 +160,12 @@ jobs:
           import tomlkit
   
           architecture = os.environ.get("ARCHITECTURE", "").replace("-", "_")
+          cxx_version  = os.environ.get("CXX_VERSION", "")
           
           with open("pyproject.toml", "r", encoding="utf-8") as f:
             doc = tomlkit.parse(f.read())
           
-          doc["project"]["version"] = f"{doc['project']['version']}.arch.{architecture}"
+          doc["project"]["version"] = f"{doc['project']['version']}.{cxx_version}.arch.{architecture}"
           
           with open("pyproject.toml", "w", encoding="utf-8") as f:
             f.write(tomlkit.dumps(doc))
@@ -151,6 +183,7 @@ jobs:
           path: ./dist/*.whl
 
   publish:
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
 
