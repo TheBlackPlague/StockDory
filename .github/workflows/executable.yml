@@ -2,7 +2,13 @@ name: Executable
 
 on:
   push:
-    branches: [ "master", "cpp23-clang20" ]
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+    paths-ignore:
+      - .github/workflows/py_binding.yml
+      - src/Python/**
+      - pyproject.toml
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)

@@ -2,7 +2,11 @@ name: PyBinding
 
 on:
   push:
-    branches: [ "master", "cpp23-clang20" ]
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+    paths-ignore:
+      - .github/workflows/executable.yml
 
 jobs:
   build:
@@ -186,7 +190,7 @@ jobs:
           path: ./dist/*.whl
 
   publish:
-#    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
 
