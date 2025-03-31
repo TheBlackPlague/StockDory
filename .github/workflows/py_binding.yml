@@ -95,7 +95,7 @@ jobs:
       - name: Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install scikit-build-core build twine pybind11 setuptools build
+          python -m pip install scikit-build-core build twine pybind11 setuptools build tomlkit
 
       - name: CMake Arguments
         if: matrix.os == 'macos-latest'
@@ -106,6 +106,26 @@ jobs:
         if: matrix.os != 'macos-latest'
         run: |
           echo "CMAKE_CXX_FLAGS=-march=${{ matrix.arch }}" >> $GITHUB_ENV
+
+      - name: Set architecture environment variable
+        run: |
+          echo "ARCHITECTURE=${{ matrix.arch }}" >> $GITHUB_ENV
+          
+      - name: Define version
+        shell: python
+        run: |
+          import os
+          import tomlkit
+          
+          with open("pyproject.toml", "r", encoding="utf-8") as f:
+            doc = tomlkit.parse(f.read())
+          
+          doc["project"]["version"] = f"{doc["project"]["version"]}+arch.{os.environ.get("ARCH", "")}"
+          
+          with open("pyproject.toml", "w", encoding="utf-8") as f:
+            f.write(tomlkit.dumps(doc))
+          
+          print(f"Set project version to {doc["project"]["version"]}.")
 
       - name: Build Wheel
         run: |
@@ -133,14 +153,6 @@ jobs:
           
           ARTIFACT_NAME="stockdory-0.1.api0-${PY_SHORT}-${OS_SHORT}-${ARCH_SHORT}"
           echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> "$GITHUB_ENV"
-
-      - name: Rename Wheel
-        shell: bash
-        run: |
-          for wheel in dist/*.whl; do
-            NEW_NAME="${{ env.ARTIFACT_NAME }}.whl"
-            mv "$wheel" "dist/${NEW_NAME}"
-          done
 
       - name: Upload Wheel
         uses: actions/upload-artifact@v4
