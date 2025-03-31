@@ -95,7 +95,7 @@ jobs:
       - name: Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install scikit-build-core build twine pybind11 setuptools build tomlkit auditwheel
+          python -m pip install scikit-build-core build twine pybind11 setuptools build tomlkit
 
       - name: CMake Arguments (MacOS)
         if: matrix.os == 'macos-latest'
@@ -159,39 +159,10 @@ jobs:
         run: |
           python -m build
 
-      - name: ManyLinux Configuration
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          auditwheel show dist/*.whl
-          auditwheel repair dist/*.whl
-
-      - name: Generate name
-        shell: bash
-        run: |
-          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-            OS_SHORT="linux"
-          elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            OS_SHORT="win"
-          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
-            OS_SHORT="macos"
-          else
-          echo "Unknown OS: ${{ matrix.os }}"
-          exit 1
-          fi
-          
-          PY_SHORT="${{ matrix.python }}"
-          PY_SHORT="cp${PY_SHORT//.}"
-          
-          ARCH_SHORT="${{ matrix.arch }}"
-          ARCH_SHORT="${ARCH_SHORT//-/_}"
-          
-          ARTIFACT_NAME="stockdory-0.1.api0-${PY_SHORT}-${OS_SHORT}-${ARCH_SHORT}"
-          echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> "$GITHUB_ENV"
-
       - name: Upload Wheel
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.ARTIFACT_NAME }}.whl
+          name: StockDory-python.${{ matrix.python }}-${{ matrix.os }}-${{ matrix.arch }}.whl
           path: ./dist/*.whl
 
   publish:
@@ -212,10 +183,26 @@ jobs:
           path: dist
           merge-multiple: true
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+
+      - name: Python Dependencies
+        run: |
+          python -m pip install --upgrade twine
+
       - name: Show downloaded Wheels
         run: ls -R dist
 
-      - name: Publish Wheels
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: dist
+      - name: Publish Wheels (Gemfury)
+        env:
+          FURY_TOKEN: ${{ secrets.FURY_TOKEN }}
+        run: |
+          python -m twine upload \
+          --repository-url https://pypi.fury.io/theblackplague/ \
+          -u theblackplague \
+          -p "${FURY_TOKEN}" \
+          --non-interactive \
+          --skip-existing \
+          dist/*
