@@ -120,7 +120,7 @@ jobs:
           with open("pyproject.toml", "r", encoding="utf-8") as f:
             doc = tomlkit.parse(f.read())
           
-          doc["project"]["version"] = f"{doc["project"]["version"]}+arch.{os.environ.get("ARCH", "")}"
+          doc["project"]["version"] = f"{doc["project"]["version"]}.arch.{os.environ.get("ARCHITECTURE", "")}"
           
           with open("pyproject.toml", "w", encoding="utf-8") as f:
             f.write(tomlkit.dumps(doc))
