@@ -146,14 +146,21 @@ jobs:
           CXX_VERSION=$(
             $CXX -dM -E -x c++ - <<<'#include <vector>' 2>/dev/null | \
             grep -E '__GLIBCXX__|_LIBCPP_VERSION' | \
-            awk '
-            /__GLIBCXX__/ {
-              printf("libstdcxx%s.%s.%s\n", substr($2,1,4), substr($2,5,2), substr($2,7,2))
-            }
-            /_LIBCPP_VERSION/ {
-              printf("libcxx%d.%d.%d\n", substr($2,1,2)+0, substr($2,3,2)+0, substr($2,5,2)+0)
-            }'
+            while read -r line; do
+              if [[ "$line" == *'__GLIBCXX__'* ]]; then
+                val=$(echo "$line" | cut -d' ' -f3)
+                printf "libstdcxx%s.%s.%s\n" "${val:0:4}" "${val:4:2}" "${val:6:2}"
+              elif [[ "$line" == *'_LIBCPP_VERSION'* ]]; then
+                val=$(echo "$line" | cut -d' ' -f3)
+                major=$((10#${val:0:2}))
+                minor=$((10#${val:2:2}))
+                patch=$((10#${val:4:2}))
+                printf "libcxx%d.%d.%d\n" "$major" "$minor" "$patch"
+              fi
+            done
           )
+          
+          echo "Detected STL version: $CXX_VERSION"
           
           echo "CXX_VERSION=$CXX_VERSION" >> $GITHUB_ENV
           
