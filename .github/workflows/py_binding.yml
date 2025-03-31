@@ -148,7 +148,7 @@ jobs:
             }
             /_LIBCPP_VERSION/ {
               printf("libcxx%d.%d.%d\n", substr($2,1,2)+0, substr($2,3,2)+0, substr($2,5,2)+0)
-            }`
+            }'
           )
           
           echo "CXX_VERSION=$cxx_version" >> $GITHUB_ENV
