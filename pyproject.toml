@@ -7,7 +7,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "StockDory"
-version = "0.1+api.0"
+version = "0.1.post0"
 description = "Python Bindings for StockDory"
 readme = "README.md"
 license = { file = "LICENSE" }
