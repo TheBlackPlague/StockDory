@@ -141,22 +141,19 @@ jobs:
         if: matrix.os != 'windows-latest'
         shell: bash
         run: |
-          echo "Detecting STL version using $CXX"
+          echo "Detecting STL version on ${{ matrix.os }}"
           
-          STL_DEFINE=$($CXX -dM -E -x c++ - <<<'#include <vector>' 2>/dev/null | grep -E '^#define (__GLIBCXX__|_LIBCPP_VERSION) ' || true)
-          
-          if echo "$STL_DEFINE" | grep -q '__GLIBCXX__'; then
-            val=$(echo "$STL_DEFINE" | grep '__GLIBCXX__' | awk '{print $3}')
-            STL_VERSION="libstdcxx${val}"
-          elif echo "$STL_DEFINE" | grep -q '_LIBCPP_VERSION'; then
-            val=$(echo "$STL_DEFINE" | grep '_LIBCPP_VERSION' | awk '{print $3}')
-            STL_VERSION="libcxx${val}"
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            glibc_version=$(getconf GNU_LIBC_VERSION | awk '{print $2}')
+            STL_VERSION="libstdcxx${glibc_version}"
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            clang_version=$(clang++ --version | grep -i 'clang version' | awk '{print $4}')
+            STL_VERSION="libcxx${clang_version}"
           else
             STL_VERSION="unknown"
           fi
           
           echo "Detected STL version: $STL_VERSION"
-          
           echo "CXX_VERSION=$STL_VERSION" >> $GITHUB_ENV
           
       - name: Define version
@@ -171,7 +168,7 @@ jobs:
           with open("pyproject.toml", "r", encoding="utf-8") as f:
             doc = tomlkit.parse(f.read())
           
-          doc["project"]["version"] = f"{doc['project']['version']}.{cxx_version}.arch.{architecture}"
+          doc["project"]["version"] = f"{doc['project']['version']}.arch.{architecture}.{cxx_version}"
           
           with open("pyproject.toml", "w", encoding="utf-8") as f:
             f.write(tomlkit.dumps(doc))
