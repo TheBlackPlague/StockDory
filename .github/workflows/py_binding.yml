@@ -95,7 +95,7 @@ jobs:
       - name: Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install scikit-build-core build twine pybind11 setuptools build tomlkit
+          python -m pip install scikit-build-core build twine pybind11 setuptools build tomlkit auditwheel
 
       - name: CMake Arguments (MacOS)
         if: matrix.os == 'macos-latest'
@@ -158,6 +158,11 @@ jobs:
       - name: Build Wheel
         run: |
           python -m build
+
+      - name: ManyLinux Configuration
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          auditwheel repair dist/*.whl
 
       - name: Generate name
         shell: bash
