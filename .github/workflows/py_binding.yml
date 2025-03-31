@@ -144,7 +144,7 @@ jobs:
           echo "Detecting STL version using $CXX"
           
           CXX_VERSION=$(
-            $CXX -dM -E -x c++ /dev/null 2>/dev/null | \
+            $CXX -dM -E -x c++ - <<<'#include <vector>' 2>/dev/null | \
             grep -E '__GLIBCXX__|_LIBCPP_VERSION' | \
             awk '
             /__GLIBCXX__/ {
