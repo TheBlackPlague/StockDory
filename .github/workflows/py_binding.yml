@@ -143,20 +143,14 @@ jobs:
         run: |
           echo "Detecting STL version using $CXX"
           
-          STL_VER_RAW=$($CXX -dM -E -x c++ - <<<'#include <vector>' 2>/dev/null | grep -E '__GLIBCXX__|_LIBCPP_VERSION')
+          STL_DEFINE=$($CXX -dM -E -x c++ - <<<'#include <vector>' 2>/dev/null | grep -E '^#define (__GLIBCXX__|_LIBCPP_VERSION) ' || true)
           
-          if echo "$STL_VER_RAW" | grep -q '__GLIBCXX__'; then
-            val=$(echo "$STL_VER_RAW" | grep '__GLIBCXX__' | awk '{print $3}')
-            major=${val:0:4}
-            minor=${val:4:2}
-            patch=${val:6:2}
-            STL_VERSION="libstdcxx${major}.${minor}.${patch}"
-          elif echo "$STL_VER_RAW" | grep -q '_LIBCPP_VERSION'; then
-            val=$(echo "$STL_VER_RAW" | grep '_LIBCPP_VERSION' | awk '{print $3}')
-            major=$((10#${val:0:2}))
-            minor=$((10#${val:2:2}))
-            patch=$((10#${val:4:2}))
-            STL_VERSION="libcxx${major}.${minor}.${patch}"
+          if echo "$STL_DEFINE" | grep -q '__GLIBCXX__'; then
+            val=$(echo "$STL_DEFINE" | grep '__GLIBCXX__' | awk '{print $3}')
+            STL_VERSION="libstdcxx${val}"
+          elif echo "$STL_DEFINE" | grep -q '_LIBCPP_VERSION'; then
+            val=$(echo "$STL_DEFINE" | grep '_LIBCPP_VERSION' | awk '{print $3}')
+            STL_VERSION="libcxx${val}"
           else
             STL_VERSION="unknown"
           fi
