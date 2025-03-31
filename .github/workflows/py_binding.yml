@@ -97,17 +97,28 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install scikit-build-core build twine pybind11 setuptools build tomlkit
 
-      - name: CMake Arguments
+      - name: CMake Arguments (MacOS)
         if: matrix.os == 'macos-latest'
         run: |
           echo "CMAKE_CXX_FLAGS=-mcpu=${{ matrix.arch }}" >> $GITHUB_ENV
 
-      - name: CMake Arguments
-        if: matrix.os != 'macos-latest'
+      - name: CMake Arguments (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
           echo "CMAKE_CXX_FLAGS=-march=${{ matrix.arch }}" >> $GITHUB_ENV
 
-      - name: Set architecture environment variable
+      - name: CMake Arguments (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "CMAKE_CXX_FLAGS=-march=${{ matrix.arch }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Set architecture environment variable (Windows)
+        if: matrix.os != 'windows-latest'
+        run: |
+          echo "ARCHITECTURE=${{ matrix.arch }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Set architecture environment variable (Linux & MacOS)
+        if: matrix.os != 'windows-latest'
         run: |
           echo "ARCHITECTURE=${{ matrix.arch }}" >> $GITHUB_ENV
           
