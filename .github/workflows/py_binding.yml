@@ -155,11 +155,8 @@ jobs:
     runs-on: ubuntu-latest
 
     environment:
-      name: pypi
-      url: https://pypi.org/p/stockdory
-
-    permissions:
-      id-token: write
+      name: Python Packages Repository
+      url: https://pypi.fury.io/theblackplague/stockdory
 
     steps:
       - name: Download Wheels
