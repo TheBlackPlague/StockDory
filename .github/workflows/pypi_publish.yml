@@ -1,0 +1,32 @@
+name: PyPi Publish
+
+on:
+  workflow_run:
+    workflows: ["PyBinding"]
+    types:
+      - completed
+
+jobs:
+  publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      name: pypi
+      url: https://pypi.org/p/stockdory
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download Wheels
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Show downloaded Wheels
+        run: ls -R dist
+
+      - name: Publish Wheels
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
