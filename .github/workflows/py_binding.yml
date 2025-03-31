@@ -162,6 +162,7 @@ jobs:
       - name: ManyLinux Configuration
         if: matrix.os == 'ubuntu-latest'
         run: |
+          auditwheel show dist/*.whl
           auditwheel repair dist/*.whl
 
       - name: Generate name
