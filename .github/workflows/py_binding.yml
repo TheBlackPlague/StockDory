@@ -134,6 +134,14 @@ jobs:
           ARTIFACT_NAME="stockdory-0.1.api0-${PY_SHORT}-${OS_SHORT}-${ARCH_SHORT}"
           echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> "$GITHUB_ENV"
 
+      - name: Rename Wheel
+        shell: bash
+        run: |
+          for wheel in dist/*.whl; do
+            NEW_NAME="${{ env.ARTIFACT_NAME }}.whl"
+            mv "$wheel" "dist/${NEW_NAME}"
+          done
+
       - name: Upload Wheel
         uses: actions/upload-artifact@v4
         with:
