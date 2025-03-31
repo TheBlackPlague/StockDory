@@ -128,10 +128,27 @@ jobs:
           import os
           import tomlkit
           
+          ARCH_MAP = {
+            "x86-64":    0,
+            "x86-64-v2": 1,
+            "x86-64-v3": 2,
+            "x86-64-v4": 3,
+            "apple-m1":  4,
+            "apple-m2":  5,
+            "apple-m3":  6,
+            "apple-m4":  7
+          }
+  
+          arch = os.environ.get("ARCHITECTURE", "")
+          if arch not in ARCH_MAP:
+            raise ValueError(f"Unsupported architecture '{arch}'. Supported: {', '.join(ARCH_MAP.keys())}")
+
+          dev_version = ARCH_MAP[arch]
+          
           with open("pyproject.toml", "r", encoding="utf-8") as f:
             doc = tomlkit.parse(f.read())
           
-          doc["project"]["version"] = f"{doc['project']['version']}.arch.{os.environ.get('ARCHITECTURE', '')}"
+          doc["project"]["version"] = f"{doc['project']['version']}.dev{dev_version}"
           
           with open("pyproject.toml", "w", encoding="utf-8") as f:
             f.write(tomlkit.dumps(doc))
