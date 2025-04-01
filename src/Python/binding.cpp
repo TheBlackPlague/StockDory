@@ -186,8 +186,8 @@ class PyMoveList
 
 };
 
-class PyThreadPool {};
-class PyTranspositionTable {};
+template<size_t T>
+class PyConstantHolder {};
 
 class PySearchHandler
 {
@@ -249,25 +249,48 @@ PYBIND11_MODULE(StockDory, m)
 {
     m.doc() = "Python Bindings for StockDory";
 
-    /** -- BASE ATTRIBUTES -- **/
-    {
-        m.attr(    "VERSION") =     VERSION;
-        m.attr("API_VERSION") = API_VERSION;
-    }
-
     /** -- BASE MODULES -- **/
     py::module_ core   = m.def_submodule("core"  , "Python Bindings for StockDory's Core"  );
     py::module_ engine = m.def_submodule("engine", "Python Bindings for StockDory's Engine");
 
     /** -- CONSTANTS -- **/
     {
-        core.attr("INFINITY") = Infinity;
+        py::class_<PyConstantHolder<0>> gc (m     , "GConstant");
+        py::class_<PyConstantHolder<1>> cc (core  , "CConstant");
+        py::class_<PyConstantHolder<2>> ec (engine, "EConstant");
 
-        engine.attr("MATE") = Mate;
-        engine.attr("DRAW") = Draw;
+        gc.def_property_readonly_static(
+            "VERSION",
+            [](py::object) -> std::string { return VERSION; }
+        );
 
-        engine.attr("MAX_DEPTH") = MaxDepth;
-        engine.attr("MAX_MOVE" ) = MaxMove ;
+        gc.def_property_readonly_static(
+            "API_VERSION",
+            [](py::object) -> std::string
+            {
+                return VERSION + strutil::to_string('+') + strutil::to_string(API_VERSION);
+            }
+        );
+
+        cc.def_property_readonly_static(
+            "INFINITY",
+            [](py::object) -> int32_t { return Infinity; }
+        );
+
+        ec.def_property_readonly_static(
+            "MATE",
+            [](py::object) -> int32_t { return Mate; }
+        );
+
+        ec.def_property_readonly_static(
+            "DRAW",
+            [](py::object) -> int32_t { return Draw; }
+        );
+
+        ec.def_property_readonly_static(
+            "MAX_DEPTH",
+            [](py::object) -> uint8_t { return MaxDepth; }
+        );
     }
 
     /** -- ENUM: core.Square -- **/
