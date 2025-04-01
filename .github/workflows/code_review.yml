@@ -1,11 +1,8 @@
 name: Code Review
 
 on:
-  workflow_dispatch:
-    inputs:
-      pr:
-        description: "Pull request to review"
-        required: true
+  pull_request:
+    branches: [ "master" ]
 
 
 permissions:
@@ -20,25 +17,25 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+#        with:
+#          fetch-depth: 0
 
-      - name: PR Metadata
-        id: pr-data
-        uses: octokit/request-action@v2.4.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          route: GET /repos/${{ github.repository }}/pulls/${{ github.event.inputs.pr_number }}
+#      - name: PR Metadata
+#        id: pr-data
+#        uses: octokit/request-action@v2.4.0
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          route: GET /repos/${{ github.repository }}/pulls/${{ github.event.inputs.pr_number }}
 
-      - name: Checkout PR Branch
-        run: |
-          BRANCH_NAME=$(echo '${{ steps.pr-data.outputs.data }}' | jq -r '.head.ref')
-          REPO_URL=$(echo '${{ steps.pr-data.outputs.data }}' | jq -r '.head.repo.clone_url')
-          
-          git remote add prrepo $REPO_URL
-          git fetch prrepo $BRANCH_NAME
-          git checkout FETCH_HEAD
+#      - name: Checkout PR Branch
+#        run: |
+#          BRANCH_NAME=$(echo '${{ steps.pr-data.outputs.data }}' | jq -r '.head.ref')
+#          REPO_URL=$(echo '${{ steps.pr-data.outputs.data }}' | jq -r '.head.repo.clone_url')
+#
+#          git remote add prrepo $REPO_URL
+#          git fetch prrepo $BRANCH_NAME
+#          git checkout FETCH_HEAD
 
       - name: Review
         uses: mattzcarey/code-review-gpt@v0.8.0
