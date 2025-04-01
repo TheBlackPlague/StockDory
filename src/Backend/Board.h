@@ -38,11 +38,11 @@ namespace StockDory
     class Board
     {
 
-        std::array<std::array<BitBoard, 7>, 3> BB{};
+        std::array<std::array<BitBoard, 7>, 3> BB {};
 
-        std::array<PieceColor, 64> PieceAndColor{};
+        std::array<PieceColor, 64> PieceAndColor {};
 
-        std::array<BitBoard, 3> ColorBB{};
+        std::array<BitBoard, 3> ColorBB {};
 
         // [COLOR TO MOVE] [WHITE KING CASTLE] [WHITE QUEEN CASTLE] [BLACK KING CASTLE] [BLACK QUEEN CASTLE]
         // [    4 BITS   ] [      1 BIT      ] [       1 BIT      ] [      1 BIT      ] [       1 BIT      ]

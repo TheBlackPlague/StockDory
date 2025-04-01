@@ -163,6 +163,22 @@ class PyMoveList
         return Size;
     }
 
+    std::string ToString() const
+    {
+        std::stringstream ss;
+        ss << "[";
+
+        for (size_t i = 0 ; i < Size; i++) {
+            ss << Internal[i].ToString();
+
+            if (i != Size - 1) ss << ", ";
+        }
+
+        ss << "]";
+
+        return ss.str();
+    }
+
     std::array<Move, MaxMove>::iterator Begin()
     {
         return Internal.begin();
@@ -184,7 +200,7 @@ class PySearchHandler
          int32_t,
         uint64_t,
         uint64_t,
-        StockDory::MS,
+         int64_t,
         const PV&
     )>;
 
@@ -195,7 +211,7 @@ class PySearchHandler
                                                                   const  int32_t,
                                                                   const uint64_t,
                                                                   const uint64_t,
-                                                                  const StockDory::MS,
+                                                                  const  int64_t,
                                                                   const PV& ) -> void {};
     static inline       BestMoveHandler       BestMoveMethod = [](const Move) -> void {};
 
@@ -214,12 +230,12 @@ class PySearchHandler
                                      const uint64_t      d, const uint64_t e,
                                      const StockDory::MS f, const PV&      g)
     {
-        DepthIterationMethod(a, b, c, d, e, f, g);
+        DepthIterationMethod(a, b, c, d, e, f.count(), g);
     }
 
     static void HandleBestMove(const Move a)
     {
-              BestMoveMethod(a                  );
+              BestMoveMethod(a                          );
     }
 
 };
@@ -233,25 +249,30 @@ PYBIND11_MODULE(StockDory, m)
 {
     m.doc() = "Python Bindings for StockDory";
 
-    const py::module_ types  = m.def_submodule("Types" , "Python Bindings for some of StockDory's Data Types");
-    const py::module_ engine = m.def_submodule("Engine", "Python Bindings for StockDory's Engine");
-
-    /** -- BASE -- **/
+    /** -- BASE ATTRIBUTES -- **/
     {
-        m.def("Version", [] -> std::string
-        {
-            return VERSION;
-        });
-
-        m.def("APIVersion", [] -> std::string
-        {
-            return strutil::to_string(API_VERSION);
-        });
+        m.attr(    "VERSION") =     VERSION;
+        m.attr("API_VERSION") = API_VERSION;
     }
 
-    /** -- ENUM: Square -- **/
+    /** -- BASE MODULES -- **/
+    py::module_ core   = m.def_submodule("core"  , "Python Bindings for StockDory's Core"  );
+    py::module_ engine = m.def_submodule("engine", "Python Bindings for StockDory's Engine");
+
+    /** -- CONSTANTS -- **/
     {
-        py::enum_<Square> square (types, "Square");
+        core.attr("INFINITY") = Infinity;
+
+        engine.attr("MATE") = Mate;
+        engine.attr("DRAW") = Draw;
+
+        engine.attr("MAX_DEPTH") = MaxDepth;
+        engine.attr("MAX_MOVE" ) = MaxMove ;
+    }
+
+    /** -- ENUM: core.Square -- **/
+    {
+        py::enum_<Square> square (core, "Square");
 
         for (Square sq = A1; sq <= NASQ; sq = Next(sq))
             square.value(
@@ -259,15 +280,18 @@ PYBIND11_MODULE(StockDory, m)
                 sq
             );
 
-        square.def("Next", [](const Square sq) -> Square
-        {
-            return Next(sq);
-        }, "Get the next square in the sequence. No wrap.");
+        square.def_property_readonly(
+            "next",
+            [](const Square sq) -> Square
+            {
+                return Next(sq);
+            }
+        );
     }
 
-    /** -- ENUM: Piece -- **/
+    /** -- ENUM: core.Piece -- **/
     {
-        py::enum_<Piece> piece (types, "Piece");
+        py::enum_<Piece> piece (core, "Piece");
 
         for (Piece p = Pawn; p <= NAP; p = Next(p))
             piece.value(
@@ -275,15 +299,18 @@ PYBIND11_MODULE(StockDory, m)
                 p
             );
 
-        piece.def("Next", [](const Piece p) -> Piece
-        {
-            return Next(p);
-        }, "Get the next piece in the sequence. No wrap.");
+        piece.def_property_readonly(
+            "next",
+            [](const Piece p) -> Piece
+            {
+                return Next(p);
+            }
+        );
     }
 
-    /** -- ENUM: Color -- **/
+    /** -- ENUM: core.Color -- **/
     {
-        py::enum_<Color> color (types, "Color");
+        py::enum_<Color> color (core, "Color");
 
         for (Color c = White; c <= NAC; c = Next(c))
             color.value(
@@ -291,126 +318,200 @@ PYBIND11_MODULE(StockDory, m)
                 c
             );
 
-        color.def("Next", [](const Color c) -> Color
-        {
-            return Next(c);
-        }, "Get the next color in the sequence. No wrap.");
+        color.def_property_readonly(
+            "next",
+            [](const Color c) -> Color
+            {
+                return Next(c);
+            }
+        );
 
-        color.def("Opposite", &Opposite, "Get the opposite color of this color.");
+        color.def_property_readonly("opposite", &Opposite);
     }
 
-    /** -- STRUCT: PreviousState & PreviousStateNull **/
+    /** -- STRUCT: core.PreviousState & core.PreviousStateNull **/
     {
-        py::class_<PreviousState    > previousState     (types, "PreviousState"    );
-        py::class_<PreviousStateNull> previousStateNull (types, "PreviousStateNull");
+        py::class_<PreviousState    > previousState     (core, "PreviousState"    );
+        py::class_<PreviousStateNull> previousStateNull (core, "PreviousStateNull");
     }
 
-    /** -- CLASS: Board -- **/
+    /** -- CLASS: core.Board -- **/
     {
-        py::class_<StockDory::Board> board(m, "Board");
+        py::class_<StockDory::Board> board (core, "Board");
 
         board.def(py::init());
 
-        board.def(py::init<const std::string&>(), py::arg("fen"));
+        board.def(
+            py::init<const std::string&>(),
+            py::arg("fen")
+        );
 
-        board.def("LoadForEvaluation", &StockDory::Board::LoadForEvaluation,
-                  "Load the board into the evaluation neural network.");
+        board.def("__str__" , &StockDory::Board::Fen    );
+        board.def("__hash__", &StockDory::Board::Zobrist);
 
-        board.def("Fen", &StockDory::Board::Fen, "Get the FEN for the board.");
+        board.def("load_for_eval", &StockDory::Board::LoadForEvaluation);
 
-        board.def("Zobrist", &StockDory::Board::Zobrist,
-                  "Get the Zobrist Hash for the board.");
+        board.def(
+            "__getitem__",
+            [](const StockDory::Board& self, const Square sq) -> std::pair<Piece, Color>
+            {
+                const PieceColor pc = self[sq];
 
-        board.def("__getitem__", [](const StockDory::Board& self, const Square sq) -> std::pair<Piece, Color>
-        {
-            const PieceColor pc = self[sq];
+                return std::make_pair(pc.Piece(), pc.Color());
+            },
+            py::arg("sq")
+        );
 
-            return std::make_pair(pc.Piece(), pc.Color());
-        }, "Get the piece and color of the piece at a particular square on the board.");
+        board.def_property_readonly("color_to_move", &StockDory::Board::ColorToMove    );
+        board.def_property_readonly("en_passant_sq", &StockDory::Board::EnPassantSquare);
 
-        board.def("ColorToMove", &StockDory::Board::ColorToMove, "Get the color to move.");
+        board.def(
+            "king_castling_right",
+            [](const StockDory::Board& self, const Color c) -> bool
+            {
+                if (c == White) return self.CastlingRightK<White>();
+                if (c == Black) return self.CastlingRightK<Black>();
 
-        board.def("CastlingRightK", [](const StockDory::Board& self, const Color c) -> bool
-        {
-            if (c == White) return self.CastlingRightK<White>();
-            if (c == Black) return self.CastlingRightK<Black>();
+                return self.CastlingRightK<NAC>();
+            },
+            py::arg("color")
+        );
 
-            return self.CastlingRightK<NAC>();
-        }, "Get the king-sided castling rights.");
+        board.def(
+            "queen_castling_right",
+            [](const StockDory::Board& self, const Color c) -> bool
+            {
+                if (c == White) return self.CastlingRightQ<White>();
+                if (c == Black) return self.CastlingRightQ<Black>();
 
-        board.def("CastlingRightQ", [](const StockDory::Board& self, const Color c) -> bool
-        {
-            if (c == White) return self.CastlingRightQ<White>();
-            if (c == Black) return self.CastlingRightQ<Black>();
+                return self.CastlingRightQ<NAC>();
+            },
+            py::arg("color")
+        );
 
-            return self.CastlingRightQ<NAC>();
-        }, "Get the queen-sided castling rights.");
+        board.def(
+            "checked",
+            [](const StockDory::Board& self, const Color c) -> bool
+            {
+                if (c == White) return self.Checked<White>();
+                if (c == Black) return self.Checked<Black>();
 
-        board.def("EnPassant", &StockDory::Board::EnPassantSquare, "Get the En Passant square.");
+                return self.Checked<NAC>();
+            },
+            py::arg("color")
+        );
 
-        board.def("Checked", [](const StockDory::Board& self, const Color c) -> bool
-        {
-            if (c == White) return self.Checked<White>();
-            if (c == Black) return self.Checked<Black>();
+        board.def(
+            "move",
+            [](StockDory::Board& self) -> PreviousStateNull
+            {
+                return self.Move();
+            }
+        );
+        board.def(
+            "undo_move",
+            [](StockDory::Board& self, const PreviousStateNull& s) -> void
+            {
+                self.UndoMove(s);
+            },
+            py::arg("previous_state")
+        );
 
-            return self.Checked<NAC>();
-        }, "Returns true if the color is under check.");
+        board.def(
+            "move",
+            &StockDory::Board::Move<ZOBRIST>,
+            py::arg("from"),
+            py::arg("to"),
+            py::arg("promotion")
+        );
+        board.def(
+            "undo_move",
+            &StockDory::Board::UndoMove<ZOBRIST>,
+            py::arg("previous_state"),
+            py::arg("from"),
+            py::arg("to")
+        );
 
-        board.def("Move", [](StockDory::Board& self) -> PreviousStateNull
-        {
-            return self.Move();
-        }, "Make a null move.");
+        board.def(
+            "move_nnue",
+            &StockDory::Board::Move<ZOBRIST | NNUE>,
+            py::arg("from"),
+            py::arg("to"),
+            py::arg("promotion")
+        );
+        board.def(
+            "undo_move_nnue",
+            &StockDory::Board::UndoMove<ZOBRIST | NNUE>,
+            py::arg("previous_state"),
+            py::arg("from"),
+            py::arg("to")
+        );
 
-        board.def("Move"    , &StockDory::Board::Move<ZOBRIST        >, "Make a regular move.");
-        board.def("MoveNNUE", &StockDory::Board::Move<ZOBRIST | NNUE >,
-                  "Make a regular move and update the neural network.");
-        board.def("MoveFAST", &StockDory::Board::Move<STANDARD       >,
-                  "Make a regular move ignoring hashing.");
-        board.def("MoveHASH", &StockDory::Board::Move<PERFT | ZOBRIST>,
-                  "Make a regular move and minimize hash collisions.");
+        board.def(
+            "move_fast",
+            &StockDory::Board::Move<STANDARD>,
+            py::arg("from"),
+            py::arg("to"),
+            py::arg("promotion")
+        );
+        board.def(
+            "undo_move_fast",
+            &StockDory::Board::UndoMove<STANDARD>,
+            py::arg("previous_state"),
+            py::arg("from"),
+            py::arg("to")
+        );
 
-        board.def("UndoMove", [](StockDory::Board& self, const PreviousStateNull& state) -> void
-        {
-            self.UndoMove(state);
-        }, "Undo a null move.");
-
-        board.def("UndoMove"    , &StockDory::Board::UndoMove<ZOBRIST        >, "Undo a regular move.");
-        board.def("UndoMoveNNUE", &StockDory::Board::UndoMove<ZOBRIST | NNUE >,
-                  "Undo a regular move and update the neural network.");
-        board.def("UndoMoveFAST", &StockDory::Board::UndoMove<STANDARD       >,
-                  "Undo a regular move ignoring hashing.");
-        board.def("UndoMoveHASH", &StockDory::Board::UndoMove<PERFT | ZOBRIST>,
-                  "Undo a regular move and minimize hash collisions.");
+        board.def(
+            "move_hash",
+            &StockDory::Board::Move<PERFT | ZOBRIST>,
+            py::arg("from"),
+            py::arg("to"),
+            py::arg("promotion")
+        );
+        board.def(
+            "undo_move_hash",
+            &StockDory::Board::UndoMove<PERFT | ZOBRIST>,
+            py::arg("previous_state"),
+            py::arg("from"),
+            py::arg("to")
+        );
     }
 
-    /** -- STRUCT: Move & MoveList -- **/
+    /** -- STRUCT: core.Move & core.MoveList -- **/
     {
-        py::class_<Move> move (types, "Move");
+        py::class_<Move> move (core, "Move");
 
         move.def(py::init());
 
         move.def(
             py::init<const Square, const Square, const Piece>(),
-            py::arg("from"), py::arg("to"), py::arg("promotion")
+            py::arg("from"),
+            py::arg("to"),
+            py::arg("promotion")
         );
 
-        move.def(py::init([](const std::string& moveStr)
-        {
-            return Move::FromString(moveStr);
-        }));
+        move.def(
+            py::init(
+                [](const std::string& s) -> Move
+                {
+                    return Move::FromString(s);
+                }
+            ),
+            py::arg("move_str")
+        );
 
-        move.def("From", &Move::From, "Get the from square.");
-
-        move.def("To", &Move::To, "Get the to square.");
-
-        move.def("Promotion", &Move::Promotion, "Get the promotion piece.");
+        move.def_property_readonly("from"     , &Move::From     );
+        move.def_property_readonly("to"       , &Move::To       );
+        move.def_property_readonly("promotion", &Move::Promotion);
 
         move.def("__eq__", &Move::operator==);
 
-        move.def("__str__", &Move::ToString);
+        move.def("__str__" , &Move::ToString);
+        move.def("__repr__", &Move::ToString);
     }
     {
-        py::class_<PyMoveList> moveList (types, "MoveList");
+        py::class_<PyMoveList> moveList (core, "MoveList");
 
         moveList.def(
             py::init<const StockDory::Board&, const Piece, const Color>(),
@@ -429,211 +530,298 @@ PYBIND11_MODULE(StockDory, m)
 
         moveList.def("__len__", &PyMoveList::Count);
 
-        moveList.def("__iter__", [](PyMoveList& self) -> py::typing::Iterator<Move&>
-        {
-            return py::make_iterator(self.Begin(), self.Begin() + self.Count());
-        }, py::keep_alive<0, 1>());
+        moveList.def(
+            "__iter__",
+            [](PyMoveList& self) -> py::typing::Iterator<Move&>
+            {
+                return py::make_iterator(self.Begin(), self.Begin() + self.Count());
+            },
+            py::keep_alive<0, 1>()
+        );
 
-        moveList.def("__str__", [](const PyMoveList& self) -> std::string
-        {
-            std::stringstream ss;
-            ss << "[";
+        moveList.def("__str__" , &PyMoveList::ToString);
+        moveList.def("__repr__", &PyMoveList::ToString);
+    }
 
-            const size_t n = self.Count();
-            for (size_t i = 0; i < n; i++) {
-                ss << self[i].ToString();
+    /** -- MODULE: core.perft -- **/
+    {
+        py::module_ perft = core.def_submodule("perft", "Python Bindings for StockDory's PerftRunner");
 
-                if (i != n - 1) ss << ", ";
+        perft.def(
+            "set_board",
+            [](const std::string& s) -> void
+            {
+                StockDory::PerftRunner::SetBoard(s);
+            },
+            py::arg("fen")
+        );
+        perft.def(
+            "set_board",
+            [](const StockDory::Board& b) -> void
+            {
+                StockDory::PerftRunner::SetBoard(b);
+            },
+            py::arg("board")
+        );
+
+        perft.def(
+            "perft",
+            &StockDory::PerftRunner::Perft<false>,
+            py::arg("depth")
+        );
+        perft.def(
+            "perft_divide",
+            &StockDory::PerftRunner::Perft<true >,
+            py::arg("depth")
+        );
+
+        perft.def(
+            "__perft_white",
+            &StockDory::PerftRunner::Perft<White, false, false, false>,
+            py::arg("board"),
+            py::arg("depth")
+        );
+        perft.def(
+            "__perft_black",
+            &StockDory::PerftRunner::Perft<Black, false, false, false>,
+            py::arg("board"),
+            py::arg("depth")
+        );
+
+        perft.def(
+            "__perft_white_divide",
+            &StockDory::PerftRunner::Perft<White, true , false, false>,
+            py::arg("board"),
+            py::arg("depth")
+        );
+        perft.def(
+            "__perft_black_divide",
+            &StockDory::PerftRunner::Perft<Black, true , false, false>,
+            py::arg("board"),
+            py::arg("depth")
+        );
+
+        perft.def(
+            "__perft_white_sync",
+            &StockDory::PerftRunner::Perft<White, false, true , false>,
+            py::arg("board"),
+            py::arg("depth")
+        );
+        perft.def(
+            "__perft_black_sync",
+            &StockDory::PerftRunner::Perft<Black, false, true , false>,
+            py::arg("board"),
+            py::arg("depth")
+        );
+
+        perft.def(
+            "__perft_white_divide_sync",
+            &StockDory::PerftRunner::Perft<White, true , true , false>,
+            py::arg("board"),
+            py::arg("depth")
+        );
+        perft.def(
+            "__perft_black_divide_sync",
+            &StockDory::PerftRunner::Perft<Black, true , true , false>,
+            py::arg("board"),
+            py::arg("depth")
+        );
+    }
+
+    /** -- MODULE: engine.evaluation -- **/
+    {
+        py::module_ evaluation = engine.def_submodule(
+            "evaluation",
+            "Python Bindings for StockDory's Engine Evaluation"
+        );
+
+        evaluation.def(
+            "evaluate",
+            [](const Color c) -> int32_t
+            {
+                return StockDory::Evaluation::Evaluate(c);
+            },
+            py::arg("perspective")
+        );
+    }
+
+    /** -- MODULE: core.tp -- **/
+    {
+        py::module_ pool = core.def_submodule("tp", "Python Bindings for StockDory's Thread Pool");
+
+        pool.def(
+            "resize",
+            [](const uint32_t n) -> void
+            {
+                pool_set_size(
+                    StockDory::ThreadPool,
+                    std::max(1U, std::min(core_count(), n))
+                );
+            },
+            py::arg("thread_count")
+        );
+
+        pool.def(
+            "size",
+            [] -> uint32_t
+            {
+                return pool_size(StockDory::ThreadPool);
             }
-
-            ss << "]";
-
-            return ss.str();
-        });
+        );
     }
 
-    /** -- CLASS: PERFT -- **/
+    /** -- MODULE: engine.tt -- **/
     {
-        py::class_<StockDory::PerftRunner> perft (engine, "PerftDriver");
+        py::module_ tt = engine.def_submodule("tt", "Python Bindings for StockDory's Engine Transposition Table");
 
-        perft.def_static("SetBoard", [](const std::string& fen) -> void
-        {
-            StockDory::PerftRunner::SetBoard(fen);
-        }, "Set the board for PERFT.");
+        tt.def(
+            "resize",
+            [](const size_t n) -> void
+            {
+                TTable.Resize(n);
+            },
+            py::arg("bytes")
+        );
 
-        perft.def_static("SetBoard", [](const StockDory::Board& board) -> void
-        {
-            StockDory::PerftRunner::SetBoard(board);
-        }, "Set the board for PERFT.");
+        tt.def(
+            "size",
+            [] -> size_t
+            {
+                return TTable.Size();
+            }
+        );
 
-        perft.def_static("Perft" , &StockDory::PerftRunner::Perft<false>, "Run PERFT to a certain depth.");
-        perft.def_static("PerftD", &StockDory::PerftRunner::Perft<true >, "Run PERFT to a certain depth.");
-
-        perft.def_static("_WPerft" , &StockDory::PerftRunner::Perft<White, false, false, false>,
-            "Internal PERFT method assuming white is side to move.");
-        perft.def_static("_BPerft" , &StockDory::PerftRunner::Perft<Black, false, false, false>,
-            "Internal PERFT method assuming black is side to move.");
-        perft.def_static("_WPerftD", &StockDory::PerftRunner::Perft<White, true , false, false>,
-            "Internal PERFT method assuming white is side to move.");
-        perft.def_static("_BPerftD", &StockDory::PerftRunner::Perft<Black, true , false, false>,
-            "Internal PERFT method assuming black is side to move.");
-
-        perft.def_static("_WPerft_Sync" , &StockDory::PerftRunner::Perft<White, false, true, false>,
-            "Internal PERFT method assuming white is side to move. This will force synchronous computation.");
-        perft.def_static("_BPerft_Sync" , &StockDory::PerftRunner::Perft<Black, false, true, false>,
-            "Internal PERFT method assuming black is side to move. This will force synchronous computation.");
-        perft.def_static("_WPerftD_Sync", &StockDory::PerftRunner::Perft<White, true , true, false>,
-            "Internal PERFT method assuming white is side to move. This will force synchronous computation.");
-        perft.def_static("_BPerftD_Sync", &StockDory::PerftRunner::Perft<Black, true , true, false>,
-            "Internal PERFT method assuming black is side to move. This will force synchronous computation.");
+        tt.def(
+            "clear",
+            [] -> void
+            {
+                TTable.Clear();
+            }
+        );
     }
 
-    /** -- CLASS: Evaluation -- **/
+    /** -- STRUCT: core.TimeData -- **/
     {
-        py::class_<StockDory::Evaluation> evaluation (engine, "Evaluation");
-
-        evaluation.def_static("Evaluate", [](const Color c) -> int32_t
-        {
-            return StockDory::Evaluation::Evaluate(c);
-        }, "Evaluate the currently loaded board from a color's point of view.");
-    }
-
-    /** -- CLASS: ThreadPool -- **/
-    {
-        py::class_<PyThreadPool> pool (engine, "ThreadPool");
-
-        pool.def_static("Resize", [](const uint32_t n) -> void
-        {
-            pool_set_size(
-                StockDory::ThreadPool,
-                std::max(1U, std::min(core_count(), n))
-            );
-        }, "Resize the thread pool. Minimum 1 thread, maximum is the perceived logical processor count.");
-
-        pool.def_static("Size", [] -> uint32_t
-        {
-            return pool_size(StockDory::ThreadPool);
-        }, "Size of the thread pool.");
-    }
-
-    /** -- CLASS: TranspositionTable -- **/
-    {
-        py::class_<PyTranspositionTable> tt (engine, "TranspositionTable");
-
-        tt.def_static("Resize", [](const size_t n) -> void
-        {
-            TTable.Resize(n);
-        });
-
-        tt.def_static("Size", [] -> size_t
-        {
-            return TTable.Size();
-        });
-
-        tt.def_static("Clear", [] -> void
-        {
-            TTable.Clear();
-        });
-    }
-
-    /** -- CLASS: MS -- **/
-    {
-        py::class_<StockDory::MS> ms (types, "MS");
-
-        ms.def("Get", &StockDory::MS::count);
-    }
-
-    /** -- STRUCT: TimeData -- **/
-    {
-        py::class_<StockDory::TimeData> td (engine, "TimeData");
+        py::class_<StockDory::TimeData> td (core, "TimeData");
 
         td.def(py::init());
 
         td.def_property(
-            "WhiteTime",
+            "white_time",
             [](const StockDory::TimeData& self) -> uint64_t
             {
                 return self.WhiteTime;
             },
-            [](StockDory::TimeData& self, const uint64_t whiteTime) -> void
+            [](StockDory::TimeData& self, const uint64_t v) -> void
             {
-                self.WhiteTime = whiteTime;
+                self.WhiteTime = v;
             }
         );
-
         td.def_property(
-            "BlackTime",
+            "black_time",
             [](const StockDory::TimeData& self) -> uint64_t
             {
                 return self.BlackTime;
             },
-            [](StockDory::TimeData& self, const uint64_t blackTime) -> void
+            [](StockDory::TimeData& self, const uint64_t v) -> void
             {
-                self.BlackTime = blackTime;
+                self.BlackTime = v;
             }
         );
 
         td.def_property(
-            "WhiteIncrement",
+            "white_increment",
             [](const StockDory::TimeData& self) -> uint64_t
             {
                 return self.WhiteIncrement;
             },
-            [](StockDory::TimeData& self, const uint64_t whiteIncrement) -> void
+            [](StockDory::TimeData& self, const uint64_t v) -> void
             {
-                self.WhiteIncrement = whiteIncrement;
+                self.WhiteIncrement = v;
             }
         );
-
         td.def_property(
-            "BlackIncrement",
+            "black_increment",
             [](const StockDory::TimeData& self) -> uint64_t
             {
                 return self.BlackIncrement;
             },
-            [](StockDory::TimeData& self, const uint64_t blackIncrement) -> void
+            [](StockDory::TimeData& self, const uint64_t v) -> void
             {
-                self.BlackIncrement = blackIncrement;
+                self.BlackIncrement = v;
             }
         );
 
         td.def_property(
-            "MovesToGo",
+            "moves_to_go",
             [](const StockDory::TimeData& self) -> uint16_t
             {
                 return self.MovesToGo;
             },
-            [](StockDory::TimeData& self, const uint16_t movesToGo) -> void
+            [](StockDory::TimeData& self, const uint16_t v) -> void
             {
-                self.MovesToGo = movesToGo;
+                self.MovesToGo = v;
             }
         );
     }
 
-    /** -- CLASS: TimeControl & TimeManager -- **/
+    /** -- CLASS: engine.TimeControl -- **/
     {
         py::class_<StockDory::TimeControl> tc (engine, "TimeControl");
     }
-    {
-        py::class_<StockDory::TimeManager> tm (engine, "TimeManager");
 
-        tm.def_static("Default", &StockDory::TimeManager::Default);
-        tm.def_static("Fixed"  , &StockDory::TimeManager::Fixed  );
-        tm.def_static("Optimal", &StockDory::TimeManager::Optimal);
+    /** -- MODULE: engine.tm -- **/
+    {
+        py::module_ tm = engine.def_submodule("tm", "Python Bindings for StockDory's Engine Time Manager");
+
+        tm.def(
+            "default",
+            &StockDory::TimeManager::Default
+        );
+
+        tm.def(
+            "fixed"  ,
+            &StockDory::TimeManager::Fixed,
+            py::arg("milliseconds")
+        );
+
+        tm.def(
+            "optimal",
+            &StockDory::TimeManager::Optimal,
+            py::arg("board"),
+            py::arg("time_data")
+        );
     }
 
-    /** -- CLASS: RepetitionHistory -- **/
+    /** -- CLASS: engine.RepetitionHistory -- **/
     {
         py::class_<StockDory::RepetitionHistory> rh (engine, "RepetitionHistory");
 
-        rh.def(py::init<const ZobristHash>(), py::arg("hash"));
+        rh.def(
+            py::init<const ZobristHash>(),
+            py::arg("hash")
+        );
 
-        rh.def("Push" , &StockDory::RepetitionHistory::Push );
-        rh.def("Pull" , &StockDory::RepetitionHistory::Pull );
-        rh.def("Found", &StockDory::RepetitionHistory::Found);
+        rh.def(
+            "push" ,
+            &StockDory::RepetitionHistory::Push,
+            py::arg("hash")
+        );
+
+        rh.def(
+            "pull" ,
+            &StockDory::RepetitionHistory::Pull
+        );
+
+        rh.def(
+            "found",
+            &StockDory::RepetitionHistory::Found,
+            py::arg("hash"),
+            py::arg("half_move_count")
+        );
     }
 
-    /** -- CLASS: PrincipleVariationTable -- **/
+    /** -- CLASS: engine.PrincipleVariationTable -- **/
     {
         py::class_<StockDory::PrincipleVariationTable> pv (engine, "PrincipleVariationTable");
 
@@ -642,18 +830,21 @@ PYBIND11_MODULE(StockDory, m)
         pv.def("__getitem__", &StockDory::PrincipleVariationTable::operator[]);
     }
 
-    /** -- CLASS: SearchHandler -- **/
+    /** -- MODULE: engine.event -- **/
     {
-        py::class_<PySearchHandler> handler (engine, "SearchHandler");
+        py::module_ event = engine.def_submodule(
+            "event",
+            "Python Bindings for StockDory's Engine Event System"
+        );
 
-        handler.def_static(
-            "RegisterDepthIterationHandler",
+        event.def(
+            "set_depth_iteration_event_handler",
             [](py::function& callback) -> void
             {
                 PySearchHandler::RegisterDepthIterationHandler(
                     [callback = std::move(callback)](const uint8_t       a, const uint8_t  b, const int32_t c,
                                                       const uint64_t      d, const uint64_t e,
-                                                      const StockDory::MS f,
+                                                      const int64_t f,
                                                       const StockDory::PrincipleVariationTable& g) -> void
                     {
                         py::gil_scoped_acquire _;
@@ -666,8 +857,8 @@ PYBIND11_MODULE(StockDory, m)
             py::arg("handler")
         );
 
-        handler.def_static(
-                  "RegisterBestMoveHandler",
+        event.def(
+            "set_best_move_event_handler",
             [](py::function& callback) -> void
             {
                 PySearchHandler::     RegisterBestMoveHandler(
@@ -684,9 +875,9 @@ PYBIND11_MODULE(StockDory, m)
         );
     }
 
-    /** -- STRUCT: SearchLimit -- **/
+    /** -- STRUCT: engine.Limit -- **/
     {
-        py::class_<StockDory::Limit> limit (engine, "SearchLimit");
+        py::class_<StockDory::Limit> limit (engine, "Limit");
 
         limit.def(py::init());
 
@@ -695,21 +886,28 @@ PYBIND11_MODULE(StockDory, m)
         limit.def(py::init<uint8_t >(), py::arg("depth"));
     }
 
-    /** -- CLASS: Search -- **/
+    /** -- MODULE: engine.search -- **/
     {
-        py::class_<PySearch> search (engine, "Search");
-
-        search.def_static(
-            "Configure",
-            [](const StockDory::Board&                  board, const StockDory::TimeControl& tc,
-               const StockDory::RepetitionHistory& repetition, const uint8_t                 hm) -> void
-            {
-                SEARCH = PySearch(board, tc, repetition, hm);
-            }
+        py::module_ search = engine.def_submodule(
+            "search",
+            "Python Bindings for StockDory's Asynchronous Search System"
         );
 
-        search.def_static(
-            "Start",
+        search.def(
+            "configure",
+            [](const StockDory::Board&             a, const StockDory::TimeControl& b,
+                const StockDory::RepetitionHistory& c, const uint8_t                 d) -> void
+            {
+                SEARCH = PySearch(a, b, c, d);
+            },
+            py::arg("board"),
+            py::arg("time_control"),
+            py::arg("repetition_history"),
+            py::arg("half_move_count")
+        );
+
+        search.def(
+            "start_async",
             [](const StockDory::Limit& limit = StockDory::Limit()) -> void
             {
                 drjit::do_async([limit] -> void
@@ -722,8 +920,8 @@ PYBIND11_MODULE(StockDory, m)
             py::arg("limit") = StockDory::Limit()
         );
 
-        search.def_static("Stop", [] -> void { SEARCH.ForceStop(); } );
+        search.def("stop_async", [] -> void {        SEARCH.ForceStop(); });
 
-        search.def_static("Running", [] -> bool { return SEARCH_RUNNING; });
+        search.def("is_running", [] -> bool { return SEARCH_RUNNING;     });
     }
 }
