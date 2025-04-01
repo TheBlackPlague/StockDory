@@ -1,34 +1,49 @@
 name: Code Review
 
 on:
-  issue_comment:
-    types: [ "created" ]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Pull request to review"
+        required: true
+
 
 permissions:
-  issues: read
+  contents: read
   pull-requests: read
+  issues: read
 
 
 jobs:
   gpt4o:
-    if: |
-      github.event.issue.pull_request &&
-      contains(github.event.comment.body, 'AI RR') &&
-      (
-        github.event.comment.author_association == 'COLLABORATOR' ||
-        github.event.comment.author_association == 'MEMBER' ||
-        github.event.comment.author_association == 'OWNER'
-      )
-
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: PR Metadata
+        id: pr-data
+        uses: octokit/request-action@v2.4.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          route: GET /repos/${{ github.repository }}/pulls/${{ github.event.inputs.pr_number }}
+
+      - name: Checkout PR Branch
+        run: |
+          BRANCH_NAME=$(echo '${{ steps.pr-data.outputs.data }}' | jq -r '.head.ref')
+          REPO_URL=$(echo '${{ steps.pr-data.outputs.data }}' | jq -r '.head.repo.clone_url')
+          
+          git remote add prrepo $REPO_URL
+          git fetch prrepo $BRANCH_NAME
+          git checkout FETCH_HEAD
 
       - name: Review
         uses: mattzcarey/code-review-gpt@v0.8.0
         with:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_KEY }}
           MODEL: 'gpt-4o-mini'
           REVIEW_LANGUAGE: 'English'
