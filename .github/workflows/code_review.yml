@@ -1,0 +1,31 @@
+name: Code Review
+
+on:
+  issue_comment:
+    types: [ "created" ]
+
+
+jobs:
+  gpt4o:
+    if: |
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, 'AI RR') &&
+      (
+        github.event.comment.author_association == 'COLLABORATOR' ||
+        github.event.comment.author_association == 'MEMBER' ||
+        github.event.comment.author_association == 'OWNER'
+      )
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Review
+        uses: mattzcarey/code-review-gpt@v0.8.0
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_KEY }}
+          MODEL: 'gpt-4o-mini'
+          REVIEW_LANGUAGE: 'English'
+
