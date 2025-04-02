@@ -18,7 +18,7 @@ function(Information VERSION CODENAME DEV)
     #include <string>
 
     const std::string NAME     = \"StockDory\"             \;
-    const std::string AUTHOR   = \"the StockDory Author\"  \;
+    const std::string AUTHOR   = \"the StockDory Authors\" \;
     const std::string VERSION  = \"${CODENAME}-${VERSION}\"\;
     const std::string LICENSE  = \"LGPL-3.0\"              \;
 
