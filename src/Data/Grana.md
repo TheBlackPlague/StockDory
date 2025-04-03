@@ -58,4 +58,6 @@ runtime in whatever manner one wants as long as the overall specification is fol
     Score      : 16-bit signed integer
     GameResult : Result
     StalkCount : 6-bit unsigned integer
+    
+    _PADDING_  : 24-bit unsigned integer
     ```

@@ -27,7 +27,7 @@ namespace StockDory
         Result            Result: 2 =              NAR;
         uint8_t       StalkCount: 6 =                0;
 
-        std::array<uint8_t, 3> __PADDING = {};
+        std::array<uint8_t, 3> __PADDING__ = {};
 
     };
 
