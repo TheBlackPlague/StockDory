@@ -2,6 +2,10 @@
 
 **Format Version: 0.1**
 
+The format follows LE (Little Endian) layout for all data unless specified otherwise. Most modern day architectures use
+Little Endian, and the goal of this format is to be read or reinterpreted from one memory to another by a memory copy 
+operation (however that may be implemented for the relevant architecture).
+
 ### Data Types:
 Below are some of the data types that make understanding Grana easier. It is important to however note that not each of
 the data types must have an equivalent implementation in code. They are design details that can be implemented during
@@ -33,6 +37,7 @@ runtime in whatever manner one wants as long as the overall specification is fol
         p = Piece at sq
         c = Color at sq
         PiecesColors[i] = PackedPC { p, c }
+        i += 1
     ```
 - **Result**: 2-bit unsigned integer [enum]
     ```yaml
@@ -58,6 +63,7 @@ runtime in whatever manner one wants as long as the overall specification is fol
     Score      : 16-bit signed integer
     GameResult : Result
     StalkCount : 6-bit unsigned integer
-    
-    _PADDING_  : 24-bit unsigned integer
+    --------------------------------------
+    RESERVED   : 3 bytes
     ```
+- 
