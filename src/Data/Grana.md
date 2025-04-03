@@ -54,7 +54,7 @@ runtime in whatever manner one wants as long as the overall specification is fol
 - **Seed**: 32 byte data structure
     ```yaml
     Position   : PackedPosition
-    FirstMove  :           Move
+    FirstMove  : Move
     Score      : 16-bit signed integer
     GameResult : Result
     StalkCount : 6-bit unsigned integer
