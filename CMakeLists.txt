@@ -106,6 +106,11 @@ file(GLOB StockDoryBackendType
         "src/Backend/Move/*.h"
         "src/Backend/*.h")
 
+file(GLOB StockDoryDataType
+        "src/Data/Type/*.h"
+        "src/Data/*.h"
+)
+
 file(GLOB StockDoryEngineType
         "src/Engine/Move/*.h"
         "src/Engine/Time/*.h"
@@ -135,6 +140,7 @@ if(PYMODULE)
 
     pybind11_add_module(StockDory src/Python/binding.cpp
             ${StockDoryBackendType}
+            ${StockDoryDataType}
             ${StockDoryEngineType}
             ${StockDoryExternalType}
             ${StockDoryFrontendType}
@@ -152,6 +158,7 @@ else()
 
     add_executable(StockDory src/Terminal/main.cpp
             ${StockDoryBackendType}
+            ${StockDoryDataType}
             ${StockDoryEngineType}
             ${StockDoryExternalType}
             ${StockDoryFrontendType}
