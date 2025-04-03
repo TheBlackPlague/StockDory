@@ -16,11 +16,13 @@ struct Move
 {
 
     private:
+    constexpr static uint16_t   SquareMask = 0x003F;
+    constexpr static uint8_t         ToPos =      6;
+    constexpr static uint8_t  PromotionPos =     12;
+
     // [    PROMOTION    ] [     TO     ] [    FROM    ]
     // [     4 BITS      ] [   6 BITS   ] [   6 BITS   ]
     uint16_t Internal;
-
-    constexpr static uint16_t SquareMask = 0x003F;
 
     public:
     static inline Move FromString(const std::string& str)
@@ -58,7 +60,7 @@ struct Move
 
     constexpr Move(const Square from, const Square to, const Piece promotion = NAP)
     {
-        Internal = from | to << 6 | promotion << 12;
+        Internal = from | to << ToPos | promotion << PromotionPos;
     }
 
     [[nodiscard]]
@@ -70,13 +72,13 @@ struct Move
     [[nodiscard]]
     constexpr inline Square To() const
     {
-        return static_cast<Square>(Internal >> 6 & SquareMask);
+        return static_cast<Square>(Internal >> ToPos & SquareMask);
     }
 
     [[nodiscard]]
     constexpr inline Piece Promotion() const
     {
-        return static_cast<Piece>(Internal >> 12);
+        return static_cast<Piece>(Internal >> PromotionPos);
     }
 
     [[nodiscard]]

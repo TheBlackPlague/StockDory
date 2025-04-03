@@ -15,11 +15,12 @@ struct PieceColor
 {
 
     private:
+    constexpr static uint8_t PieceColorMask = 0xF;
+    constexpr static uint8_t      ColorPos  =   4;
+
     // [    COLOR    ] [    PIECE   ]
     // [   4 BITS    ] [   4 BITS   ]
     uint8_t Internal;
-
-    constexpr static uint8_t PieceColorMask = 0x0F;
 
     public:
     constexpr PieceColor()
@@ -41,7 +42,7 @@ struct PieceColor
     [[nodiscard]]
     constexpr inline Color Color() const
     {
-        return static_cast<enum Color>(Internal >> 4);
+        return static_cast<enum Color>(Internal >> ColorPos);
     }
 
     [[nodiscard]]
