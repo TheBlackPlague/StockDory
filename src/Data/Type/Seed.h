@@ -6,6 +6,8 @@
 #ifndef STOCKDORY_SEED_H
 #define STOCKDORY_SEED_H
 
+#include "../../Backend/Type/Move.h"
+
 #include "PackedPosition.h"
 #include "Result.h"
 
