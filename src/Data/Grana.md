@@ -105,3 +105,25 @@ for sq in Occupancy:
 
 > [!CAUTION]
 > The last 2 bytes are reserved.
+
+#### Grain: Variable-length data structure
+> [!IMPORTANT]
+> This is a variable length data structure. However, there are constraints on its size.
+> 
+> 32 bytes <= Size <= 284 bytes
+
+|  Field Name  | Field Type |
+|:------------:|:----------:|
+|     Base     |    Seed    |
+| Continuation |  Stalk(s)  |
+
+> [!TIP]
+> In most programming languages, `Continuation` will most likely be represented as a dynamically resizeable array. 
+> However, when possible, it's recommended to use a fixed-size array for performance. 
+> 
+> Given the constraints, it will at maximum have 63 elements. A counter to the number of elements is stored as 
+> `Base.RemainingStalkCount` so when serializing (writing to disk), you can only write the `Base.RemainingStalkCount` 
+> elements. 
+> 
+> The only downside to using a fixed-size array is that in memory, you will be using the maximum memory of the data
+> structure even if the `Grain` doesn't require it. It is recommended to be considerate of this depending on the system.
