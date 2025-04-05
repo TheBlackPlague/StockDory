@@ -1,0 +1,1 @@
+![Grana File Format Visualized](../../.readme/Grana2x.png)

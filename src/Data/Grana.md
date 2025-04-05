@@ -1,6 +1,6 @@
 <h1 align="center">Grana Format Specification</h1>
 
-<h3 align="center">From Grana, all things take root.</h3>
+<h3 align="center">From which, all things take root.</h3>
 
 > [!IMPORTANT]
 > **Format Version: Radix**
