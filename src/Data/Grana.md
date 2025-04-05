@@ -48,9 +48,9 @@ Occupancy = Board[White] | Board[Black]
     
 i = 0
 for sq in Occupancy:
-    p: Piece = Board[sq]
-    c: Color = Board[sq]
-    PiecesColors[i] = PackedPC { p, c }
+    piece: = Board.Piece[sq]
+    color: = Board.Color[sq]
+    PiecesColors[i] = { piece, color }
     i += 1
 ```
   
