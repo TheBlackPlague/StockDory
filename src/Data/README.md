@@ -1,1 +1,1 @@
-![Grana File Format Visualized](../../.readme/Grana2x.png)
+![Grana File Format Visualized](../../.readme/Grana3x.png)
