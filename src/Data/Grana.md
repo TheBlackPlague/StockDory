@@ -1,9 +1,11 @@
 # Grana Format Specification
+**Format Version: Radix**
 
-**Format Version: 0.1**
+> From Grana all things take root.
 
-The format follows LE (Little Endian) layout for all data unless specified otherwise. Most modern day architectures use
-Little Endian, and the goal of this format is to be read or reinterpreted from one memory to another by a memory copy 
+> [!NOTE]
+> The format follows the LE (Little Endian) layout for all data unless specified otherwise. Most modern day architectures use
+Little Endian, and the goal of this format is to be read or reinterpreted from one memory to another by a memory copy
 operation (however that may be implemented for the relevant architecture).
 
 ### Data Types:
@@ -49,7 +51,10 @@ runtime in whatever manner one wants as long as the overall specification is fol
     ```yaml
     From      : 6-bit unsigned integer
     To        : 6-bit unsigned integer
-    Promotion : 4-bit unsigned integer
+    Promotion : 3-bit unsigned integer
+
+    --------------------------------------
+    RESERVED  : 1-bit
     ```
 - **Stalk**: 4 byte data structure
     ```yaml
@@ -58,12 +63,12 @@ runtime in whatever manner one wants as long as the overall specification is fol
     ```
 - **Seed**: 32 byte data structure
     ```yaml
-    Position   : PackedPosition
-    FirstMove  : Move
-    Score      : 16-bit signed integer
-    GameResult : Result
-    StalkCount : 6-bit unsigned integer
+    Position               : PackedPosition
+    CastlingAndColorToMove : 8-bit unsigned integer
+    GameResult             : Result
+    RemainingStalkCount    : 6-bit unsigned integer
+    Initial                : Stalk
     --------------------------------------
-    RESERVED   : 3 bytes
+    RESERVED               : 2 bytes
     ```
-- 
+

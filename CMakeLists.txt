@@ -89,6 +89,12 @@ CPMAddPackage(
         GIT_TAG master
 )
 
+CPMAddPackage(
+        NAME atomic_queue
+        GITHUB_REPOSITORY max0x7ba/atomic_queue
+        GIT_TAG f001bee4821fe70cf516e4e54206e30c5fbfb1ef
+)
+
 include(BinaryResource.cmake)
 
 file(GLOB NNUEBinary
@@ -108,6 +114,7 @@ file(GLOB StockDoryBackendType
 
 file(GLOB StockDoryDataType
         "src/Data/Type/*.h"
+        "src/Data/Format/*.h"
         "src/Data/*.h"
 )
 
@@ -147,7 +154,7 @@ if(PYMODULE)
     )
 
     target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-    target_link_libraries(StockDory PRIVATE MantaRay nanothread)
+    target_link_libraries(StockDory PRIVATE MantaRay nanothread atomic_queue)
     if(NOT WIN32)
         target_link_libraries(StockDory PRIVATE pthread)
     endif()
@@ -165,7 +172,7 @@ else()
     )
 
     target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-    target_link_libraries(StockDory MantaRay nanothread)
+    target_link_libraries(StockDory MantaRay nanothread atomic_queue)
     if(NOT WIN32)
         target_link_libraries(StockDory pthread)
     endif()

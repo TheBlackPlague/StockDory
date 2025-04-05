@@ -16,9 +16,9 @@ struct Move
 {
 
     private:
-    constexpr static uint16_t   SquareMask = 0x003F;
-    constexpr static uint8_t         ToPos =      6;
-    constexpr static uint8_t  PromotionPos =     12;
+    constexpr static uint8_t    SquareMask = 0x3F;
+    constexpr static uint8_t         ToPos =    6;
+    constexpr static uint8_t  PromotionPos =   12;
 
     // [    PROMOTION    ] [     TO     ] [    FROM    ]
     // [     4 BITS      ] [   6 BITS   ] [   6 BITS   ]

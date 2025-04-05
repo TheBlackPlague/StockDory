@@ -13,9 +13,12 @@
 #include "../../Backend/Type/Piece.h"
 #include "../../Backend/Type/PieceColor.h"
 
+#include "../Format/GranaVersion.h"
+
 namespace StockDory
 {
 
+    template<GranaVersion Version>
     struct PackedPosition
     {
 
@@ -37,7 +40,7 @@ namespace StockDory
                 Internal = {};
             }
 
-            constexpr PieceColor Get(const size_t idx) const
+            constexpr inline PieceColor Get(const size_t idx) const
             {
                 const size_t iIdx = idx / (sizeof(uint64_t) * 2);
                 const size_t cIdx = idx % (sizeof(uint64_t) * 2);
@@ -47,7 +50,7 @@ namespace StockDory
                 return PieceColor(static_cast<Piece>(data & PieceMask), static_cast<Color>(data >> ColorPos));
             }
 
-            constexpr void Set(const size_t idx, const PieceColor pc)
+            constexpr inline void Set(const size_t idx, const PieceColor pc)
             {
                 const size_t iIdx = idx / (sizeof(uint64_t) * 2);
                 const size_t cIdx = idx % (sizeof(uint64_t) * 2);
@@ -63,26 +66,37 @@ namespace StockDory
 
         };
 
-        BitBoard         Occupancy;
-        PackedPCArray  PieceColors;
+        constexpr static size_t BoardOffset0 = 0;
+
+        BitBoard      Internal0;
+        PackedPCArray Internal1;
 
         public:
         constexpr PackedPosition()
         {
-            Occupancy   =       BBDefault;
-            PieceColors = PackedPCArray();
+            Internal0 =       BBDefault;
+            Internal1 = PackedPCArray();
         }
 
         constexpr PackedPosition(const Board& board)
         {
-            Occupancy = board[White] | board[Black];
+            Internal0 = board[White] | board[Black];
 
-            auto iterator = BitBoardIterator(Occupancy);
+            auto iterator = BitBoardIterator(Internal0);
+
+            size_t i = 0;
+            for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) Internal1.Set(i++, board[sq]);
+        }
+
+        constexpr inline void LoadBoard(Board& board) const
+        {
+            auto iterator = BitBoardIterator(Internal0);
 
             size_t i = 0;
             for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
-                PieceColors.Set(i, board[sq]);
-                i++;
+                PieceColor pc = Internal1.Get(i++);
+
+                board.InsertNative(pc.Piece(), pc.Color(), sq);
             }
         }
 
