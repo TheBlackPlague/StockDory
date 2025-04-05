@@ -20,28 +20,28 @@ runtime in whatever manner one wants as long as the overall specification is fol
 > by future versions of the format. However, for ease of reading, they must have a zero value. **They are not padding.**
 
 #### BitBoard: 64-bit unsigned integer
-#### PackedPC: 4-bit unsigned integer
+#### PieceColor: 4-bit unsigned integer
 
 | Field Name |       Field Type       |
 |:----------:|:----------------------:|
 |   Piece    | 3-bit unsigned integer |
 |   Color    | 1-bit unsigned integer |
 
-#### PackedPCArray: 16 byte array (type: PackedPC, count: 32)
+#### PieceColorArray: 16 byte array (type: PieceColor, count: 32)
 
-| Index | Element  |
-|:-----:|:--------:|
-|   0   | PackedPC |
-|   1   | PackedPC |
-|  ...  | PackedPC |
-|  31   | PackedPC |
+| Index |  Element   |
+|:-----:|:----------:|
+|   0   | PieceColor |
+|   1   | PieceColor |
+|  ...  | PieceColor |
+|  31   | PieceColor |
 
 #### PackedPosition: 24 byte data structure
 
-|  Field Name  |  Field Type   |
-|:------------:|:-------------:|
-|  Occupancy   |   BitBoard    |
-| PiecesColors | PackedPCArray |
+|  Field Name  |   Field Type    |
+|:------------:|:---------------:|
+|  Occupancy   |    BitBoard     |
+| PiecesColors | PieceColorArray |
 
 ```python
 Occupancy = Board[White] | Board[Black]
