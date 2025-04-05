@@ -1,7 +1,9 @@
-# Grana Format Specification
-**Format Version: Radix**
+<h1 align="center">Grana Format Specification</h1>
 
-> From Grana all things take root.
+<h3 align="center">From Grana, all things take root.</h3>
+
+> [!IMPORTANT]
+> **Format Version: Radix**
 
 > [!NOTE]
 > The format follows the LE (Little Endian) layout for all data unless specified otherwise. Most modern day architectures use
@@ -71,4 +73,3 @@ runtime in whatever manner one wants as long as the overall specification is fol
     --------------------------------------
     RESERVED               : 2 bytes
     ```
-
