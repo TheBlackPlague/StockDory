@@ -70,8 +70,8 @@ runtime in whatever manner one wants as long as the overall specification is fol
   |    ToSquare    | 6-bit unsigned integer |
   | PromotionPiece | 3-bit unsigned integer |
 
-  > [!CAUTION]
-  > The last bit is reserved.
+> [!CAUTION]
+> The last bit is reserved.
 
 - **Stalk**: 4 byte data structure
 
@@ -90,8 +90,8 @@ runtime in whatever manner one wants as long as the overall specification is fol
   | WhiteKingCastleAllowed  |     1-bit boolean      |
   |       ColorToMove       | 1-bit unsigned integer |
 
-  > [!CAUTION]
-  > The last 3 bits are reserved.
+> [!CAUTION]
+> The last 3 bits are reserved.
 
 - **Seed**: 32 byte data structure
 
@@ -103,5 +103,5 @@ runtime in whatever manner one wants as long as the overall specification is fol
   | RemainingStalkCount | 6-bit unsigned integer |
   |       Initial       |         Stalk          |
 
-  > [!CAUTION]
-  > The last 2 bytes are reserved.
+> [!CAUTION]
+> The last 2 bytes are reserved.
