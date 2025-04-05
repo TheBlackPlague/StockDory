@@ -1,1 +1,1 @@
-![Grana File Format Visualized](../../.readme/Grana3x.png)
+<img src="../../.readme/Grana3x.png" alt="Grana File Format Visualized" style="width:100%;" />
