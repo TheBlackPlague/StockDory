@@ -7,7 +7,6 @@
 
 #include "Information.h"
 #include "../Backend/Board.h"
-#include "../Backend/Util.h"
 #include "../Backend/Move/MoveList.h"
 #include "../Backend/Type/Color.h"
 #include "../Backend/Type/Move.h"
@@ -299,7 +298,7 @@ PYBIND11_MODULE(StockDory, m)
 
         for (Square sq = A1; sq <= NASQ; sq = Next(sq))
             square.value(
-                strutil::capitalize(StockDory::Util::SquareToString(sq)).c_str(),
+                strutil::capitalize(ToString(sq)).c_str(),
                 sq
             );
 
