@@ -51,16 +51,6 @@ namespace StockDory
             BlackKCastleMask | BlackQCastleMask
         };
 
-        constexpr static std::array<std::array<Square, 2>, 2> CastleRookSquareStart {{
-            {H1, A1},
-            {H8, A8}
-        }};
-
-        constexpr static std::array<std::array<Square, 2>, 2> CastleRookSquareEnd {{
-            {F1, D1},
-            {F8, D8}
-        }};
-
         std::array<std::array<BitBoard, 7>, 3> BB {};
 
         std::array<PieceColor, 64> PieceAndColor {};
@@ -620,8 +610,18 @@ namespace StockDory
                 CastlingRightAndColorToMove &= ~ColorCastleMask[colorF];
 
                 if (to == C1 || to == C8 || to == G1 || to == G8) {
-                    state.CastlingFrom = CastleRookSquareStart[colorF][to < from];
-                    state.CastlingTo   = CastleRookSquareEnd  [colorF][to < from];
+                    constexpr static std::array<std::array<Square, 2>, 2> RookCastleSquareStart {{
+                        {H1, A1},
+                        {H8, A8}
+                    }};
+
+                    constexpr static std::array<std::array<Square, 2>, 2> RookCastleSquareEnd   {{
+                        {F1, D1},
+                        {F8, D8}
+                    }};
+
+                    state.CastlingFrom = RookCastleSquareStart[colorF][to < from];
+                    state.CastlingTo   = RookCastleSquareEnd  [colorF][to < from];
 
                      EmptyNative(King, colorF,               from);
                      EmptyNative(Rook, colorF, state.CastlingFrom);
