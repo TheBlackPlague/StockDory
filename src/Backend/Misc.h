@@ -6,7 +6,6 @@
 #ifndef STOCKDORY_MISC_H
 #define STOCKDORY_MISC_H
 
-#include <cstdint>
 #include <iomanip>
 #include <sstream>
 #include <string>
