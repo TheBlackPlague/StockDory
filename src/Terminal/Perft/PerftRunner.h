@@ -13,7 +13,6 @@
 
 #include "../../Backend/Board.h"
 #include "../../Backend/ThreadPool.h"
-#include "../../Backend/Util.h"
 #include "../../Backend/Move/MoveList.h"
 
 #include "PerftEntry.h"
@@ -325,7 +324,7 @@ namespace StockDory
         template<Piece Promotion = NAP>
         static void LogMove(const Square from, const Square to, const uint64_t nodes)
         {
-            std::string logEntry = Util::SquareToString(from) + Util::SquareToString(to);
+            std::string logEntry = ToString(from) + ToString(to);
             if (Promotion != NAP) logEntry += static_cast<char>(tolower(FirstLetter(Promotion)));
             logEntry += ": " + std::to_string(nodes) + "\n";
             std::cout << logEntry;

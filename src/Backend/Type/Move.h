@@ -10,7 +10,6 @@
 
 #include "Piece.h"
 #include "Square.h"
-#include "../Util.h"
 
 struct Move
 {
@@ -27,8 +26,8 @@ struct Move
     public:
     static inline Move FromString(const std::string& str)
     {
-        const Square from = StockDory::Util::StringToSquare(str.substr(0, 2));
-        const Square to   = StockDory::Util::StringToSquare(str.substr(2, 2));
+        const Square from = ::FromString(str.substr(0, 2));
+        const Square to   = ::FromString(str.substr(2, 2));
 
         Piece promotion = NAP;
 
@@ -96,7 +95,7 @@ struct Move
         const Square to        =        To();
         const Piece  promotion = Promotion();
 
-        s << StockDory::Util::SquareToString(from) << StockDory::Util::SquareToString(to);
+        s << ::ToString(from) << ::ToString(to);
 
         if (promotion != NAP) s << static_cast<char>(tolower(FirstLetter(promotion)));
 

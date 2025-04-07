@@ -30,8 +30,6 @@
 
 #include "../Engine/Evaluation.h"
 
-#include "Util.h"
-
 namespace StockDory
 {
 
@@ -153,7 +151,7 @@ namespace StockDory
 
             EnPassantTarget     = BBDefault;
             if (const std::string& epData = splitFen[3]; epData.length() == 2) {
-                if (const Square epSq = Util::StringToSquare(epData);
+                if (const Square epSq = FromString(epData);
                     AttackTable::Pawn[Opposite(ColorToMove())][epSq] & BB[ColorToMove()][Pawn]) {
                     EnPassantTarget = FromSquare(epSq);
                     Hash            = HashEnPassant<ZOBRIST>(Hash, epSq);
@@ -258,7 +256,7 @@ namespace StockDory
             } else fen << '-';
 
             fen << ' ';
-            if (EnPassantSquare() != NASQ) fen << Util::SquareToString(ToSquare(EnPassantTarget));
+            if (EnPassantSquare() != NASQ) fen << ToString(ToSquare(EnPassantTarget));
             else fen << '-';
 
             // Implement half and full move clocks.

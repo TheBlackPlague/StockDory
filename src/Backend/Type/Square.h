@@ -8,6 +8,7 @@
 
 #include <array>
 #include <cstdint>
+#include <sstream>
 
 enum Square : uint8_t
 {
@@ -58,6 +59,23 @@ inline constexpr char File(const Square sq)
 inline constexpr char Rank(const Square sq)
 {
     return RANK_CHAR[sq];
+}
+
+inline std::string ToString(const Square sq)
+{
+    std::stringstream ss;
+    ss << static_cast<char>(tolower(FILE_CHAR[sq]));
+    ss << RANK_CHAR[sq];
+
+    return ss.str();
+}
+
+inline Square FromString(const std::string& s)
+{
+    const uint8_t file = tolower(s[0]) - 97;
+    const uint8_t rank = tolower(s[1]) - 49;
+
+    return static_cast<Square>(rank * 8 + file);
 }
 
 #endif //STOCKDORY_SQUARE_H
