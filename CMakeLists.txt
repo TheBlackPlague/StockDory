@@ -162,6 +162,8 @@ else()
     if(NOT WIN32)
         target_link_libraries(StockDory pthread)
     endif()
+
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
 endif()
 
 message(STATUS "NANOTHREAD COMPILATION: ${NANOTHREAD_NATIVE_FLAGS}")
