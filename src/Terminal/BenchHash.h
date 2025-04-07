@@ -49,6 +49,8 @@ namespace StockDory
                 search.IterativeDeepening(BenchLimit);
                 const BTP stop = std::chrono::high_resolution_clock::now();
 
+                TTable.Clear();
+
                 nodes += search.NodesSearched();
                 time  += std::chrono::duration_cast<MS>(stop - start);
             }
