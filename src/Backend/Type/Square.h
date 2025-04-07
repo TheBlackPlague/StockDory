@@ -24,7 +24,7 @@ enum Square : uint8_t
 
 };
 
-inline constexpr Square Next(const Square sq)
+constexpr inline Square Next(const Square sq)
 {
     return static_cast<Square>(static_cast<uint8_t>(sq) + 1);
 }
@@ -51,12 +51,12 @@ constexpr std::array RANK_CHAR {
     '8', '8', '8', '8', '8', '8', '8', '8', '0'
 };
 
-inline constexpr char File(const Square sq)
+constexpr inline char File(const Square sq)
 {
     return FILE_CHAR[sq];
 }
 
-inline constexpr char Rank(const Square sq)
+constexpr inline char Rank(const Square sq)
 {
     return RANK_CHAR[sq];
 }
