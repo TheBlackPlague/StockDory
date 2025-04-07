@@ -12,6 +12,7 @@
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-clang-linux" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-remote" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release-remote" />
+            <excludedPath local="true" path="$PROJECT_DIR$/.venv" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release-clang" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-remote" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release" />
@@ -25,6 +26,7 @@
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release-remote" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release-clang" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-pymod" />
+            <excludedPath local="true" path="$PROJECT_DIR$/dist" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release-clang-linux" />
           </excludedPaths>
         </serverdata>
