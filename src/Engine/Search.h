@@ -320,7 +320,7 @@ namespace StockDory
 
             //region MoveList
             using MoveList = OrderedMoveList<Color>;
-            MoveList moves(Board, ply, KTable, HTable, ttMove);
+            MoveList moves (Board, ply, KTable, HTable, ttMove);
             //endregion
 
             //region Checkmate & Stalemate Detection
