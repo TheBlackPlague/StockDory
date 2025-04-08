@@ -44,9 +44,10 @@ namespace StockDory
 
         constexpr static uint8_t ColorFlipMask = 0x10;
 
-        constexpr static std::array<uint8_t, 2> ColorCastleMask {
+        constexpr static std::array<uint8_t, 3> ColorCastleMask {
             WhiteKCastleMask | WhiteQCastleMask,
-            BlackKCastleMask | BlackQCastleMask
+            BlackKCastleMask | BlackQCastleMask,
+            0
         };
 
         std::array<std::array<BitBoard, 7>, 3> BB {};
