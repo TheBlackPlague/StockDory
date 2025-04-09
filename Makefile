@@ -8,7 +8,7 @@ else
     CP = cp
     RM = rm
     EXTENSION =
-    LLVM_PROFDATA = llvm-profdata-16
+    LLVM_PROFDATA = llvm-profdata-20
     SLASH = /
 endif
 
@@ -19,11 +19,11 @@ ifdef EVALFILE
 	$(RM) src/Engine/Model/* && \
 	$(CP) $(EVALFILE) src/Engine/Model/
 endif
-	cmake -B RB -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -G Ninja -DPGO=True && \
-	cmake --build RB --config Release && \
+	cmake -B Build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -G Ninja -DBUILD_NATIVE=ON -DPGO=ON && \
+	cmake --build Build --config Release && \
 	RB$(SLASH)StockDory$(EXTENSION) bench && \
-	$(LLVM_PROFDATA) merge -output=RB/pgo.profdata RB/pgo.profraw && \
-	$(RM) RB/StockDory$(EXTENSION) && \
-	cmake -B RB -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -G Ninja -DPGO=True && \
-	cmake --build RB --config Release && \
-	$(CP) RB/StockDory$(EXTENSION) StockDory$(EXTENSION)
+	$(LLVM_PROFDATA) merge -output=Build/pgo.profdata Build/pgo.profraw && \
+	$(RM) Build/StockDory$(EXTENSION) && \
+	cmake -B Build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -G Ninja -DBUILD_NATIVE=ON -DPGO=ON && \
+	cmake --build Build --config Release && \
+	$(CP) Build/StockDory$(EXTENSION) StockDory$(EXTENSION)
