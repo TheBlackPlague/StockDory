@@ -21,7 +21,7 @@ ifdef EVALFILE
 endif
 	cmake -B Build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -G Ninja -DBUILD_NATIVE=ON -DPGO=ON && \
 	cmake --build Build --config Release && \
-	RB$(SLASH)StockDory$(EXTENSION) bench && \
+	Build$(SLASH)StockDory$(EXTENSION) bench && \
 	$(LLVM_PROFDATA) merge -output=Build/pgo.profdata Build/pgo.profraw && \
 	$(RM) Build/StockDory$(EXTENSION) && \
 	cmake -B Build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -G Ninja -DBUILD_NATIVE=ON -DPGO=ON && \
