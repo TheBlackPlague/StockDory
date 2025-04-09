@@ -21,58 +21,44 @@ namespace StockDory
         constexpr static uint8_t BenchLength = 50;
         constexpr static auto    BenchLimit  = Limit(static_cast<uint8_t>(13));
 
-        constexpr static uint8_t WarmupLength = 4;
-
         static std::array<std::string, BenchLength> Positions;
 
         public:
         static void Run()
         {
-            std::cout << "Initiating StockDory Benchmark..." << std::endl;
-
             using BTP = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
-            uint64_t nodes = 0;
+            std::array<uint64_t, BenchLength> nodes = {};
+            std::array<   MS   , BenchLength> times = {};
 
-            const TimeControl infinite = TimeManager::Default();
+            for (size_t i = 0; i < BenchLength; i++) {
+                std::cout << "Position (" << std::setw(2) << std::setfill('0')
+                          << static_cast<uint16_t>(i + 1) << "/" << static_cast<uint16_t>(BenchLength) << "): ";
+                std::cout << Positions[i] << std::endl;
 
-            MS time(0);
-
-            std::cout << "Beginning warmup..." << std::endl;
-            for (uint8_t i = 0; i < BenchLength * (WarmupLength + 1); i++) {
-                if (i >= BenchLength * WarmupLength) {
-                    if (i % BenchLength == 0)
-                        std::cout << "Completed warmup. Starting benchmark..." << std::endl;
-
-                    std::cout << "Position (" << std::setw(2) << std::setfill('0')
-                              << static_cast<uint16_t>((i % BenchLength) + 1) << "/";
-                    std::cout << static_cast<uint16_t>     (BenchLength) << "): ";
-                    std::cout << Positions[i % BenchLength] << std::endl;
-                } else if (i % BenchLength == 0) {
-                    std::cout << "Warmup iteration: [" << (i / BenchLength) + 1 << ']' << std::endl;
-                }
-
-                const Board             board   (Positions[i % BenchLength]);
+                const Board             board   (Positions[i]);
                 const RepetitionHistory history (board.Zobrist());
 
-                Search search(board, infinite, history, 0);
+                const TimeControl infinite = TimeManager::Default();
 
-                const BTP start = std::chrono::high_resolution_clock::now();
+                Search search (board, infinite, history, 0);
+
+                const BTP t0 = std::chrono::high_resolution_clock::now();
                 search.IterativeDeepening(BenchLimit);
-                const BTP stop = std::chrono::high_resolution_clock::now();
+                const BTP t1 = std::chrono::high_resolution_clock::now();
 
-                TTable.Clear();
-
-                if (i >= BenchLength * WarmupLength) {
-                    nodes += search.NodesSearched();
-                    time  += std::chrono::duration_cast<MS>(stop - start);
-                }
+                nodes[i] = search.NodesSearched();
+                times[i] = std::chrono::duration_cast<MS>(t1 - t0);
             }
 
-            const auto nps = static_cast<uint64_t>(static_cast<double>(nodes) /
-              (static_cast<double>(time.count()) / static_cast<double>(1000)));
+            const uint64_t nodeC = std::accumulate(nodes.begin(), nodes.end(),  0ULL);
+            const    MS    timeC = std::accumulate(times.begin(), times.end(), MS(0));
 
-            std::cout << nodes << " nodes " << nps << " nps" << std::endl;
+            const auto nps = static_cast<uint64_t>(
+                static_cast<double>(nodeC) / (static_cast<double>(timeC.count()) / 1000.0)
+            );
+
+            std::cout << nodeC << " nodes " << nps << " nps" << std::endl;
         }
 
     };
