@@ -16,14 +16,15 @@
 #include "../../External/strutil.h"
 
 #include "../../Backend/Board.h"
-#include "../../Backend/Util.h"
+#include "../../Backend/Misc.h"
 
 #include "../../Engine/Search.h"
 #include "../../Engine/Time/TimeManager.h"
 
+#include "../Perft/PerftRunner.h"
+
 #include "UCIOption.h"
 #include "UCISearch.h"
-#include "../Perft/PerftRunner.h"
 
 namespace StockDory
 {
@@ -188,19 +189,17 @@ namespace StockDory
 
             std::stringstream ss;
             ss << "FEN: " << MainBoard.Fen() << "\n";
-            ss << "Hash: " << Util::ToHex(MainBoard.Zobrist()) << "\n";
+            ss << "Hash: " << ToHex(MainBoard.Zobrist()) << "\n";
             ss << "Evaluation: " << evaluation;
 
             if (!args.empty() && strutil::compare_ignore_case(args[0], "moves")) {
                 ss << "\nMoves: ";
                 if (MainBoard.ColorToMove() == White) {
-                    OrderedMoveList<White> moves(MainBoard, 0,
-                                                 KillerTable(), HistoryTable(), Move());
+                    OrderedMoveList<White> moves (MainBoard, 0, KillerTable(), HistoryTable(), Move());
 
                     for (uint8_t i = 0; i < moves.Count(); i++) ss << "\n" << moves[i].ToString();
                 } else {
-                    OrderedMoveList<Black> moves(MainBoard, 0,
-                                                 KillerTable(), HistoryTable(), Move());
+                    OrderedMoveList<Black> moves (MainBoard, 0, KillerTable(), HistoryTable(), Move());
 
                     for (uint8_t i = 0; i < moves.Count(); i++) ss << "\n" << moves[i].ToString();
                 }

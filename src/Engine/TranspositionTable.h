@@ -12,7 +12,7 @@
 #include <xmmintrin.h>
 #endif
 
-#include "Type/Zobrist.h"
+#include "../Backend/Type/Zobrist.h"
 
 #include "../External/fastrange.h"
 

@@ -7,7 +7,7 @@
 #define STOCKDORY_ENGINEPARAMETER_H
 
 #include "EngineEntry.h"
-#include "../Backend/TranspositionTable.h"
+#include "TranspositionTable.h"
 
 constexpr int32_t Infinity = 1000000     ;
 constexpr int32_t Mate     = Infinity - 1;

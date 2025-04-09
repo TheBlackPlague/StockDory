@@ -22,7 +22,7 @@ enum Piece : uint8_t
 
 };
 
-inline constexpr Piece Next(const Piece p)
+constexpr inline Piece Next(const Piece p)
 {
     return static_cast<Piece>(static_cast<uint8_t>(p) + 1);
 }

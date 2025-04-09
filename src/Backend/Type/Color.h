@@ -18,12 +18,12 @@ enum Color : uint8_t
 
 };
 
-inline constexpr Color Next(const Color c)
+constexpr inline Color Next(const Color c)
 {
     return static_cast<Color>(static_cast<uint8_t>(c) +   1);
 }
 
-inline constexpr Color Opposite(const Color c)
+constexpr inline Color Opposite(const Color c)
 {
     return static_cast<Color>(static_cast<uint8_t>(c) ^ 0x1);
 }

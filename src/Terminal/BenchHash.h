@@ -21,11 +21,15 @@ namespace StockDory
         constexpr static uint8_t BenchLength = 50;
         constexpr static auto    BenchLimit  = Limit(static_cast<uint8_t>(13));
 
+        constexpr static uint8_t WarmupLength = 4;
+
         static std::array<std::string, BenchLength> Positions;
 
         public:
         static void Run()
         {
+            std::cout << "Initiating StockDory Benchmark..." << std::endl;
+
             using BTP = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
             uint64_t nodes = 0;
@@ -34,13 +38,21 @@ namespace StockDory
 
             MS time(0);
 
-            for (uint8_t i = 0; i < BenchLength; i++) {
-                std::cout << "Position (" << std::setw(2) << std::setfill('0')
-                          << static_cast<uint16_t>(   i + 1   ) << "/"  ;
-                std::cout << static_cast<uint16_t>(BenchLength) << "): ";
-                std::cout << Positions[i] << std::endl;
+            std::cout << "Beginning warmup..." << std::endl;
+            for (uint8_t i = 0; i < BenchLength * (WarmupLength + 1); i++) {
+                if (i >= BenchLength * WarmupLength) {
+                    if (i % BenchLength == 0)
+                        std::cout << "Completed warmup. Starting benchmark..." << std::endl;
 
-                const Board             board   (Positions[i]);
+                    std::cout << "Position (" << std::setw(2) << std::setfill('0')
+                              << static_cast<uint16_t>((i % BenchLength) + 1) << "/";
+                    std::cout << static_cast<uint16_t>     (BenchLength) << "): ";
+                    std::cout << Positions[i % BenchLength] << std::endl;
+                } else if (i % BenchLength == 0) {
+                    std::cout << "Warmup iteration: [" << (i / BenchLength) + 1 << ']' << std::endl;
+                }
+
+                const Board             board   (Positions[i % BenchLength]);
                 const RepetitionHistory history (board.Zobrist());
 
                 Search search(board, infinite, history, 0);
@@ -49,8 +61,12 @@ namespace StockDory
                 search.IterativeDeepening(BenchLimit);
                 const BTP stop = std::chrono::high_resolution_clock::now();
 
-                nodes += search.NodesSearched();
-                time  += std::chrono::duration_cast<MS>(stop - start);
+                TTable.Clear();
+
+                if (i >= BenchLength * WarmupLength) {
+                    nodes += search.NodesSearched();
+                    time  += std::chrono::duration_cast<MS>(stop - start);
+                }
             }
 
             const auto nps = static_cast<uint64_t>(static_cast<double>(nodes) /

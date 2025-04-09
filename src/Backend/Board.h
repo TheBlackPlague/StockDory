@@ -30,13 +30,25 @@
 
 #include "../Engine/Evaluation.h"
 
-#include "Util.h"
-
 namespace StockDory
 {
 
     class Board
     {
+
+        constexpr static uint8_t CastlingMask     = 0xF;
+        constexpr static uint8_t WhiteKCastleMask = 0x8;
+        constexpr static uint8_t WhiteQCastleMask = 0x4;
+        constexpr static uint8_t BlackKCastleMask = 0x2;
+        constexpr static uint8_t BlackQCastleMask = 0x1;
+
+        constexpr static uint8_t ColorFlipMask = 0x10;
+
+        constexpr static std::array<uint8_t, 3> ColorCastleMask {
+            WhiteKCastleMask | WhiteQCastleMask,
+            BlackKCastleMask | BlackQCastleMask,
+            0
+        };
 
         std::array<std::array<BitBoard, 7>, 3> BB {};
 
@@ -51,29 +63,6 @@ namespace StockDory
         BitBoard EnPassantTarget = BBDefault;
 
         ZobristHash Hash = 0;
-
-        constexpr static uint8_t CastlingMask     = 0xF;
-        constexpr static uint8_t WhiteKCastleMask = 0x8;
-        constexpr static uint8_t WhiteQCastleMask = 0x4;
-        constexpr static uint8_t BlackKCastleMask = 0x2;
-        constexpr static uint8_t BlackQCastleMask = 0x1;
-
-        constexpr static uint8_t ColorFlipMask = 0x10;
-
-        constexpr static std::array<uint8_t, 2> ColorCastleMask {
-            WhiteKCastleMask | WhiteQCastleMask,
-            BlackKCastleMask | BlackQCastleMask
-        };
-
-        constexpr static std::array<std::array<Square, 2>, 2> CastleRookSquareStart {{
-            {H1, A1},
-            {H8, A8}
-        }};
-
-        constexpr static std::array<std::array<Square, 2>, 2> CastleRookSquareEnd {{
-            {F1, D1},
-            {F8, D8}
-        }};
 
         public:
         Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
@@ -545,12 +534,32 @@ namespace StockDory
             const Piece pieceT = state.CapturedPiece.Piece();
             const Color colorT = state.CapturedPiece.Color();
 
-            if (pieceT == Rook &&  CastlingRightAndColorToMove &    ColorCastleMask[colorT]) {
-                if      (to == A1) CastlingRightAndColorToMove &= ~WhiteQCastleMask;
-                else if (to == A8) CastlingRightAndColorToMove &= ~BlackQCastleMask;
-                else if (to == H1) CastlingRightAndColorToMove &= ~WhiteKCastleMask;
-                else if (to == H8) CastlingRightAndColorToMove &= ~BlackKCastleMask;
-            }
+            using RookCastlingHandler = std::array<std::array<std::array<uint8_t, 64>, 2>, 2>;
+            constexpr static RookCastlingHandler RookCastlingMask =
+            []() constexpr -> RookCastlingHandler
+            {
+                RookCastlingHandler result = {};
+
+                result[0] = {{}};
+
+                result[1][0] = {};
+
+                for (Square sq = A1; sq <= NASQ; sq = Next(sq)) {
+                    if      (sq == A1) result[1][1][sq] = WhiteQCastleMask;
+                    else if (sq == A8) result[1][1][sq] = BlackQCastleMask;
+                    else if (sq == H1) result[1][1][sq] = WhiteKCastleMask;
+                    else if (sq == H8) result[1][1][sq] = BlackKCastleMask;
+                }
+
+                return result;
+            }();
+
+            CastlingRightAndColorToMove &= ~RookCastlingMask[pieceT == Rook][
+                static_cast<bool>(CastlingRightAndColorToMove & ColorCastleMask[colorT])
+            ][ to ];
+            CastlingRightAndColorToMove &= ~RookCastlingMask[pieceF == Rook][
+                static_cast<bool>(CastlingRightAndColorToMove & ColorCastleMask[colorF])
+            ][from];
 
             if (pieceF == Pawn) {
                 if (to == state.EnPassant) {
@@ -596,38 +605,41 @@ namespace StockDory
 
                     return state;
                 }
-            } else if                   (CastlingRightAndColorToMove &    ColorCastleMask[colorF]) {
-                if (pieceF == Rook) {
-                    if      (from == A1) CastlingRightAndColorToMove &= ~WhiteQCastleMask;
-                    else if (from == A8) CastlingRightAndColorToMove &= ~BlackQCastleMask;
-                    else if (from == H1) CastlingRightAndColorToMove &= ~WhiteKCastleMask;
-                    else if (from == H8) CastlingRightAndColorToMove &= ~BlackKCastleMask;
-                } else if (pieceF == King) {
-                                         CastlingRightAndColorToMove &= ~ ColorCastleMask[colorF];
+            } else if (pieceF == King && CastlingRightAndColorToMove & ColorCastleMask[colorF]) {
+                CastlingRightAndColorToMove &= ~ColorCastleMask[colorF];
 
-                    if (to == C1 || to == C8 || to == G1 || to == G8) {
-                        state.CastlingFrom = CastleRookSquareStart[colorF][to < from];
-                        state.CastlingTo   = CastleRookSquareEnd  [colorF][to < from];
+                if (to == C1 || to == C8 || to == G1 || to == G8) {
+                    constexpr static std::array<std::array<Square, 2>, 2> RookCastleSquareStart {{
+                        {H1, A1},
+                        {H8, A8}
+                    }};
 
-                         EmptyNative(King, colorF,               from);
-                         EmptyNative(Rook, colorF, state.CastlingFrom);
-                        InsertNative(King, colorF,               to  );
-                        InsertNative(Rook, colorF, state.CastlingTo  );
+                    constexpr static std::array<std::array<Square, 2>, 2> RookCastleSquareEnd   {{
+                        {F1, D1},
+                        {F8, D8}
+                    }};
 
-                        if (T & NNUE) {
-                            Evaluation::Transition(King, colorF,               from,               to);
-                            Evaluation::Transition(Rook, colorF, state.CastlingFrom, state.CastlingTo);
-                        }
+                    state.CastlingFrom = RookCastleSquareStart[colorF][to < from];
+                    state.CastlingTo   = RookCastleSquareEnd  [colorF][to < from];
 
-                        Hash = HashPiece<T>(Hash, King, colorF,               from);
-                        Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingFrom);
-                        Hash = HashPiece<T>(Hash, King, colorF,               to  );
-                        Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingTo  );
+                     EmptyNative(King, colorF,               from);
+                     EmptyNative(Rook, colorF, state.CastlingFrom);
+                    InsertNative(King, colorF,               to  );
+                    InsertNative(Rook, colorF, state.CastlingTo  );
 
-                        Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
-
-                        return state;
+                    if (T & NNUE) {
+                        Evaluation::Transition(King, colorF,               from,               to);
+                        Evaluation::Transition(Rook, colorF, state.CastlingFrom, state.CastlingTo);
                     }
+
+                    Hash = HashPiece<T>(Hash, King, colorF,               from);
+                    Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingFrom);
+                    Hash = HashPiece<T>(Hash, King, colorF,               to  );
+                    Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingTo  );
+
+                    Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+
+                    return state;
                 }
             }
 
