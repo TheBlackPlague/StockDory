@@ -184,7 +184,7 @@ namespace StockDory
         {
             //region Window Setting
             int32_t alpha = -Infinity;
-            int32_t beta  = Infinity;
+            int32_t beta  =  Infinity;
 
             if (depth > AspirationDepth) {
                 alpha = Evaluation - AspirationSize;
@@ -243,12 +243,12 @@ namespace StockDory
             const ZobristHash hash = Board.Zobrist();
             //endregion
 
-            //region Mate Pruning & Draw Detection
             if (!Root) {
                 //region Out of Time & Force Stop
                 if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) std::longjmp(SearchStop, true);
                 //endregion
 
+                //region Draw Detection
                 if (Stack[ply].HalfMoveCounter >= 100) return Draw;
 
                 if (Repetition.Found(hash, Stack[ply].HalfMoveCounter)) return Draw;
@@ -260,12 +260,14 @@ namespace StockDory
                 const bool knightLeft = Board.PieceBoard<White>(Knight) | Board.PieceBoard<Black>(Knight),
                            bishopLeft = Board.PieceBoard<White>(Bishop) | Board.PieceBoard<Black>(Bishop);
                 if (pieceCount == 3 && (knightLeft || bishopLeft)) return Draw;
+                //endregion
 
+                //region Mate Pruning
                 alpha = std::max(alpha, -Mate + ply    );
                 beta  = std::min(beta ,  Mate - ply - 1);
                 if (alpha >= beta) return alpha;
+                //endregion
             }
-            //endregion
 
             //region Transposition Table Lookup
             const EngineEntry& storedEntry = TTable[hash];
@@ -535,15 +537,14 @@ namespace StockDory
         }
 
         template<Color Color>
-        inline int32_t PVS(int32_t       evaluation, const uint8_t ply, const int16_t depth,
-                           const int32_t alpha, const int32_t      beta)
+        inline int32_t PVS(      int32_t evaluation, const uint8_t ply , const int16_t depth,
+                           const int32_t alpha     , const int32_t beta)
         {
             if (evaluation <= alpha) return evaluation;
 
             constexpr auto OColor = Opposite(Color);
 
-            evaluation =
-                    -AlphaBeta<OColor, false, false>(ply + 1, depth - 1, -alpha - 1, -alpha);
+            evaluation = -AlphaBeta<OColor, false, false>(ply + 1, depth - 1, -alpha - 1, -alpha);
 
             if (evaluation <= alpha || evaluation >= beta) return evaluation;
 
