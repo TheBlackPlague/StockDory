@@ -123,32 +123,31 @@ namespace StockDory
 
             TC.Start();
 
-            int16_t currentDepth = 1;
+            try {
+                int16_t currentDepth = 1;
+                while (!limit.BeyondLimit(Nodes, currentDepth) && !TC.Finished<false>()) {
+                    const Move lastBestMove = BestMove;
 
-            while (!limit.BeyondLimit(Nodes, currentDepth)) {
-                const Move lastBestMove = BestMove;
+                    if (Board.ColorToMove() ==   White)
+                         Evaluation = Aspiration<White>(currentDepth);
+                    else Evaluation = Aspiration<Black>(currentDepth);
 
-                if (Board.ColorToMove() ==   White)
-                     Evaluation = Aspiration<White>(currentDepth);
-                else Evaluation = Aspiration<Black>(currentDepth);
+                    BestMove = PvTable[0];
 
-                BestMove = PvTable[0];
+                    BestMoveStabilityOptimisation(lastBestMove);
 
-                BestMoveStabilityOptimisation(lastBestMove);
-
-                if (Stop || TC.Finished<false>()) break;
-
-                EventHandler::HandleDepthIteration(
-                    currentDepth,
-                    SelectiveDepth,
-                    Evaluation,
-                    Nodes,
-                    TTNodes,
-                    TC.Elapsed(),
-                    PvTable
-                );
-                currentDepth++;
-            }
+                    EventHandler::HandleDepthIteration(
+                        currentDepth,
+                        SelectiveDepth,
+                        Evaluation,
+                        Nodes,
+                        TTNodes,
+                        TC.Elapsed(),
+                        PvTable
+                    );
+                    currentDepth++;
+                }
+            } catch (SearchStopException&) {}
 
             EventHandler::HandleBestMove(BestMove);
         }
@@ -189,7 +188,7 @@ namespace StockDory
             uint8_t research = 0;
             while (true) {
                 //region Out of Time & Force Stop
-                if (Stop || TC.Finished<true>()) return Draw;
+                if (Stop || TC.Finished<true>()) throw SearchStopException();
                 //endregion
 
                 //region Reset Window
@@ -220,9 +219,7 @@ namespace StockDory
         int32_t AlphaBeta(const uint8_t ply, int16_t depth, int32_t alpha, int32_t beta)
         {
             //region Out of Time & Force Stop
-            Stop = Stop || ((Nodes & 4095) == 0 && TC.Finished<true>());
-
-            if (Stop) return Draw;
+            if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) throw SearchStopException();
             //endregion
 
             constexpr auto OColor = Opposite(Color);
