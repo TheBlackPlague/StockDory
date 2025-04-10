@@ -23,6 +23,8 @@ endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto=full")
 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+
 if(PGO)
     message(STATUS "PGO: Enabled")
     if(EXISTS ${CMAKE_BINARY_DIR}/pgo.profdata)
