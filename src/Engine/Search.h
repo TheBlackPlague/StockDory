@@ -6,6 +6,8 @@
 #ifndef STOCKDORY_SEARCH_H
 #define STOCKDORY_SEARCH_H
 
+#include <csetjmp>
+
 #include "../Backend/Board.h"
 #include "../Backend/Type/Move.h"
 #include "../Backend/Type/Zobrist.h"
@@ -105,6 +107,8 @@ namespace StockDory
 
         bool Stop = false;
 
+        std::jmp_buf SearchStop {};
+
         public:
         Search() = default;
 
@@ -119,37 +123,40 @@ namespace StockDory
 
         void IterativeDeepening(const Limit limit)
         {
+            if (setjmp(SearchStop)) {
+                EventHandler::HandleBestMove(BestMove);
+                return;
+            }
+
             Board.LoadForEvaluation();
 
             TC.Start();
 
-            try {
-                int16_t currentDepth = 1;
-                while (!limit.BeyondLimit(Nodes, currentDepth) && !TC.Finished<false>()) {
-                    const Move lastBestMove = BestMove;
+            int16_t currentDepth = 1;
+            while (!limit.BeyondLimit(Nodes, currentDepth) && !TC.Finished<false>()) {
+                const Move lastBestMove = BestMove;
 
-                    if (Board.ColorToMove() ==   White)
-                         Evaluation = Aspiration<White>(currentDepth);
-                    else Evaluation = Aspiration<Black>(currentDepth);
+                if (Board.ColorToMove() ==   White)
+                     Evaluation = Aspiration<White>(currentDepth);
+                else Evaluation = Aspiration<Black>(currentDepth);
 
-                    BestMove = PvTable[0];
+                BestMove = PvTable[0];
 
-                    BestMoveStabilityOptimisation(lastBestMove);
+                BestMoveStabilityOptimisation(lastBestMove);
 
-                    EventHandler::HandleDepthIteration(
-                        currentDepth,
-                        SelectiveDepth,
-                        Evaluation,
-                        Nodes,
-                        TTNodes,
-                        TC.Elapsed(),
-                        PvTable
-                    );
-                    currentDepth++;
-                }
-            } catch (SearchStopException&) {}
+                EventHandler::HandleDepthIteration(
+                    currentDepth,
+                    SelectiveDepth,
+                    Evaluation,
+                    Nodes,
+                    TTNodes,
+                    TC.Elapsed(),
+                    PvTable
+                );
+                currentDepth++;
+            }
 
-            EventHandler::HandleBestMove(BestMove);
+            std::longjmp(SearchStop, true);
         }
 
         [[nodiscard]]
@@ -188,7 +195,7 @@ namespace StockDory
             uint8_t research = 0;
             while (true) {
                 //region Out of Time & Force Stop
-                if (Stop || TC.Finished<true>()) throw SearchStopException();
+                if (Stop || TC.Finished<true>()) std::longjmp(SearchStop, true);
                 //endregion
 
                 //region Reset Window
@@ -218,10 +225,6 @@ namespace StockDory
         template<Color Color, bool Pv, bool Root>
         int32_t AlphaBeta(const uint8_t ply, int16_t depth, int32_t alpha, int32_t beta)
         {
-            //region Out of Time & Force Stop
-            if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) throw SearchStopException();
-            //endregion
-
             constexpr auto OColor = Opposite(Color);
 
             //region PV Table Ply Initialization
@@ -242,6 +245,10 @@ namespace StockDory
 
             //region Mate Pruning & Draw Detection
             if (!Root) {
+                //region Out of Time & Force Stop
+                if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) std::longjmp(SearchStop, true);
+                //endregion
+
                 if (Stack[ply].HalfMoveCounter >= 100) return Draw;
 
                 if (Repetition.Found(hash, Stack[ply].HalfMoveCounter)) return Draw;
