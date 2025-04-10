@@ -123,17 +123,15 @@ namespace StockDory
 
             TC.Start();
 
-            int16_t currentDepth = 1;
+            try {
+                int16_t currentDepth = 1;
+                while (!limit.BeyondLimit(Nodes, currentDepth) && !TC.Finished<false>()) {
+                    const Move lastBestMove = BestMove;
 
-            while (!Stop && !limit.BeyondLimit(Nodes, currentDepth) && !TC.Finished<false>()) {
-                const Move lastBestMove = BestMove;
+                    if (Board.ColorToMove() ==   White)
+                         Evaluation = Aspiration<White>(currentDepth);
+                    else Evaluation = Aspiration<Black>(currentDepth);
 
-                if (Board.ColorToMove() ==   White)
-                     Evaluation = Aspiration<White>(currentDepth);
-                else Evaluation = Aspiration<Black>(currentDepth);
-
-                // ReSharper disable once CppDFAConstantConditions
-                if (!Stop) {
                     BestMove = PvTable[0];
 
                     BestMoveStabilityOptimisation(lastBestMove);
@@ -147,10 +145,9 @@ namespace StockDory
                         TC.Elapsed(),
                         PvTable
                     );
-
                     currentDepth++;
                 }
-            }
+            } catch (SearchStopException&) {}
 
             EventHandler::HandleBestMove(BestMove);
         }
@@ -191,7 +188,7 @@ namespace StockDory
             uint8_t research = 0;
             while (true) {
                 //region Out of Time & Force Stop
-                if (Stop || TC.Finished<true>()) return Draw;
+                if (Stop || TC.Finished<true>()) throw SearchStopException();
                 //endregion
 
                 //region Reset Window
@@ -212,8 +209,7 @@ namespace StockDory
 
                     beta  = std::min(beta  + research * research * AspirationDelta,  Infinity);
 
-                    // ReSharper disable once CppDFAConstantConditions
-                    if (!Stop) BestMove = PvTable[0];
+                    BestMove = PvTable[0];
                 } else return bestEvaluation;
                 //endregion
             }
@@ -223,9 +219,7 @@ namespace StockDory
         int32_t AlphaBeta(const uint8_t ply, int16_t depth, int32_t alpha, int32_t beta)
         {
             //region Out of Time & Force Stop
-            Stop = Stop || ((Nodes & 4095) == 0 && TC.Finished<true>());
-
-            if (Stop) return Draw;
+            if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) throw SearchStopException();
             //endregion
 
             constexpr auto OColor = Opposite(Color);
