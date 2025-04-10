@@ -8,10 +8,39 @@
 
 #include <nanothread/nanothread.h>
 
+class ThreadPool
+{
+
+    public:
+    static inline size_t HardwareLimit()
+    {
+        return core_count();
+    }
+
+    private:
+    Pool* Internal = nullptr;
+
+    public:
+    ThreadPool(const size_t n) { Internal = pool_create(n); }
+
+    ~ThreadPool() { if (Internal != nullptr) pool_destroy(Internal); }
+
+    inline size_t Size() const { return pool_size(Internal); }
+
+    inline void Resize(const size_t n)
+    {
+        if (Internal != nullptr) pool_destroy(Internal);
+        Internal = pool_create(n);
+    }
+
+    inline Pool* operator ~() const { return Internal; }
+
+};
+
 namespace StockDory
 {
 
-    inline Pool* ThreadPool = pool_create(1);
+    inline ThreadPool ThreadPool (1);
 
 } // StockDory
 

@@ -143,7 +143,7 @@ namespace StockDory
                         {
                             perftLoops[block.begin()]();
                         },
-                        ThreadPool
+                        ~ThreadPool
                     );
 
                     for (size_t i = 0; i < 6; i++) nodes += result[i];
@@ -312,7 +312,7 @@ namespace StockDory
                     {
                         result[block.begin()] = Loop(block);
                     },
-                    ThreadPool
+                    ~ThreadPool
                 );
 
                 for (size_t i = 0; i < 8; i++) nodes += result[i];
@@ -355,13 +355,13 @@ namespace StockDory
             static const std::regex comma ("(\\d)(?=(\\d{3})+(?!\\d))");
 
             std::cout << "Running PERFT @ depth " << static_cast<uint32_t>(depth) << " ";
-            std::cout << "[Maximum Concurrency: " << pool_size(ThreadPool) << "t]:";
+            std::cout << "[Maximum Concurrency: " << ThreadPool.Size() << "t]:";
             std::cout << std::endl;
 
             const auto     start = std::chrono::high_resolution_clock::now();
                   uint64_t nodes = 0;
 
-            if (pool_size(ThreadPool) > 1)
+            if (ThreadPool.Size() > 1)
                 nodes = PerftBoard.ColorToMove() == White
                     ? Perft<White, Divide, false, TT>(PerftBoard, depth)
                     : Perft<Black, Divide, false, TT>(PerftBoard, depth);

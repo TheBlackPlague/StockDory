@@ -95,19 +95,19 @@ namespace StockDory
 
             auto threads =
                 std::make_shared<UCIOption<size_t>>
-                ("Threads", 1, 1, core_count(), [](const size_t& value) -> void
+                ("Threads", 1, 1, ThreadPool::HardwareLimit(), [](const size_t& value) -> void
                     {
                         if (value < 1) {
                             std::cerr << "ERROR: Maximum thread count must be at least 1" << std::endl;
                             return;
                         }
 
-                        if (value > core_count()) {
+                        if (value > ThreadPool::HardwareLimit()) {
                             std::cerr << "ERROR: Maximum thread count exceeds number of logical processors" << std::endl;
                             return;
                         }
 
-                        pool_set_size(ThreadPool, value);
+                        ThreadPool.Resize(value);
                     }
                 );
 

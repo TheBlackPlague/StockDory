@@ -98,7 +98,7 @@ namespace StockDory
                 Running = true ;
                 EngineSearch.IterativeDeepening(limit);
                 Running = false;
-            }, {}, ThreadPool);
+            }, {}, ~ThreadPool);
         }
 
         void Stop()

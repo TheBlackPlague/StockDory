@@ -673,22 +673,13 @@ PYBIND11_MODULE(StockDory, m)
 
         pool.def(
             "resize",
-            [](const uint32_t n) -> void
-            {
-                pool_set_size(
-                    StockDory::ThreadPool,
-                    std::max(1U, std::min(core_count(), n))
-                );
-            },
+            [](const uint32_t n) -> void { StockDory::ThreadPool.Resize(n); },
             py::arg("thread_count")
         );
 
         pool.def(
             "size",
-            [] -> uint32_t
-            {
-                return pool_size(StockDory::ThreadPool);
-            }
+            [] -> uint32_t { return StockDory::ThreadPool.Size(); }
         );
     }
 
@@ -698,27 +689,18 @@ PYBIND11_MODULE(StockDory, m)
 
         tt.def(
             "resize",
-            [](const size_t n) -> void
-            {
-                TTable.Resize(n);
-            },
+            [](const size_t n) -> void { TTable.Resize(n); },
             py::arg("bytes")
         );
 
         tt.def(
             "size",
-            [] -> size_t
-            {
-                return TTable.Size();
-            }
+            [] -> size_t { return TTable.Size(); }
         );
 
         tt.def(
             "clear",
-            [] -> void
-            {
-                TTable.Clear();
-            }
+            [] -> void { TTable.Clear(); }
         );
     }
 
@@ -730,60 +712,30 @@ PYBIND11_MODULE(StockDory, m)
 
         td.def_property(
             "white_time",
-            [](const StockDory::TimeData& self) -> uint64_t
-            {
-                return self.WhiteTime;
-            },
-            [](StockDory::TimeData& self, const uint64_t v) -> void
-            {
-                self.WhiteTime = v;
-            }
+            [](const StockDory::TimeData& self) -> uint64_t  { return self.WhiteTime; },
+            [](StockDory::TimeData& self, const uint64_t v) -> void { self.WhiteTime = v; }
         );
         td.def_property(
             "black_time",
-            [](const StockDory::TimeData& self) -> uint64_t
-            {
-                return self.BlackTime;
-            },
-            [](StockDory::TimeData& self, const uint64_t v) -> void
-            {
-                self.BlackTime = v;
-            }
+            [](const StockDory::TimeData& self) -> uint64_t  { return self.BlackTime; },
+            [](StockDory::TimeData& self, const uint64_t v) -> void { self.BlackTime = v; }
         );
 
         td.def_property(
             "white_increment",
-            [](const StockDory::TimeData& self) -> uint64_t
-            {
-                return self.WhiteIncrement;
-            },
-            [](StockDory::TimeData& self, const uint64_t v) -> void
-            {
-                self.WhiteIncrement = v;
-            }
+            [](const StockDory::TimeData& self) -> uint64_t  { return self.WhiteIncrement; },
+            [](StockDory::TimeData& self, const uint64_t v) -> void { self.WhiteIncrement = v; }
         );
         td.def_property(
             "black_increment",
-            [](const StockDory::TimeData& self) -> uint64_t
-            {
-                return self.BlackIncrement;
-            },
-            [](StockDory::TimeData& self, const uint64_t v) -> void
-            {
-                self.BlackIncrement = v;
-            }
+            [](const StockDory::TimeData& self) -> uint64_t  { return self.BlackIncrement; },
+            [](StockDory::TimeData& self, const uint64_t v) -> void { self.BlackIncrement = v; }
         );
 
         td.def_property(
             "moves_to_go",
-            [](const StockDory::TimeData& self) -> uint16_t
-            {
-                return self.MovesToGo;
-            },
-            [](StockDory::TimeData& self, const uint16_t v) -> void
-            {
-                self.MovesToGo = v;
-            }
+            [](const StockDory::TimeData& self) -> uint16_t  { return self.MovesToGo; },
+            [](StockDory::TimeData& self, const uint16_t v) -> void { self.MovesToGo = v; }
         );
     }
 
@@ -937,7 +889,7 @@ PYBIND11_MODULE(StockDory, m)
                     SEARCH_RUNNING = true ;
                     SEARCH.IterativeDeepening(limit);
                     SEARCH_RUNNING = false;
-                }, {}, StockDory::ThreadPool);
+                }, {}, ~StockDory::ThreadPool);
             },
             py::arg("limit") = StockDory::Limit()
         );
