@@ -195,7 +195,7 @@ namespace StockDory
             uint8_t research = 0;
             while (true) {
                 //region Out of Time & Force Stop
-                if (Stop || TC.Finished<true>()) std::longjmp(SearchStop, true);
+                if (Stop || TC.Finished<true>()) longjmp(SearchStop, true);
                 //endregion
 
                 //region Reset Window
@@ -245,7 +245,7 @@ namespace StockDory
 
             if (!Root) {
                 //region Out of Time & Force Stop
-                if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) std::longjmp(SearchStop, true);
+                if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) longjmp(SearchStop, true);
                 //endregion
 
                 //region Draw Detection
