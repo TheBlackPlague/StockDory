@@ -34,7 +34,7 @@ namespace StockDory
 
         public:
         static void HandleDepthIteration(const uint8_t  depth, const uint8_t  selectiveDepth, const int32_t evaluation,
-                                         const uint64_t nodes, const uint64_t ttNodes,
+                                         const uint64_t nodes, const uint64_t _,
                                          const MS       time,  const PV&      pv)
         {
             std::stringstream output;
@@ -56,10 +56,9 @@ namespace StockDory
                 output << "cp " << evaluation << " ";
 
             output <<   "nodes " <<   nodes << " ";
-            output << "ttnodes " << ttNodes << " ";
 
-            output << "time " << displayedTime << " ";
             output << "nps " << nps << " ";
+            output << "time " << displayedTime << " ";
             output << "pv " << PvLine(pv);
 
             std::cout << output.str() << std::endl;
