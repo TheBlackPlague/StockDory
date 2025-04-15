@@ -34,8 +34,7 @@ endif
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_C_COMPILER=$(CC) \
 		-DCMAKE_CXX_COMPILER=$(CXX) \
-		-DBUILD_NATIVE=ON \
-		-DPGO=ON
+		-DPGO=True
 	cmake --build Build --config Release
 
 	@echo "[*] Running benchmark to generate profiling data..."
@@ -51,8 +50,7 @@ endif
     	-DCMAKE_BUILD_TYPE=Release \
     	-DCMAKE_C_COMPILER=$(CC) \
     	-DCMAKE_CXX_COMPILER=$(CXX) \
-    	-DBUILD_NATIVE=ON \
-    	-DPGO=ON
+    	-DPGO=True
 	cmake --build Build --config Release
 
 	@echo "[*] Copying final binary to root directory..."
