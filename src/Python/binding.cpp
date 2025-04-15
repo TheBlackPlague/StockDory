@@ -523,8 +523,8 @@ PYBIND11_MODULE(StockDory, m)
             py::arg("move_str")
         );
 
-        move.def_property_readonly("from"     , &Move::From     );
-        move.def_property_readonly("to"       , &Move::To       );
+        move.def_property_readonly("from_sq"  , &Move::From     );
+        move.def_property_readonly("to_sq"    , &Move::To       );
         move.def_property_readonly("promotion", &Move::Promotion);
 
         move.def("__eq__", &Move::operator==);
