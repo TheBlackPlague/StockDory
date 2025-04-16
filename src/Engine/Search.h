@@ -225,6 +225,10 @@ namespace StockDory
         template<Color Color, bool Pv, bool Root>
         int32_t AlphaBeta(const uint8_t ply, int16_t depth, int32_t alpha, int32_t beta)
         {
+            //region Out of Time & Force Stop
+            if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) longjmp(SearchStop, true);
+            //endregion
+
             constexpr auto OColor = Opposite(Color);
 
             //region PV Table Ply Initialization
@@ -235,15 +239,15 @@ namespace StockDory
             if (Pv) SelectiveDepth = std::max(SelectiveDepth, ply);
             //endregion
 
+            //region Q Jump
+            if (depth <= 0) return Q<Color, Pv>(ply, alpha, beta);
+            //endregion
+
             //region Zobrist Hash
             const ZobristHash hash = Board.Zobrist();
             //endregion
 
             if (!Root) {
-                //region Out of Time & Force Stop
-                if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) longjmp(SearchStop, true);
-                //endregion
-
                 //region Draw Detection
                 if (Stack[ply].HalfMoveCounter >= 100) return Draw;
 
@@ -264,10 +268,6 @@ namespace StockDory
                 if (alpha >= beta) return alpha;
                 //endregion
             }
-
-            //region Q Jump
-            if (depth <= 0) return Q<Color, Pv>(ply, alpha, beta);
-            //endregion
 
             //region Transposition Table Lookup
             const EngineEntry& storedEntry = TTable[hash];
