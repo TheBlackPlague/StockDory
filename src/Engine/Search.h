@@ -235,10 +235,6 @@ namespace StockDory
             if (Pv) SelectiveDepth = std::max(SelectiveDepth, ply);
             //endregion
 
-            //region Q Jump
-            if (depth <= 0) return Q<Color, Pv>(ply, alpha, beta);
-            //endregion
-
             //region Zobrist Hash
             const ZobristHash hash = Board.Zobrist();
             //endregion
@@ -268,6 +264,10 @@ namespace StockDory
                 if (alpha >= beta) return alpha;
                 //endregion
             }
+
+            //region Q Jump
+            if (depth <= 0) return Q<Color, Pv>(ply, alpha, beta);
+            //endregion
 
             //region Transposition Table Lookup
             const EngineEntry& storedEntry = TTable[hash];
