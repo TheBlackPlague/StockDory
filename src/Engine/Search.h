@@ -457,11 +457,10 @@ namespace StockDory
                 // ReSharper disable once CppTooWideScopeInitStatement
                 const EngineEntry& entry = TTable[hash];
 
-                if   (entry.Hash == hash           &&
-                     (entry.Type == Exact          ||
-                     (entry.Type == BetaCutoff     && entry.Evaluation >= beta ) ||
-                     (entry.Type == AlphaUnchanged && entry.Evaluation <= alpha) ))
-                    return entry.Evaluation;
+                if (entry.Hash == hash           &&
+                   (entry.Type == Exact          ||
+                   (entry.Type == BetaCutoff     && entry.Evaluation >= beta ) ||
+                   (entry.Type == AlphaUnchanged && entry.Evaluation <= alpha) )) return entry.Evaluation;
             }
             //endregion
 
