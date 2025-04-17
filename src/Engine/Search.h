@@ -518,7 +518,7 @@ namespace StockDory
             const auto reductionStep   = static_cast<int16_t>(depth / NullMoveDepth);
             const auto reductionFactor = static_cast<int16_t>((staticEvaluation - beta) / NullMoveEvaluationMargin);
             const auto reduction       = static_cast<int16_t>(NullMoveDepth + reductionStep +
-                                                              std::min<int16_t>(NullMoveDepth, reductionFactor));
+                                            std::min<int16_t>(NullMoveDepth, reductionFactor));
 
             const PreviousStateNull state = Board.Move();
 
