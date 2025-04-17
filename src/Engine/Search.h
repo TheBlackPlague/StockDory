@@ -6,8 +6,6 @@
 #ifndef STOCKDORY_SEARCH_H
 #define STOCKDORY_SEARCH_H
 
-#include <csetjmp>
-
 #include "../Backend/Board.h"
 #include "../Backend/Type/Move.h"
 #include "../Backend/Type/Zobrist.h"
@@ -107,8 +105,6 @@ namespace StockDory
 
         bool Stop = false;
 
-        std::jmp_buf SearchStop {};
-
         public:
         Search() = default;
 
@@ -123,11 +119,6 @@ namespace StockDory
 
         void IterativeDeepening(const Limit limit)
         {
-            if (setjmp(SearchStop)) {
-                EventHandler::HandleBestMove(BestMove);
-                return;
-            }
-
             Board.LoadForEvaluation();
 
             TC.Start();
@@ -139,6 +130,8 @@ namespace StockDory
                 if (Board.ColorToMove() ==   White)
                      Evaluation = Aspiration<White>(currentDepth);
                 else Evaluation = Aspiration<Black>(currentDepth);
+
+                if (Stop) break;
 
                 BestMove = PvTable[0];
 
@@ -156,7 +149,7 @@ namespace StockDory
                 currentDepth++;
             }
 
-            std::longjmp(SearchStop, true);
+            EventHandler::HandleBestMove(BestMove);
         }
 
         [[nodiscard]]
@@ -195,7 +188,7 @@ namespace StockDory
             uint8_t research = 0;
             while (true) {
                 //region Out of Time & Force Stop
-                if (Stop || TC.Finished<true>()) longjmp(SearchStop, true);
+                if (Stop || TC.Finished<true>()) { Stop = true; return Draw; }
                 //endregion
 
                 //region Reset Window
@@ -226,7 +219,7 @@ namespace StockDory
         int32_t AlphaBeta(const uint8_t ply, int16_t depth, int32_t alpha, int32_t beta)
         {
             //region Out of Time & Force Stop
-            if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) longjmp(SearchStop, true);
+            if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) { Stop = true; return Draw; }
             //endregion
 
             constexpr auto OColor = Opposite(Color);
