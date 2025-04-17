@@ -394,7 +394,8 @@ namespace StockDory
                 bestMove    = move;
                 ttEntryType = Exact;
 
-                if (Pv) {
+                // ReSharper disable once CppDFAConstantConditions
+                if (Pv && !Stop) {
                     PvTable.Insert(ply, move);
 
                     for (uint8_t nPly = ply + 1; PvTable.PlyInitialized(ply, nPly); nPly++)
@@ -405,7 +406,8 @@ namespace StockDory
 
                 if (evaluation < beta) continue;
 
-                if (quiet) {
+                // ReSharper disable once CppDFAConstantConditions
+                if (quiet && !Stop) {
                     if (KTable.Get<1> (ply) != move) {
                         KTable.Reorder(ply);
                         KTable.Set<1> (ply, move);
@@ -427,14 +429,14 @@ namespace StockDory
             //endregion
 
             //region Transposition Table Insertion
-            const auto entry = EngineEntry {
+            // ReSharper disable once CppDFAConstantConditions
+            if (!Stop) InsertEntry(hash, {
                 .Hash = hash,
                 .Evaluation = bestEvaluation,
                 .Move = ttEntryType != AlphaUnchanged ? bestMove : ttMove,
                 .Depth = static_cast<uint8_t>(depth),
-                .Type = ttEntryType
-            };
-            InsertEntry(hash, entry);
+                .Type = ttEntryType,
+            });
             //endregion
 
             return bestEvaluation;
