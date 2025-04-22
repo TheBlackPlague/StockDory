@@ -35,6 +35,13 @@ class ThreadPool
 
     inline Pool* operator ~() const { return Internal; }
 
+    template<typename F>
+    inline void Execute(F&& code)
+    {
+        Task* task = drjit::do_async(code, {}, Internal);
+        task_release(task);
+    }
+
 };
 
 namespace StockDory

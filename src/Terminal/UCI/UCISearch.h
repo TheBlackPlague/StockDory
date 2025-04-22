@@ -92,12 +92,12 @@ namespace StockDory
 
         void Start(const Limit limit)
         {
-            drjit::do_async([this, limit] -> void
+            ThreadPool.Execute([this, limit] -> void
             {
                 Running = true ;
                 EngineSearch.IterativeDeepening(limit);
                 Running = false;
-            }, {}, ~ThreadPool);
+            });
         }
 
         void Stop()
