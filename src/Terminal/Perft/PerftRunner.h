@@ -8,6 +8,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <math.h>
 
 #include <nanothread/nanothread.h>
 

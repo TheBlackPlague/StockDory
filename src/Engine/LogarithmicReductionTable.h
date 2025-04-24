@@ -7,6 +7,7 @@
 #define STOCKDORY_LOGARITHMICREDUCTIONTABLE_H
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 
 #include "EngineParameter.h"
@@ -33,9 +34,10 @@ std::array<std::array<int16_t, MaxMove>, MaxDepth> StockDory::LogarithmicReducti
 {
     std::array<std::array<int16_t, MaxMove>, MaxDepth> temp = {};
 
-    for (uint8_t depth = 1; depth < MaxDepth; depth++)
-        for (uint8_t move     = 1; move < MaxMove; move++)
-            temp[depth][move] = static_cast<int16_t>(log(depth) * log(move) / 2 - 0.2);
+    for (uint8_t depth  = 1; depth < MaxDepth; depth++)
+    for (uint8_t move   = 1; move  < MaxMove ;  move++)
+            temp[depth]
+                [move ] = static_cast<int16_t>(std::log(depth) * std::log(move) / 2 - 0.2);
 
     return temp;
 }();
