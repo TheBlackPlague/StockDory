@@ -6,6 +6,7 @@
 #ifndef STOCKDORY_BENCHHASH_H
 #define STOCKDORY_BENCHHASH_H
 
+#include <numeric>
 #include <array>
 #include <string>
 

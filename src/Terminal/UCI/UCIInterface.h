@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <iostream>
+#include <ranges>
 #include <unordered_map>
 #include <vector>
 

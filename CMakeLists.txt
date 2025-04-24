@@ -81,7 +81,13 @@ endforeach()
 
 include(${CPM_DOWNLOAD_LOCATION})
 
-CPMAddPackage("gh:TheBlackPlague/MantaRay#526e4d9cedf13c8ffd1457cc293261d691cda6c4")
+CPMAddPackage(
+        NAME MantaRay
+        GITHUB_REPOSITORY TheBlackPlague/MantaRay
+        GIT_TAG v2
+        OPTION
+            "BUILD_TEST OFF"
+)
 
 CPMAddPackage(
         NAME nanothread

@@ -283,8 +283,7 @@ namespace StockDory
             //endregion
 
             //region Static Evaluation
-            const int32_t staticEvaluation = ttHit
-                        ? StaticEvaluationTT<Color>(ttState) : Evaluation::Evaluate<Color>();
+            const int32_t staticEvaluation = ttHit ? StaticEvaluationTT<Color>(ttState) : Evaluation::Evaluate(Color);
 
             Stack[ply].StaticEvaluation = staticEvaluation;
             //endregion
@@ -463,7 +462,7 @@ namespace StockDory
             //endregion
 
             //region Static Evaluation
-            const int32_t staticEvaluation = Evaluation::Evaluate<Color>();
+            const int32_t staticEvaluation = Evaluation::Evaluate(Color);
 
             if (staticEvaluation >= beta) return beta;
             if (staticEvaluation > alpha) alpha = staticEvaluation;
@@ -599,7 +598,7 @@ namespace StockDory
             if (entry.Type == Exact) return entry.Evaluation;
 
             // ReSharper disable once CppTooWideScopeInitStatement
-            const int32_t staticEvaluation = Evaluation::Evaluate<Color>();
+            const int32_t staticEvaluation = Evaluation::Evaluate(Color);
 
             if ((staticEvaluation > entry.Evaluation && entry.Type == BetaCutoff    )  ||
                 (staticEvaluation < entry.Evaluation && entry.Type == AlphaUnchanged)) return staticEvaluation;
