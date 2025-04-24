@@ -85,7 +85,7 @@ CPMAddPackage(
         NAME MantaRay
         GITHUB_REPOSITORY TheBlackPlague/MantaRay
         GIT_TAG v2
-        OPTION
+        OPTIONS
             "BUILD_TEST OFF"
 )
 
