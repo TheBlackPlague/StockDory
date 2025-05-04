@@ -24,10 +24,22 @@ namespace StockDory
     class OrderedMoveList
     {
 
-        using OrderedMove = std::pair<int32_t, Move>;
+        struct OrderedMove
+        {
 
-        std::array<OrderedMove, MaxMove> Internal = {};
-        uint8_t                          Size     = 0;
+            int32_t Score;
+            Move    Move ;
+
+            OrderedMove() = default;
+
+            OrderedMove(const int32_t score, const ::Move move) : Score(score), Move(move) {}
+
+            OrderedMove(const OrderedMove& other) : Score(other.Score), Move(other.Move) {}
+
+        };
+
+        std::array<OrderedMove, MaxMove> Internal;
+        uint8_t                          Size = 0;
 
         public:
         explicit OrderedMoveList(const Board&        board, const uint8_t       ply   ,
@@ -37,7 +49,7 @@ namespace StockDory
             const Move kOne = kTable.Get<1>(ply);
             const Move kTwo = kTable.Get<2>(ply);
 
-            const Policy<Color, CaptureOnly> policy(kOne, kTwo, ttMove);
+            const Policy<Color, CaptureOnly> policy (kOne, kTwo, ttMove);
 
             const PinBitBoard   pin   = board.Pin<Color, Opposite(Color)>();
 
@@ -83,14 +95,14 @@ namespace StockDory
         private:
         // ReSharper disable once CppRedundantElaboratedTypeSpecifier
         template<Piece Piece, enum Piece Promotion = NAP>
-        static inline std::pair<int32_t, Move> CreateOrdered(const Board&                      board ,
-                                                             const HistoryTable&               hTable,
-                                                             const Policy<Color, CaptureOnly>& policy,
-                                                             const Square                      from  ,
-                                                             const Square                      to    )
+        static inline OrderedMove CreateOrdered(const Board&                      board ,
+                                                const HistoryTable&               hTable,
+                                                const Policy<Color, CaptureOnly>& policy,
+                                                const Square                      from  ,
+                                                const Square                      to    )
         {
             const auto move = Move(from, to, Promotion);
-            return {policy.template Score<Piece, Promotion>(board, hTable, move), move};
+            return { policy.template Score<Piece, Promotion>(board, hTable, move), move };
         }
 
         public:
@@ -100,7 +112,7 @@ namespace StockDory
             assert(index < Size);
 
             SortNext(index);
-            return Internal[index].second;
+            return Internal[index].Move;
         }
 
         [[nodiscard]]
@@ -108,7 +120,7 @@ namespace StockDory
         {
             assert(index < Size);
 
-            return Internal[index].second;
+            return Internal[index].Move;
         }
 
         [[nodiscard]]
@@ -124,7 +136,7 @@ namespace StockDory
             uint8_t i     = sorted + 1;
 
             while (i < Size) {
-                if (Internal[i].first > Internal[index].first) index = i;
+                if (Internal[i].Score > Internal[index].Score) index = i;
                 i++;
             }
 
