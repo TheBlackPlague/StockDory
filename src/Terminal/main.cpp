@@ -8,7 +8,6 @@
 #include "Information.h"
 
 #include "BenchHash.h"
-// #include "NetworkConverter.h"
 #include "UCI/UCIInterface.h"
 
 void DisplayTitle()
@@ -29,11 +28,6 @@ int main(const int argc, const char* argv[])
             StockDory::BenchHash::Run();
             return EXIT_SUCCESS;
         }
-
-        // if (strutil::compare_ignore_case(argv[1], "convert")) {
-        //     StockDory::NetworkConverter::Launch();
-        //     return EXIT_SUCCESS;
-        // }
     }
 
     StockDory::UCIInterface::Launch();
