@@ -42,37 +42,34 @@ namespace StockDory
         Move KillerOne;
         Move KillerTwo;
 
-        Move TranspositionTable;
+        Move TTMove;
 
         public:
         Policy(const Move kOne, const Move kTwo, const Move tt)
         {
             KillerOne          = kOne;
             KillerTwo          = kTwo;
-            TranspositionTable = tt;
+            TTMove = tt;
         }
 
         // ReSharper disable once CppRedundantElaboratedTypeSpecifier
         template<Piece Piece, enum Piece Promotion = NAP>
-        [[nodiscard]]
-        inline int32_t Score(const Board& board, const HistoryTable& historyTable, const Move move) const
+        int32_t Score(const Board& board, const HistoryTable& historyTable, const Move move) const
         {
-            if (move == TranspositionTable) return Priority - 1;
+            if (move == TTMove) return Priority - 1;
 
             if (Promotion != NAP) return PromotionPriority[Promotion];
 
-            if (CaptureOnly || board[move.To()].Piece() != NAP)
-                return CaptureScore<Piece>(board, move);
+            if (CaptureOnly || board[move.To()].Piece() != NAP) return CaptureScore<Piece>(board, move);
 
             if (move == KillerOne) return 900000;
             if (move == KillerTwo) return 800000;
 
-            return historyTable.Get(Piece, Color, move.To());
+            return historyTable[Color][Piece][move.To()];
         }
 
         template<Piece Piece>
-        [[nodiscard]]
-        static inline int32_t CaptureScore(const Board& board, const Move move)
+        static int32_t CaptureScore(const Board& board, const Move move)
         {
             if (SEE::Accurate(board, move, 0))
                 return MvvLva[board[move.To()].Piece()][Piece] * 1000;

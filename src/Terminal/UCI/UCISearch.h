@@ -16,17 +16,14 @@ namespace StockDory
     class UCIHandler
     {
 
-        using PV = PrincipleVariationTable;
-
         [[nodiscard]]
-        static inline std::string PvLine(const PV& pv)
+        static std::string PvLine(const uint8_t depth, const PV& pv)
         {
             std::stringstream line;
 
-            const uint8_t ply = pv.Count();
-            for (uint8_t i = 0; i < ply; i++) {
+            for (uint8_t i = 0; i < depth; i++) {
                 line << pv[i].ToString();
-                if (i != ply - 1) line << " ";
+                if (i != depth - 1) line << " ";
             }
 
             return line.str();
@@ -59,7 +56,7 @@ namespace StockDory
 
             output << "nps " << nps << " ";
             output << "time " << displayedTime << " ";
-            output << "pv " << PvLine(pv);
+            output << "pv " << PvLine(depth, pv);
 
             std::cout << output.str() << std::endl;
         }

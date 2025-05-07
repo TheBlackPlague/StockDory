@@ -22,23 +22,23 @@ namespace StockDory
         uint16_t CurrentIndex = 0;
 
         public:
-        constexpr explicit RepetitionHistory(const ZobristHash hash)
+        explicit RepetitionHistory(const ZobristHash hash)
         {
             Push(hash);
         }
 
-        constexpr inline void Push(const ZobristHash hash)
+        void Push(const ZobristHash hash)
         {
             Internal[CurrentIndex++] = hash;
         }
 
-        constexpr inline void Pull()
+        void Pull()
         {
             CurrentIndex--;
         }
 
         [[nodiscard]]
-        constexpr inline bool Found(const ZobristHash hash, const uint8_t halfMoveCounter) const
+        bool Found(const ZobristHash hash, const uint8_t halfMoveCounter) const
         {
             uint8_t count = 0;
             for (uint16_t i = CurrentIndex - 1; i != 0xFFFF; i--) {

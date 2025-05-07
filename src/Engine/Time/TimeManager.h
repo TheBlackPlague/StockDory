@@ -36,9 +36,6 @@ namespace StockDory
 
         constexpr static uint64_t MoveInstantTime = 500;
 
-        constexpr static KillerTable  DummyKTable;
-        constexpr static HistoryTable DummyHTable;
-
         public:
         static TimeControl Default()
         {
@@ -84,10 +81,10 @@ namespace StockDory
         {
             const uint8_t moveCount = board.ColorToMove() == White
                                     ? OrderedMoveList<White>(
-                                        board, 0, DummyKTable, DummyHTable, NoMove
+                                        board, 0, {}, {}, NoMove
                                     ).Count()
                                     : OrderedMoveList<Black>(
-                                        board, 0, DummyKTable, DummyHTable, NoMove
+                                        board, 0, {}, {}, NoMove
                                     ).Count();
 
             return moveCount == 1 ? std::min<uint64_t>(MoveInstantTime, actual) : actual;

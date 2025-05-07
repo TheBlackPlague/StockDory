@@ -24,7 +24,7 @@ struct Move
     uint16_t Internal;
 
     public:
-    static inline Move FromString(const std::string& str)
+    static Move FromString(const std::string& str)
     {
         const Square from = ::FromString(str.substr(0, 2));
         const Square to   = ::FromString(str.substr(2, 2));
@@ -63,31 +63,31 @@ struct Move
     }
 
     [[nodiscard]]
-    constexpr inline Square From() const
+    constexpr Square From() const
     {
         return static_cast<Square>(Internal & SquareMask);
     }
 
     [[nodiscard]]
-    constexpr inline Square To() const
+    constexpr Square To() const
     {
         return static_cast<Square>(Internal >> ToPos & SquareMask);
     }
 
     [[nodiscard]]
-    constexpr inline Piece Promotion() const
+    constexpr Piece Promotion() const
     {
         return static_cast<Piece>(Internal >> PromotionPos);
     }
 
     [[nodiscard]]
-    constexpr inline bool operator==(const Move other) const
+    constexpr bool operator==(const Move other) const
     {
         return Internal == other.Internal;
     }
 
     [[nodiscard]]
-    inline std::string ToString() const
+    std::string ToString() const
     {
         std::stringstream s;
 

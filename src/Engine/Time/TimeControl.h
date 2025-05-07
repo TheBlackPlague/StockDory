@@ -62,7 +62,7 @@ namespace StockDory
 
         template<bool Hard>
         [[nodiscard]]
-        inline bool Finished() const
+        bool Finished() const
         {
             if (ActualTime == Zero) return false;
 
@@ -70,7 +70,7 @@ namespace StockDory
         }
 
         [[nodiscard]]
-        inline MS Elapsed() const
+        MS Elapsed() const
         {
             return std::chrono::duration_cast<MS>(std::chrono::steady_clock::now() - Origin);
         }

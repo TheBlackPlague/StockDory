@@ -24,43 +24,43 @@ namespace StockDory
         }();
 
         public:
-        static inline std::string Name()
+        static std::string Name()
         {
             return "Aurora";
         }
 
-        static inline void ResetNetworkState()
+        static void ResetNetworkState()
         {
             NN.Reset();
             NN.Refresh();
         }
 
-        static inline void PreMove()
+        static void PreMove()
         {
             NN.Push();
         }
 
-        static inline void PreUndoMove()
+        static void PreUndoMove()
         {
             NN.Pop();
         }
 
-        static inline void Activate(const Piece piece, const Color color, const Square sq)
+        static void Activate(const Piece piece, const Color color, const Square sq)
         {
             NN.Insert(piece, color, sq);
         }
 
-        static inline void Deactivate(const Piece piece, const Color color, const Square sq)
+        static void Deactivate(const Piece piece, const Color color, const Square sq)
         {
             NN.Remove(piece, color, sq);
         }
 
-        static inline void Transition(const Piece piece, const Color color, const Square from, const Square to)
+        static void Transition(const Piece piece, const Color color, const Square from, const Square to)
         {
             NN.Move(piece, color, from, to);
         }
 
-        static inline int32_t Evaluate(const Color color)
+        static int32_t Evaluate(const Color color)
         {
             return NN.Evaluate(color);
         }

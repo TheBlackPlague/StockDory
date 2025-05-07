@@ -24,7 +24,7 @@ enum Square : uint8_t
 
 };
 
-constexpr inline Square Next(const Square sq)
+constexpr Square Next(const Square sq)
 {
     return static_cast<Square>(static_cast<uint8_t>(sq) + 1);
 }
@@ -51,17 +51,17 @@ constexpr std::array RANK_CHAR {
     '8', '8', '8', '8', '8', '8', '8', '8', '0'
 };
 
-constexpr inline char File(const Square sq)
+constexpr char File(const Square sq)
 {
     return FILE_CHAR[sq];
 }
 
-constexpr inline char Rank(const Square sq)
+constexpr char Rank(const Square sq)
 {
     return RANK_CHAR[sq];
 }
 
-inline std::string ToString(const Square sq)
+std::string ToString(const Square sq)
 {
     std::stringstream ss;
     ss << static_cast<char>(tolower(FILE_CHAR[sq]));
@@ -70,7 +70,7 @@ inline std::string ToString(const Square sq)
     return ss.str();
 }
 
-inline Square FromString(const std::string& s)
+Square FromString(const std::string& s)
 {
     const uint8_t file = tolower(s[0]) - 97;
     const uint8_t rank = tolower(s[1]) - 49;

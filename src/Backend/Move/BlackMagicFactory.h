@@ -12,29 +12,18 @@
 #include "../Type/BitBoard.h"
 #include "../Type/Piece.h"
 
+#include "AttackTable.h"
+#include "RayTable.h"
+
 namespace StockDory
 {
 
     class BlackMagicFactory
     {
 
-        public:
-        constexpr static std::array<BitBoard, 8> Horizontal {
-            0x0101010101010101, 0x0202020202020202, 0x0404040404040404, 0x0808080808080808,
-            0x1010101010101010, 0x2020202020202020, 0x4040404040404040, 0x8080808080808080
-        };
-
-        constexpr static std::array<BitBoard, 8> Vertical {
-            0x00000000000000FF, 0x000000000000FF00, 0x0000000000FF0000, 0x00000000FF000000,
-            0x000000FF00000000, 0x0000FF0000000000, 0x00FF000000000000, 0xFF00000000000000
-        };
-
-        constexpr static BitBoard Edged = Horizontal[0] | Horizontal[7] | Vertical[0] | Vertical[7];
-
-        private:
         constexpr static std::array<uint8_t, 2> PieceValue {9, 12};
 
-        constexpr static std::array<std::pair<BitBoard, int32_t>, 64> RookMagicConst {
+        constexpr static std::array<std::pair<BitBoard, uint32_t>, 64> RookMagicConst {
             std::pair(0x80280013FF84FFFF, 10890), std::pair(0x5FFBFEFDFEF67FFF, 50579),
             std::pair(0xFFEFFAFFEFFDFFFF, 62020), std::pair(0x003000900300008A, 67322),
             std::pair(0x0050028010500023, 80251), std::pair(0x0020012120A00020, 58503),
@@ -69,7 +58,7 @@ namespace StockDory
             std::pair(0xEE73FFFBFFBB77FE,  8555), std::pair(0x0002000308482882,  1009)
         };
 
-        constexpr static std::array<std::pair<BitBoard, int32_t>, 64> BishopMagicConst {
+        constexpr static std::array<std::pair<BitBoard, uint32_t>, 64> BishopMagicConst {
             std::pair(0xA7020080601803D8, 60984), std::pair(0x13802040400801F1, 66046),
             std::pair(0x0A0080181001F60C, 32910), std::pair(0x1840802004238008, 16369),
             std::pair(0xC03FE00100000000, 42115), std::pair(0x24C00BFFFF400000,   835),
@@ -106,18 +95,17 @@ namespace StockDory
 
         using MagicPair = std::pair<BitBoard, BitBoard>;
 
-        constexpr static auto RookOccupiedMask =
-                [](const Square sq) constexpr
+        constexpr static auto RookOccupiedMask = [](const Square sq) constexpr -> BitBoard
         {
             // Horizontal files & vertical ranks.
-            const BitBoard h = Horizontal[sq % 8] & ~(  Vertical[0] |   Vertical[7]);
-            const BitBoard v = Vertical  [sq / 8] & ~(Horizontal[0] | Horizontal[7]);
+            const BitBoard h = RayTable::Horizontal[sq % 8] & ~(RayTable::Vertical  [0] | RayTable::Vertical  [7]);
+            const BitBoard v = RayTable::Vertical  [sq / 8] & ~(RayTable::Horizontal[0] | RayTable::Horizontal[7]);
 
             // Occupied inside but not the square itself.
             return (h | v) & ~FromSquare(sq);
         };
 
-        constexpr static auto BishopOccupiedMask = [](const Square sq) constexpr
+        constexpr static auto BishopOccupiedMask = [](const Square sq) constexpr -> BitBoard
         {
             const int h = sq % 8;
             const int v = sq / 8;
@@ -125,65 +113,172 @@ namespace StockDory
             // Simple ray cast.
             BitBoard ray = BBDefault;
             for (int i = 0; i < 8; i++)
-                for (int j = 0; j < 8; j++) {
-                    int dH = i - h;
-                    int dV = j - v;
+            for (int j = 0; j < 8; j++) {
+                int dH = i - h;
+                int dV = j - v;
 
-                    if (dH < 0) dH = -dH;
-                    if (dV < 0) dV = -dV;
+                if (dH < 0) dH = -dH;
+                if (dV < 0) dV = -dV;
 
-                    if (dH == dV && dV != 0) ray |= 1ULL << (j * 8 + i);
-                }
+                if (dH == dV && dV != 0) ray |= 1ULL << (j * 8 + i);
+            }
 
-            return ray & ~Edged;
+            return ray & ~RayTable::Edged;
         };
 
         public:
-        constexpr static std::array<std::array<std::pair<MagicPair, int32_t>, 64>, 2> Magic = []() constexpr
+        constexpr static std::array<std::array<std::pair<MagicPair, uint32_t>, 64>, 2> Magic =
+        [] constexpr ->  std::array<std::array<std::pair<MagicPair, uint32_t>, 64>, 2>
         {
-            std::array<std::array<std::pair<MagicPair, int32_t>, 64>, 2> temp = {};
+            std::array<std::array<std::pair<MagicPair, uint32_t>, 64>, 2> temp = {};
 
             for (int h = 0; h < 8; h++)
-                for (int v = 0; v < 8; v++) {
-                    const auto  sq         = static_cast<Square>(v * 8 + h);
-                    const auto& [bmf, bms] = BishopMagicConst[sq];
+            for (int v = 0; v < 8; v++) {
+                const auto  sq         = static_cast<Square>(v * 8 + h);
+                const auto& [bmf, bms] = BishopMagicConst[sq];
 
-                    // Black magic:
-                    temp[0][sq] = {{bmf, ~BishopOccupiedMask(sq)}, bms};
-                }
+                // Black magic:
+                temp[0][sq] = {{bmf, ~BishopOccupiedMask(sq)}, bms};
+            }
 
             for (int h = 0; h < 8; h++)
-                for (int v = 0; v < 8; v++) {
-                    const auto  sq         = static_cast<Square>(v * 8 + h);
-                    const auto& [rmf, rms] = RookMagicConst[sq];
+            for (int v = 0; v < 8; v++) {
+                const auto  sq         = static_cast<Square>(v * 8 + h);
+                const auto& [rmf, rms] = RookMagicConst[sq];
 
-                    // Black magic:
-                    temp[1][sq] = {{rmf, ~RookOccupiedMask(sq)}, rms};
-                }
+                // Black magic:
+                temp[1][sq] = {{rmf, ~RookOccupiedMask(sq)}, rms};
+            }
 
             return temp;
         }();
 
-        constexpr static inline uint32_t MagicIndex(const Piece p, const Square sq, const BitBoard occupied)
+        constexpr static uint32_t MagicIndex(const Piece p, const Square sq, const BitBoard occupied)
         {
-            const std::array<std::pair<MagicPair, int32_t>, 64>& pieceMagic = Magic[p - 2];
-
-            // Get magic:
-            const std::pair<MagicPair, uint32_t>& pieceMagicAtSq = pieceMagic[sq];
-
-            // Relevant occupied squares:
-            const BitBoard relevantOccupied = occupied | pieceMagicAtSq.first.second;
+            // Magic:
+            const auto& [magicPair, base] = Magic[p - 2][sq];
+            const auto& [magic    , mask] = magicPair;
 
             // Hash:
-            const BitBoard hash = relevantOccupied * pieceMagicAtSq.first.first;
-
-            // Offset applied:
-            // ReSharper disable once CppRedundantParentheses
-            return pieceMagicAtSq.second + static_cast<int32_t>(hash >> (64 - PieceValue[p - 2]));
+            return base + static_cast<int32_t>(((occupied | mask) * magic) >> (64 - PieceValue[p - 2]));
         }
 
     };
 
 } // StockDory
+
+auto StockDory::AttackTable::Sliding = [] -> std::array<BitBoard, 87988>
+{
+    auto temp = std::array<BitBoard, 87988>();
+
+    for (uint8_t i = 0; i < 2; i++) {
+        constexpr std::array<std::array<std::pair<int8_t, int8_t>, 4>, 2> deltaStride = {{
+            {{
+                {1, 1}, {1, -1}, {-1, -1}, {-1, 1}
+            }}, {{
+                {1, 0}, {0, -1}, {-1, 0}, {0, 1}
+            }}
+        }};
+
+        const auto  p     = static_cast<Piece>(i + 2);
+        const auto& magic = BlackMagicFactory::Magic[i];
+        const auto& delta = deltaStride[i];
+
+        for (uint8_t h = 0; h < 8; h++)
+            for (uint8_t v = 0; v < 8; v++) {
+                const auto sq = static_cast<Square>(v * 8 + h);
+
+                // Black Magic:
+                const BitBoard mask = ~(magic[sq].first.second);
+                BitBoard       occ  = BBDefault;
+
+                // Enumeration:
+                while (true) {
+                    BitBoard moves = BBDefault;
+
+                    for (auto [hD, vD] : delta) {
+                        auto hI = static_cast<int8_t>(h);
+                        auto vI = static_cast<int8_t>(v);
+
+                        while (!Get(occ, static_cast<Square>(vI * 8 + hI))) {
+                            const auto dHI = static_cast<int8_t>(hI + hD);
+                            const auto dVI = static_cast<int8_t>(vI + vD);
+
+                            if (dHI > 7 || dHI < 0) break;
+                            if (dVI > 7 || dVI < 0) break;
+
+                            hI = static_cast<int8_t>(hI + hD);
+                            vI = static_cast<int8_t>(vI + vD);
+
+                            moves |= FromSquare(static_cast<Square>(vI * 8 + hI));
+                        }
+                    }
+
+                    // List insertion:
+                    temp[BlackMagicFactory::MagicIndex(p, sq, occ)] = moves;
+
+                    // Occupation Recalculation:
+                    // ReSharper disable once CppRedundantParentheses
+                    occ = (occ - mask) & mask;
+
+                    // Skipping count:
+                    if (Count(occ) == 0) break;
+                }
+            }
+    }
+
+    return temp;
+}();
+
+auto StockDory::RayTable::Between = [] -> std::array<std::array<BitBoard, 64>, 64>
+{
+    std::array<std::array<BitBoard, 64>, 64> temp = {};
+
+    for (Square f = A1; f != NASQ; f = Next(f)) {
+        const uint8_t fH = f % 8;
+        const uint8_t fV = f / 8;
+
+        for (Square t = A1; t != NASQ; t = Next(t)) {
+            temp[f][t] = BBDefault;
+
+            if (f == t) continue;
+
+            const uint8_t tH = t % 8;
+            const uint8_t tV = t / 8;
+
+            BitBoard occ;
+
+            if (fH == tH || fV == tV) {
+                occ = FromSquare(f) | FromSquare(t);
+
+                const uint32_t mF = BlackMagicFactory::MagicIndex(Rook, f, occ);
+                const uint32_t mT = BlackMagicFactory::MagicIndex(Rook, t, occ);
+
+                // Rook squares:
+                temp[f][t] = AttackTable::Sliding[mF] & AttackTable::Sliding[mT];
+
+                continue;
+            }
+
+            auto absH = static_cast<int8_t>(static_cast<int8_t>(fH) - static_cast<int8_t>(tH));
+            auto absV = static_cast<int8_t>(static_cast<int8_t>(fV) - static_cast<int8_t>(tV));
+
+            if (absH < 0) absH = static_cast<int8_t>(-absH);
+            if (absV < 0) absV = static_cast<int8_t>(-absV);
+
+            if (absH != absV) continue;
+
+            // Bishop squares:
+            occ = FromSquare(f) | FromSquare(t);
+
+            const uint32_t mF = BlackMagicFactory::MagicIndex(Bishop, f, occ);
+            const uint32_t mT = BlackMagicFactory::MagicIndex(Bishop, t, occ);
+
+            temp[f][t] = AttackTable::Sliding[mF] & AttackTable::Sliding[mT];
+        }
+    }
+
+    return temp;
+}();
 
 #endif //STOCKDORY_BLACKMAGICFACTORY_H

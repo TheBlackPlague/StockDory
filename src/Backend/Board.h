@@ -24,7 +24,7 @@
 
 #include "Move/AttackTable.h"
 #include "Move/BlackMagicFactory.h"
-#include "Move/UtilityTable.h"
+#include "Move/RayTable.h"
 
 #include "../External/strutil.h"
 
@@ -129,7 +129,7 @@ namespace StockDory
 
                     if (piece == NAP) std::cout << "ERROR" << std::endl;
 
-                    Hash = HashPiece<ZOBRIST>(Hash, piece, color, sq);
+                    Hash = Zobrist::HashPiece<ZOBRIST>(Hash, piece, color, sq);
 
                     h++;
                 }
@@ -137,7 +137,7 @@ namespace StockDory
 
             if (splitFen[1][0] == 'w') {
                 CastlingRightAndColorToMove = White << 4;
-                Hash                        = HashColorFlip<ZOBRIST>(Hash);
+                Hash                        = Zobrist::HashColorFlip<ZOBRIST>(Hash);
             } else {
                 CastlingRightAndColorToMove = Black << 4;
             }
@@ -148,14 +148,14 @@ namespace StockDory
             CastlingRightAndColorToMove |= castlingData.find('k') != std::string::npos ? BlackKCastleMask : 0x0;
             CastlingRightAndColorToMove |= castlingData.find('q') != std::string::npos ? BlackQCastleMask : 0x0;
 
-            Hash = HashCastling<ZOBRIST>(Hash, CastlingRightAndColorToMove & CastlingMask);
+            Hash = Zobrist::HashCastling<ZOBRIST>(Hash, CastlingRightAndColorToMove & CastlingMask);
 
             EnPassantTarget     = BBDefault;
             if (const std::string& epData = splitFen[3]; epData.length() == 2) {
                 if (const Square epSq = FromString(epData);
                     AttackTable::Pawn[Opposite(ColorToMove())][epSq] & BB[ColorToMove()][Pawn]) {
                     EnPassantTarget = FromSquare(epSq);
-                    Hash            = HashEnPassant<ZOBRIST>(Hash, epSq);
+                    Hash            = Zobrist::HashEnPassant<ZOBRIST>(Hash, epSq);
                 }
             }
 
@@ -168,7 +168,7 @@ namespace StockDory
             ColorBB[NAC] = ~(ColorBB[White] | ColorBB[Black]);
         }
 
-        inline void LoadForEvaluation() const
+        void LoadForEvaluation() const
         {
             Evaluation::ResetNetworkState();
 
@@ -180,8 +180,7 @@ namespace StockDory
             }
         }
 
-        [[nodiscard]]
-        inline std::string Fen() const
+        std::string Fen() const
         {
             std::array<std::string, 8> fenRank;
 
@@ -269,25 +268,23 @@ namespace StockDory
             return fen.str();
         }
 
-        [[nodiscard]]
-        constexpr inline ZobristHash Zobrist() const
+        ZobristHash Zobrist() const
         {
             return Hash;
         }
 
-        constexpr inline PieceColor operator [](const Square sq) const
+        PieceColor operator [](const Square sq) const
         {
             return PieceAndColor[sq];
         }
 
-        constexpr inline BitBoard operator [](const Color c) const
+        BitBoard operator [](const Color c) const
         {
             return ColorBB[c];
         }
 
         template<Color Color>
-        [[nodiscard]]
-        constexpr inline BitBoard PieceBoard(const Piece p) const
+        BitBoard PieceBoard(const Piece p) const
         {
             assert(p != NAP);
             assert(Color != NAC);
@@ -296,7 +293,7 @@ namespace StockDory
         }
 
         [[nodiscard]]
-        constexpr inline BitBoard PieceBoard(const Piece p, const Color c) const
+        BitBoard PieceBoard(const Piece p, const Color c) const
         {
             assert(p != NAP);
             assert(c != NAC);
@@ -304,15 +301,13 @@ namespace StockDory
             return BB[c][p];
         }
 
-        [[nodiscard]]
-        constexpr inline Color ColorToMove() const
+        Color ColorToMove() const
         {
             return static_cast<Color>(CastlingRightAndColorToMove >> 4);
         }
 
         template<Color Color>
-        [[nodiscard]]
-        constexpr inline bool CastlingRightK() const
+        bool CastlingRightK() const
         {
             if (Color == White) return CastlingRightAndColorToMove & WhiteKCastleMask;
             if (Color == Black) return CastlingRightAndColorToMove & BlackKCastleMask;
@@ -321,8 +316,7 @@ namespace StockDory
         }
 
         template<Color Color>
-        [[nodiscard]]
-        constexpr inline bool CastlingRightQ() const
+        bool CastlingRightQ() const
         {
             if (Color == White) return CastlingRightAndColorToMove & WhiteQCastleMask;
             if (Color == Black) return CastlingRightAndColorToMove & BlackQCastleMask;
@@ -330,21 +324,18 @@ namespace StockDory
             throw std::invalid_argument("Invalid color");
         }
 
-        [[nodiscard]]
-        constexpr inline BitBoard EnPassant() const
+        BitBoard EnPassant() const
         {
             return EnPassantTarget;
         }
 
-        [[nodiscard]]
-        constexpr inline Square EnPassantSquare() const
+        Square EnPassantSquare() const
         {
             return ToSquare(EnPassantTarget);
         }
 
         template<Color We>
-        [[nodiscard]]
-        constexpr inline bool Checked() const
+        bool Checked() const
         {
             constexpr Color by = Opposite(We);
 
@@ -369,8 +360,7 @@ namespace StockDory
         }
 
         template<Color By>
-        [[nodiscard]]
-        constexpr inline CheckBitBoard Check() const
+        CheckBitBoard Check() const
         {
             uint8_t count = 0;
             auto    check = CheckBitBoard();
@@ -410,12 +400,12 @@ namespace StockDory
             // attack:
             if (diagonalCheck) {
                 const Square diagonalCheckSq = ToSquare(diagonalCheck);
-                check.Check |= UtilityTable::Between[sq][diagonalCheckSq] | FromSquare(diagonalCheckSq);
+                check.Check |= RayTable::Between[sq][diagonalCheckSq] | FromSquare(diagonalCheckSq);
             }
 
             if (straightCheck) {
                 const Square straightCheckSq = ToSquare(straightCheck);
-                check.Check |= UtilityTable::Between[sq][straightCheckSq] | FromSquare(straightCheckSq);
+                check.Check |= RayTable::Between[sq][straightCheckSq] | FromSquare(straightCheckSq);
 
                 // In the case where there is more than one check, we must increment the count once more, as it's a
                 // double check.
@@ -432,8 +422,7 @@ namespace StockDory
         }
 
         template<Color We, Color By>
-        [[nodiscard]]
-        constexpr inline PinBitBoard Pin() const
+        PinBitBoard Pin() const
         {
             auto pin = PinBitBoard();
 
@@ -459,20 +448,19 @@ namespace StockDory
             // Iterate through the attacks and check if the attack is a diagonally pinning one.
             BitBoardIterator iterator(diagonalCheck);
             for (Square attSq = iterator.Value(); attSq != NASQ; attSq = iterator.Value())
-                if (const BitBoard possiblePin = UtilityTable::Between[sq][attSq] | FromSquare(attSq);
+                if (const BitBoard possiblePin = RayTable::Between[sq][attSq] | FromSquare(attSq);
                     Count(possiblePin & ColorBB[We]) == 1) pin.Diagonal |= possiblePin;
 
             // Iterate through the attacks and check if the attack is a straight pinning one.
             iterator = BitBoardIterator(straightCheck);
             for (Square attSq = iterator.Value(); attSq != NASQ; attSq = iterator.Value())
-                if (const BitBoard possiblePin = UtilityTable::Between[sq][attSq] | FromSquare(attSq);
+                if (const BitBoard possiblePin = RayTable::Between[sq][attSq] | FromSquare(attSq);
                     Count(possiblePin & ColorBB[We]) == 1) pin.Straight |= possiblePin;
 
             return pin;
         }
 
-        [[nodiscard]]
-        constexpr inline BitBoard SquareAttackers(const Square sq, const BitBoard occ) const
+        BitBoard SquareAttackers(const Square sq, const BitBoard occ) const
         {
             BitBoard attackers = AttackTable::Pawn[White][sq] &  BB[Black][ Pawn ] |
                                  AttackTable::Pawn[Black][sq] &  BB[White][ Pawn ] |
@@ -488,32 +476,32 @@ namespace StockDory
             return attackers;
         }
 
-        constexpr inline PreviousStateNull Move()
+        PreviousStateNull Move()
         {
             const auto state = PreviousStateNull(EnPassantSquare());
 
-            Hash            = HashEnPassant<ZOBRIST>(Hash, EnPassantSquare());
+            Hash            = Zobrist::HashEnPassant<ZOBRIST>(Hash, EnPassantSquare());
             EnPassantTarget = BBDefault;
 
             CastlingRightAndColorToMove ^= ColorFlipMask;
-            Hash = HashColorFlip<ZOBRIST>(Hash);
+            Hash = Zobrist::HashColorFlip<ZOBRIST>(Hash);
 
             return state;
         }
 
-        constexpr inline void UndoMove(const PreviousStateNull& state)
+        void UndoMove(const PreviousStateNull& state)
         {
             if (state.EnPassant != NASQ) {
                 EnPassantTarget = FromSquare(state.EnPassant);
-                Hash            = HashEnPassant<ZOBRIST>(Hash, state.EnPassant);
+                Hash            = Zobrist::HashEnPassant<ZOBRIST>(Hash, state.EnPassant);
             }
 
             CastlingRightAndColorToMove ^= ColorFlipMask;
-            Hash = HashColorFlip<ZOBRIST>(Hash);
+            Hash = Zobrist::HashColorFlip<ZOBRIST>(Hash);
         }
 
         template<MoveType T>
-        constexpr inline PreviousState Move(const Square from, const Square to, const Piece promotion = NAP)
+        PreviousState Move(const Square from, const Square to, const Piece promotion = NAP)
         {
             if (T & NNUE) Evaluation::PreMove();
 
@@ -521,13 +509,13 @@ namespace StockDory
                                        EnPassantSquare(), CastlingRightAndColorToMove,
                                        Hash);
 
-            Hash            = HashEnPassant<T>(Hash, EnPassantSquare());
+            Hash            = Zobrist::HashEnPassant<T>(Hash, EnPassantSquare());
             EnPassantTarget = BBDefault;
 
             CastlingRightAndColorToMove ^= ColorFlipMask;
-            Hash = HashColorFlip<T>(Hash);
+            Hash = Zobrist::HashColorFlip<T>(Hash);
 
-            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+            Hash = Zobrist::HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
 
             const Piece pieceF = state.MovedPiece.Piece();
             const Color colorF = state.MovedPiece.Color();
@@ -536,7 +524,7 @@ namespace StockDory
 
             using RookCastlingHandler = std::array<std::array<std::array<uint8_t, 64>, 2>, 2>;
             constexpr static RookCastlingHandler RookCastlingMask =
-            []() constexpr -> RookCastlingHandler
+            [] constexpr -> RookCastlingHandler
             {
                 RookCastlingHandler result = {};
 
@@ -567,7 +555,7 @@ namespace StockDory
 
                     const auto epPawnSq = static_cast<Square>(state.EnPassant ^ 8);
                     EmptyNative(Pawn, opposite, epPawnSq);
-                    Hash = HashPiece<T>(Hash, Pawn, opposite, epPawnSq);
+                    Hash = Zobrist::HashPiece<T>(Hash, Pawn, opposite, epPawnSq);
 
                     if (T & NNUE) Evaluation::Deactivate(Pawn, opposite, epPawnSq);
 
@@ -576,11 +564,11 @@ namespace StockDory
                     const auto epSq = static_cast<Square>(to ^ 8);
                     if (T & PERFT) {
                         EnPassantTarget = FromSquare(epSq);
-                        Hash            = HashEnPassant<T>(Hash, epSq);
+                        Hash            = Zobrist::HashEnPassant<T>(Hash, epSq);
                     } else {
                         if (AttackTable::Pawn[colorF][epSq] & BB[Opposite(colorF)][Pawn]) {
                             EnPassantTarget = FromSquare(epSq);
-                            Hash            = HashEnPassant<T>(Hash, epSq);
+                            Hash            = Zobrist::HashEnPassant<T>(Hash, epSq);
                         }
                     }
                 } else if (promotion != NAP) {
@@ -597,11 +585,11 @@ namespace StockDory
                         if (pieceT != NAP) Evaluation::Deactivate(pieceT, colorT, to);
                     }
 
-                    Hash = HashPiece<T>(Hash, Pawn, colorF, from);
-                    Hash = HashPiece<T>(Hash, pieceT, colorT, to);
-                    Hash = HashPiece<T>(Hash, promotion, colorF, to);
+                    Hash = Zobrist::HashPiece<T>(Hash, Pawn, colorF, from);
+                    Hash = Zobrist::HashPiece<T>(Hash, pieceT, colorT, to);
+                    Hash = Zobrist::HashPiece<T>(Hash, promotion, colorF, to);
 
-                    Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                    Hash = Zobrist::HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
 
                     return state;
                 }
@@ -632,12 +620,12 @@ namespace StockDory
                         Evaluation::Transition(Rook, colorF, state.CastlingFrom, state.CastlingTo);
                     }
 
-                    Hash = HashPiece<T>(Hash, King, colorF,               from);
-                    Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingFrom);
-                    Hash = HashPiece<T>(Hash, King, colorF,               to  );
-                    Hash = HashPiece<T>(Hash, Rook, colorF, state.CastlingTo  );
+                    Hash = Zobrist::HashPiece<T>(Hash, King, colorF,               from);
+                    Hash = Zobrist::HashPiece<T>(Hash, Rook, colorF, state.CastlingFrom);
+                    Hash = Zobrist::HashPiece<T>(Hash, King, colorF,               to  );
+                    Hash = Zobrist::HashPiece<T>(Hash, Rook, colorF, state.CastlingTo  );
 
-                    Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+                    Hash = Zobrist::HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
 
                     return state;
                 }
@@ -651,17 +639,17 @@ namespace StockDory
                 if (pieceT != NAP) Evaluation::Deactivate(pieceT, colorT, to);
             }
 
-            Hash = HashPiece<T>(Hash, pieceF, colorF, from);
-            Hash = HashPiece<T>(Hash, pieceT, colorT,   to);
-            Hash = HashPiece<T>(Hash, pieceF, colorF,   to);
+            Hash = Zobrist::HashPiece<T>(Hash, pieceF, colorF, from);
+            Hash = Zobrist::HashPiece<T>(Hash, pieceT, colorT,   to);
+            Hash = Zobrist::HashPiece<T>(Hash, pieceF, colorF,   to);
 
-            Hash = HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+            Hash = Zobrist::HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
 
             return state;
         }
 
         template<MoveType T>
-        constexpr inline void UndoMove(const PreviousState& state, const Square from, const Square to)
+        void UndoMove(const PreviousState& state, const Square from, const Square to)
         {
             if (T & NNUE) Evaluation::PreUndoMove();
 
@@ -690,8 +678,8 @@ namespace StockDory
             }
         }
 
-        constexpr inline void MoveNative(const Piece pF, const Color cF, const Square sqF,
-                                         const Piece pT, const Color cT, const Square sqT)
+        void MoveNative(const Piece pF, const Color cF, const Square sqF,
+                        const Piece pT, const Color cT, const Square sqT)
         {
             // Capture Section:
             Set<false>(BB[cT][pT] , sqT);
@@ -711,7 +699,7 @@ namespace StockDory
             PieceAndColor[sqF] = PieceColor(NAP, NAC);
         }
 
-        constexpr inline void EmptyNative(const Piece p, const Color c, const Square sq)
+        void EmptyNative(const Piece p, const Color c, const Square sq)
         {
             Set<false>(BB[c][p]  , sq);
 
@@ -722,7 +710,7 @@ namespace StockDory
             PieceAndColor[sq] = PieceColor(NAP, NAC);
         }
 
-        constexpr inline void InsertNative(const Piece p, const Color c, const Square sq)
+        void InsertNative(const Piece p, const Color c, const Square sq)
         {
             Set<true>(BB[c][p]  , sq);
 
@@ -733,7 +721,7 @@ namespace StockDory
             PieceAndColor[sq] = PieceColor(p, c);
         }
 
-        constexpr inline void UpdateNACBB()
+        void UpdateNACBB()
         {
             ColorBB[NAC] = ~(ColorBB[White] | ColorBB[Black]);
         }

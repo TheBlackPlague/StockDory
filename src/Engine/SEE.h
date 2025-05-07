@@ -22,7 +22,7 @@ namespace StockDory
             82, 337, 365, 477, 1025, 30000, 0
         };
 
-        static inline bool Unchecked(const Board& board, const Move move)
+        static bool Unchecked(const Board& board, const Move move)
         {
             if (move.Promotion() != NAP) return true;
 
@@ -33,7 +33,7 @@ namespace StockDory
         }
 
         public:
-        static inline bool Accurate(const Board& board, const Move move, const int32_t threshold)
+        static bool Accurate(const Board& board, const Move move, const int32_t threshold)
         {
             if (Unchecked(board, move)) return true;
 

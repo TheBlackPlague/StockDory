@@ -28,25 +28,25 @@ struct PieceColor
         Internal = 0;
     }
 
-    constexpr explicit PieceColor(const Piece piece, const Color color)
+    constexpr PieceColor(const Piece piece, const Color color)
     {
         Internal = piece | color << 4;
     }
 
     [[nodiscard]]
-    constexpr inline Piece Piece() const
+    constexpr Piece Piece() const
     {
         return static_cast<enum Piece>(Internal & PieceColorMask);
     }
 
     [[nodiscard]]
-    constexpr inline Color Color() const
+    constexpr Color Color() const
     {
         return static_cast<enum Color>(Internal >> ColorPos);
     }
 
     [[nodiscard]]
-    inline std::string ToString() const
+    std::string ToString() const
     {
         const enum Piece p = Piece();
         const enum Color c = Color();
