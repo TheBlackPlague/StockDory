@@ -51,7 +51,7 @@ namespace StockDory
 
     };
 
-    class NoHandle
+    class DefaultHandler
     {
 
         using PVEntry = PrincipleVariationEntry;
@@ -69,7 +69,7 @@ namespace StockDory
 
     };
 
-    template<class EventHandler = NoHandle>
+    template<class EventHandler = DefaultHandler>
     class Search
     {
 
