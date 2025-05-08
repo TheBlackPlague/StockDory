@@ -11,11 +11,13 @@
       <file path="$PROJECT_DIR$/cmake-build-debug" />
       <file path="$PROJECT_DIR$/cmake-build-debug-clang" />
       <file path="$PROJECT_DIR$/cmake-build-debug-clang-linux" />
+      <file path="$PROJECT_DIR$/cmake-build-debug-clang-pymod" />
       <file path="$PROJECT_DIR$/cmake-build-debug-remote" />
       <file path="$PROJECT_DIR$/cmake-build-pymod" />
       <file path="$PROJECT_DIR$/cmake-build-release" />
       <file path="$PROJECT_DIR$/cmake-build-release-clang" />
       <file path="$PROJECT_DIR$/cmake-build-release-clang-linux" />
+      <file path="$PROJECT_DIR$/cmake-build-release-clang-pymod" />
       <file path="$PROJECT_DIR$/cmake-build-release-remote" />
       <file path="$PROJECT_DIR$/dist" />
     </excludeRoots>
