@@ -54,6 +54,8 @@ namespace StockDory
     class NoHandle
     {
 
+        using PVEntry = PrincipleVariationEntry;
+
         public:
         static void HandleDepthIteration([[maybe_unused]] const uint8_t           depth,
                                          [[maybe_unused]] const uint8_t  selectiveDepth,
@@ -61,7 +63,7 @@ namespace StockDory
                                          [[maybe_unused]] const uint64_t          nodes,
                                          [[maybe_unused]] const uint64_t        ttNodes,
                                          [[maybe_unused]] const MS                 time,
-                                         [[maybe_unused]] const PV&                  pv) {}
+                                         [[maybe_unused]] const PVEntry&             pv) {}
 
         static void HandleBestMove([[maybe_unused]] const Move move) {}
 
@@ -143,7 +145,7 @@ namespace StockDory
                     Nodes,
                     TTNodes,
                     TC.Elapsed(),
-                    PVTable[0].PV
+                    PVTable[0]
                 );
                 currentDepth++;
             }
