@@ -33,13 +33,21 @@ class ThreadPool
         Internal = pool_create(n);
     }
 
-    Pool* operator ~() const { return Internal; }
-
     template<typename F>
     void Execute(F&& code)
     {
         Task* task = drjit::do_async(code, {}, Internal);
         task_release(task);
+    }
+
+    template<typename T, typename F>
+    void For(const drjit::blocked_range<T>& range, F&& code)
+    {
+        drjit::parallel_for(
+            range,
+            std::move(code),
+            Internal
+        );
     }
 
 };

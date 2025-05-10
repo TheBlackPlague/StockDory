@@ -889,12 +889,12 @@ PYBIND11_MODULE(StockDory, m)
             "start_async",
             [](const StockDory::Limit& limit = StockDory::Limit()) -> void
             {
-                drjit::do_async([limit] -> void
+                StockDory::ThreadPool.Execute([this, limit] -> void
                 {
                     SEARCH_RUNNING = true ;
                     SEARCH.IterativeDeepening(limit);
                     SEARCH_RUNNING = false;
-                }, {}, ~StockDory::ThreadPool);
+                });
             },
             py::arg("limit") = StockDory::Limit()
         );
