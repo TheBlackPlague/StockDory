@@ -6,6 +6,7 @@
 #ifndef STOCKDORY_BENCHHASH_H
 #define STOCKDORY_BENCHHASH_H
 
+#include <numeric>
 #include <array>
 #include <string>
 
@@ -28,8 +29,8 @@ namespace StockDory
         {
             using BTP = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
-            std::array<uint64_t, BenchLength> nodes = {};
-            std::array<   MS   , BenchLength> times = {};
+            std::array<uint64_t, BenchLength> nodes;
+            std::array<   MS   , BenchLength> times;
 
             for (size_t i = 0; i < BenchLength; i++) {
                 std::cout << "Position (" << std::setw(2) << std::setfill('0')

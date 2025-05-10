@@ -8,6 +8,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <math.h>
 
 #include <nanothread/nanothread.h>
 
@@ -137,13 +138,12 @@ namespace StockDory
                     };
 
                     using Block = drjit::blocked_range<uint8_t>;
-                    drjit::parallel_for(
-                        Block (0, 6),
+                    ThreadPool.For(
+                        Block(0, 6),
                         [&perftLoops](const Block block) -> void
                         {
                             perftLoops[block.begin()]();
-                        },
-                        ~ThreadPool
+                        }
                     );
 
                     for (size_t i = 0; i < 6; i++) nodes += result[i];
@@ -306,13 +306,12 @@ namespace StockDory
                     return parallelNodes;
                 };
 
-                drjit::parallel_for(
-                    Block (0, count),
+                ThreadPool.For(
+                    Block(0, count),
                     [&Loop, &result](const Block block) -> void
                     {
                         result[block.begin()] = Loop(block);
-                    },
-                    ~ThreadPool
+                    }
                 );
 
                 for (size_t i = 0; i < 8; i++) nodes += result[i];

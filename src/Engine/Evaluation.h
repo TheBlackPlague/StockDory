@@ -6,8 +6,6 @@
 #ifndef STOCKDORY_EVALUATION_H
 #define STOCKDORY_EVALUATION_H
 
-#include <MantaRay/Perspective/PerspectiveNNUE.h>
-
 #include "../Backend/Type/Square.h"
 
 #include "NetworkArchitecture.h"
@@ -19,64 +17,56 @@ namespace StockDory
     class Evaluation
     {
 
-        static Aurora NN;
+        static inline Aurora NN = [] -> Aurora
+        {
+            MantaRay::BinaryMemoryStream stream (_NeuralNetworkBinaryData, sizeof _NeuralNetworkBinaryData);
+            return Aurora(stream);
+        }();
 
         public:
-        static inline std::string Name()
+        static std::string Name()
         {
             return "Aurora";
         }
 
-        static inline void ResetNetworkState()
+        static void ResetNetworkState()
         {
-            NN.ResetAccumulator();
-            NN.RefreshAccumulator();
+            NN.Reset();
+            NN.Refresh();
         }
 
-        static inline void PreMove()
+        static void PreMove()
         {
-            NN.PushAccumulator();
+            NN.Push();
         }
 
-        static inline void PreUndoMove()
+        static void PreUndoMove()
         {
-            NN.PullAccumulator();
+            NN.Pop();
         }
 
-        static inline void Activate(const Piece piece, const Color color, const Square sq)
+        static void Activate(const Piece piece, const Color color, const Square sq)
         {
-            NN.EfficientlyUpdateAccumulator<MantaRay::AccumulatorOperation::Activate>(piece, color, sq);
+            NN.Insert(piece, color, sq);
         }
 
-        static inline void Deactivate(const Piece piece, const Color color, const Square sq)
+        static void Deactivate(const Piece piece, const Color color, const Square sq)
         {
-            NN.EfficientlyUpdateAccumulator<MantaRay::AccumulatorOperation::Deactivate>(piece, color, sq);
+            NN.Remove(piece, color, sq);
         }
 
-        static inline void Transition(const Piece piece, const Color color, const Square from, const Square to)
+        static void Transition(const Piece piece, const Color color, const Square from, const Square to)
         {
-            NN.EfficientlyUpdateAccumulator(piece, color, from, to);
+            NN.Move(piece, color, from, to);
         }
 
-        static inline int32_t Evaluate(const Color color)
+        static int32_t Evaluate(const Color color)
         {
             return NN.Evaluate(color);
-        }
-
-        template<Color Color>
-        static inline int32_t Evaluate()
-        {
-            return NN.Evaluate(Color);
         }
 
     };
 
 } // StockDory
-
-Aurora StockDory::Evaluation::NN = []
-{
-    MantaRay::BinaryMemoryStream stream (_NeuralNetworkBinaryData, _NeuralNetworkBinarySize);
-    return Aurora(stream);
-}();
 
 #endif //STOCKDORY_EVALUATION_H

@@ -191,7 +191,7 @@ class PyConstantHolder {};
 class PySearchHandler
 {
 
-    using PV = StockDory::PrincipleVariationTable;
+    using PV = StockDory::PrincipleVariationEntry;
 
     using DepthIterationHandler = std::function<void(
         uint8_t ,
@@ -797,11 +797,17 @@ PYBIND11_MODULE(StockDory, m)
 
     /** -- CLASS: engine.PrincipleVariationTable -- **/
     {
-        py::class_<StockDory::PrincipleVariationTable> pv (engine, "PrincipleVariationTable");
+        py::class_<StockDory::PrincipleVariationEntry> pv (engine, "PrincipleVariationEntry");
 
-        pv.def("__len__", &StockDory::PrincipleVariationTable::Count);
+        pv.def(
+            "__len__",
+            [](const StockDory::PrincipleVariationEntry& self) -> size_t { return self.Ply; }
+        );
 
-        pv.def("__getitem__", &StockDory::PrincipleVariationTable::operator[]);
+        pv.def(
+            "__getitem__",
+            [](const StockDory::PrincipleVariationEntry& self, const size_t idx) -> Move { return self.PV[idx]; }
+        );
     }
 
     /** -- MODULE: engine.event -- **/
@@ -817,9 +823,8 @@ PYBIND11_MODULE(StockDory, m)
             {
                 PySearchHandler::RegisterDepthIterationHandler(
                     [callback = std::move(callback)](const uint8_t       a, const uint8_t  b, const int32_t c,
-                                                      const uint64_t      d, const uint64_t e,
-                                                      const int64_t f,
-                                                      const StockDory::PrincipleVariationTable& g) -> void
+                                                     const uint64_t      d, const uint64_t e, const int64_t f,
+                                                     const StockDory::PrincipleVariationEntry& g) -> void
                     {
                         py::gil_scoped_acquire _;
 
@@ -884,12 +889,12 @@ PYBIND11_MODULE(StockDory, m)
             "start_async",
             [](const StockDory::Limit& limit = StockDory::Limit()) -> void
             {
-                drjit::do_async([limit] -> void
+                StockDory::ThreadPool.Execute([limit] -> void
                 {
                     SEARCH_RUNNING = true ;
                     SEARCH.IterativeDeepening(limit);
                     SEARCH_RUNNING = false;
-                }, {}, ~StockDory::ThreadPool);
+                });
             },
             py::arg("limit") = StockDory::Limit()
         );

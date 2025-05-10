@@ -44,17 +44,17 @@ namespace StockDory
             Internal = std::vector<T>(Count);
         }
 
-        inline T& operator [](const ZobristHash hash)
+        T& operator [](const ZobristHash hash)
         {
             return Internal[fastrange64(hash, Count)];
         }
 
-        inline const T& operator [](const ZobristHash hash) const
+        const T& operator [](const ZobristHash hash) const
         {
             return Internal[fastrange64(hash, Count)];
         }
 
-        inline void Prefetch(const ZobristHash hash) const
+        void Prefetch(const ZobristHash hash) const
         {
 #ifdef __x86_64__
             _mm_prefetch(reinterpret_cast<const char*>(&Internal[fastrange64(hash, Count)]), _MM_HINT_T0);
@@ -66,7 +66,7 @@ namespace StockDory
         }
 
         [[nodiscard]]
-        inline size_t Size() const
+        size_t Size() const
         {
             return Internal.size();
         }

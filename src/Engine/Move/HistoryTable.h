@@ -14,25 +14,7 @@
 namespace StockDory
 {
 
-    class HistoryTable
-    {
-
-        std::array<std::array<std::array<int32_t, 64>, 6>, 2> Internal = {};
-
-        public:
-        [[nodiscard]]
-        inline int32_t Get(const Piece piece, const Color color, const Square sq) const
-        {
-            return Internal[color][piece][sq];
-        }
-
-        [[nodiscard]]
-        inline int32_t& Get(const Piece piece, const Color color, const Square sq)
-        {
-            return Internal[color][piece][sq];
-        }
-
-    };
+    using HistoryTable = std::array<std::array<std::array<int32_t, 64>, 6>, 2>;
 
 } // StockDory
 

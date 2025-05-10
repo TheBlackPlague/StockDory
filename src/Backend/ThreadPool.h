@@ -12,7 +12,7 @@ class ThreadPool
 {
 
     public:
-    static inline size_t HardwareLimit()
+    static size_t HardwareLimit()
     {
         return core_count();
     }
@@ -25,15 +25,30 @@ class ThreadPool
 
     ~ThreadPool() { if (Internal != nullptr) pool_destroy(Internal); }
 
-    inline size_t Size() const { return pool_size(Internal); }
+    size_t Size() const { return pool_size(Internal); }
 
-    inline void Resize(const size_t n)
+    void Resize(const size_t n)
     {
         if (Internal != nullptr) pool_destroy(Internal);
         Internal = pool_create(n);
     }
 
-    inline Pool* operator ~() const { return Internal; }
+    template<typename F>
+    void Execute(F&& code)
+    {
+        Task* task = drjit::do_async(code, {}, Internal);
+        task_release(task);
+    }
+
+    template<typename T, typename F>
+    void For(const drjit::blocked_range<T>& range, F&& code)
+    {
+        drjit::parallel_for(
+            range,
+            std::move(code),
+            Internal
+        );
+    }
 
 };
 

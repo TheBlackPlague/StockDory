@@ -16,17 +16,15 @@ namespace StockDory
     class UCIHandler
     {
 
-        using PV = PrincipleVariationTable;
+        using PVEntry = PrincipleVariationEntry;
 
-        [[nodiscard]]
-        static inline std::string PvLine(const PV& pv)
+        static std::string PvLine(const PVEntry& pv)
         {
             std::stringstream line;
 
-            const uint8_t ply = pv.Count();
-            for (uint8_t i = 0; i < ply; i++) {
-                line << pv[i].ToString();
-                if (i != ply - 1) line << " ";
+            for (uint8_t i = 0; i < pv.Ply; i++) {
+                line << pv.PV[i].ToString();
+                if (i != pv.Ply - 1) line << " ";
             }
 
             return line.str();
@@ -34,8 +32,8 @@ namespace StockDory
 
         public:
         static void HandleDepthIteration(const uint8_t  depth, const uint8_t  selectiveDepth, const int32_t evaluation,
-                                         const uint64_t nodes, const uint64_t _,
-                                         const MS       time,  const PV&      pv)
+                                         const uint64_t nodes, const uint64_t _ ,
+                                         const MS       time,  const PVEntry& pv)
         {
             std::stringstream output;
 
@@ -92,12 +90,12 @@ namespace StockDory
 
         void Start(const Limit limit)
         {
-            drjit::do_async([this, limit] -> void
+            ThreadPool.Execute([this, limit] -> void
             {
                 Running = true ;
                 EngineSearch.IterativeDeepening(limit);
                 Running = false;
-            }, {}, ~ThreadPool);
+            });
         }
 
         void Stop()

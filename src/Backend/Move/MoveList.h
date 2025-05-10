@@ -27,14 +27,14 @@ namespace StockDory
     class MoveList
     {
 
-        BitBoard InternalContainer;
-
         constexpr static BitBoard WhiteQueenCastlePath = 0x0EULL;
         constexpr static BitBoard WhiteKingCastlePath  = 0x60ULL;
         constexpr static BitBoard BlackQueenCastlePath = WhiteQueenCastlePath << 56;
         constexpr static BitBoard BlackKingCastlePath  = WhiteKingCastlePath  << 56;
 
         constexpr static BitBoard QueenCastlePathMask = 0x0C0000000000000CULL;
+
+        BitBoard InternalContainer;
 
         public:
         constexpr static bool Promotion(const Square sq)
@@ -44,31 +44,31 @@ namespace StockDory
             return (Color == White && sq > H6) || (Color == Black && sq < A3);
         }
 
-        constexpr MoveList(const Board& board, const Square sq, const PinBitBoard& pin, const CheckBitBoard& check)
+        MoveList(const Board& board, const Square sq, const PinBitBoard& pin, const CheckBitBoard& check)
         {
             InternalContainer = BBDefault;
 
-            if (Piece == Piece::Pawn  ) Pawn   (board, sq, pin, check);
-            if (Piece == Piece::Knight) Knight (board, sq, pin, check);
-            if (Piece == Piece::Bishop) Bishop (board, sq, pin, check);
-            if (Piece == Piece::Rook  ) Rook   (board, sq, pin, check);
-            if (Piece == Piece::Queen ) Queen  (board, sq, pin, check);
-            if (Piece == Piece::King  ) King   (board, sq            );
+            if (Piece == ::Pawn  ) Pawn   (board, pin, check, sq);
+            if (Piece == ::Knight) Knight (board, pin, check, sq);
+            if (Piece == ::Bishop) Bishop (board, pin, check, sq);
+            if (Piece == ::Rook  ) Rook   (board, pin, check, sq);
+            if (Piece == ::Queen ) Queen  (board, pin, check, sq);
+            if (Piece == ::King  ) King   (board,             sq);
         }
 
         [[nodiscard]]
-        constexpr inline uint8_t Count() const
+        uint8_t Count() const
         {
             return ::Count(InternalContainer);
         }
 
         [[nodiscard]]
-        constexpr inline BitBoardIterator Iterator() const
+        BitBoardIterator Iterator() const
         {
             return BitBoardIterator(InternalContainer);
         }
 
-        constexpr inline MoveList Mask(const BitBoard mask) const
+        MoveList Mask(const BitBoard mask) const
         {
             MoveList result = *this;
             result.InternalContainer &= mask;
@@ -76,8 +76,8 @@ namespace StockDory
         }
 
         private:
-        constexpr inline void Pawn(const       Board& board, const Square         sq   ,
-                                   const PinBitBoard& pin  , const CheckBitBoard& check)
+        [[clang::always_inline]]
+        void Pawn  (const Board& board, const PinBitBoard& pin, const CheckBitBoard& check, const Square sq)
         {
             if (Get(pin.Diagonal, sq)) {
                 const BitBoard pawnAttack = AttackTable::Pawn[Color][sq];
@@ -103,7 +103,7 @@ namespace StockDory
 
                 BitBoard pushes = (Color == White ? sqBoard << 8 : sqBoard >> 8) & board[NAC];
                 if (pushes &&
-                    sqBoard & (Color == White ? BlackMagicFactory::Vertical[1] : BlackMagicFactory::Vertical[6]))
+                    sqBoard & (Color == White ? RayTable::Vertical[1] : RayTable::Vertical[6]))
                     pushes |= (Color == White ? sqBoard << 16 : sqBoard >> 16) & board[NAC];
 
                 InternalContainer |= pushes & pin.Straight & check.Check;
@@ -120,7 +120,7 @@ namespace StockDory
 
             BitBoard pushes = (Color == White ? sqBoard << 8 : sqBoard >> 8) & board[NAC];
             if (pushes &&
-                sqBoard & (Color == White ? BlackMagicFactory::Vertical[1] : BlackMagicFactory::Vertical[6]))
+                sqBoard & (Color == White ? RayTable::Vertical[1] : RayTable::Vertical[6]))
                 pushes |= (Color == White ? sqBoard << 16 : sqBoard >> 16) & board[NAC];
 
             InternalContainer |= pushes;
@@ -141,16 +141,16 @@ namespace StockDory
             }
         }
 
-        constexpr inline void Knight(const Board&       board, const Square         sq   ,
-                                     const PinBitBoard& pin  , const CheckBitBoard& check)
+        [[clang::always_inline]]
+        void Knight(const Board& board, const PinBitBoard& pin, const CheckBitBoard& check, const Square sq)
         {
             if (Get(pin.Straight | pin.Diagonal, sq)) return;
 
             InternalContainer |= AttackTable::Knight[sq] & ~board[Color] & check.Check;
         }
 
-        constexpr inline void Bishop(const Board&       board, const Square         sq   ,
-                                     const PinBitBoard& pin  , const CheckBitBoard& check)
+        [[clang::always_inline]]
+        void Bishop(const Board& board, const PinBitBoard& pin, const CheckBitBoard& check, const Square sq)
         {
             if (Get(pin.Straight, sq)) return;
 
@@ -160,8 +160,8 @@ namespace StockDory
             if (Get(pin.Diagonal, sq)) InternalContainer &= pin.Diagonal;
         }
 
-        constexpr inline void Rook(const Board&       board, const Square         sq   ,
-                                   const PinBitBoard& pin  , const CheckBitBoard& check)
+        [[clang::always_inline]]
+        void Rook  (const Board& board, const PinBitBoard& pin, const CheckBitBoard& check, const Square sq)
         {
             if (Get(pin.Diagonal, sq)) return;
 
@@ -171,8 +171,8 @@ namespace StockDory
             if (Get(pin.Straight, sq)) InternalContainer &= pin.Straight;
         }
 
-        constexpr inline void Queen(const Board&       board, const Square         sq   ,
-                                    const PinBitBoard& pin  , const CheckBitBoard& check)
+        [[clang::always_inline]]
+        void Queen (const Board& board, const PinBitBoard& pin, const CheckBitBoard& check, const Square sq)
         {
             const bool straight = Get(pin.Straight, sq);
             const bool diagonal = Get(pin.Diagonal, sq);
@@ -180,25 +180,22 @@ namespace StockDory
             if (straight && diagonal) return;
 
             if (straight) {
-                const uint32_t idx =
-                        BlackMagicFactory::MagicIndex(Piece::Rook, sq, ~board[NAC]);
+                const uint32_t idx = BlackMagicFactory::MagicIndex(Piece::Rook  , sq, ~board[NAC]);
                 InternalContainer |= AttackTable::Sliding[idx] & ~board[Color] & check.Check & pin.Straight;
             } else if (diagonal) {
-                const uint32_t idx =
-                        BlackMagicFactory::MagicIndex(Piece::Bishop, sq, ~board[NAC]);
+                const uint32_t idx = BlackMagicFactory::MagicIndex(Piece::Bishop, sq, ~board[NAC]);
                 InternalContainer |= AttackTable::Sliding[idx] & ~board[Color] & check.Check & pin.Diagonal;
             } else {
-                const uint32_t idxR =
-                        BlackMagicFactory::MagicIndex(Piece::Rook, sq, ~board[NAC]);
-                InternalContainer |= AttackTable::Sliding[idxR] & ~board[Color] & check.Check;
+                const uint32_t idxR = BlackMagicFactory::MagicIndex(Piece::Rook  , sq, ~board[NAC]);
+                const uint32_t idxB = BlackMagicFactory::MagicIndex(Piece::Bishop, sq, ~board[NAC]);
 
-                const uint32_t idxB =
-                        BlackMagicFactory::MagicIndex(Piece::Bishop, sq, ~board[NAC]);
+                InternalContainer |= AttackTable::Sliding[idxR] & ~board[Color] & check.Check;
                 InternalContainer |= AttackTable::Sliding[idxB] & ~board[Color] & check.Check;
             }
         }
 
-        constexpr inline void King(const Board& board, const Square sq)
+        [[clang::always_inline]]
+        void King  (const Board& board,                                                     const Square sq)
         {
             BitBoard king = AttackTable::King[sq] & ~board[Color];
 
@@ -231,7 +228,8 @@ namespace StockDory
                     InternalContainer |= path;
         }
 
-        constexpr static inline bool KingMoveLegal(const Board& board, const Square target)
+        [[clang::always_inline]]
+        static bool KingMoveLegal(const Board& board, const Square target)
         {
             constexpr auto by = Opposite(Color);
 
@@ -256,15 +254,16 @@ namespace StockDory
             return !(AttackTable::King[target] & board.PieceBoard(Piece::King, by));
         }
 
-        constexpr static inline bool EnPassantLegal(const Board& board,
-                                                    const Square ourPawn,
-                                                    const Square opponentPawn,
-                                                    const Square enPassantTarget)
+        [[clang::always_inline]]
+        static bool EnPassantLegal(const Board& board,
+                                   const Square x, // the square that is moving
+                                   const Square y, // the square that is being captured
+                                   const Square z) // the square that is being moved to
         {
             BitBoard occupied = ~board[NAC];
-            Set<false>(occupied, ourPawn        );
-            Set<false>(occupied, opponentPawn   );
-            Set<true >(occupied, enPassantTarget);
+            Set<false>(occupied, x);
+            Set<false>(occupied, y);
+            Set<true >(occupied, z);
 
             const BitBoard queen = board.PieceBoard(Piece::Queen, Opposite(Color));
             const Square   king  = ToSquare(board.PieceBoard(Piece::King, Color));

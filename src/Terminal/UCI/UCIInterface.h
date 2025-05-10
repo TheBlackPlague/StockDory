@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <iostream>
+#include <ranges>
 #include <unordered_map>
 #include <vector>
 
@@ -195,11 +196,11 @@ namespace StockDory
             if (!args.empty() && strutil::compare_ignore_case(args[0], "moves")) {
                 ss << "\nMoves: ";
                 if (MainBoard.ColorToMove() == White) {
-                    OrderedMoveList<White> moves (MainBoard, 0, KillerTable(), HistoryTable(), Move());
+                    OrderedMoveList<White> moves (MainBoard, 0, {}, {}, {});
 
                     for (uint8_t i = 0; i < moves.Count(); i++) ss << "\n" << moves[i].ToString();
                 } else {
-                    OrderedMoveList<Black> moves (MainBoard, 0, KillerTable(), HistoryTable(), Move());
+                    OrderedMoveList<Black> moves (MainBoard, 0, {}, {}, {});
 
                     for (uint8_t i = 0; i < moves.Count(); i++) ss << "\n" << moves[i].ToString();
                 }

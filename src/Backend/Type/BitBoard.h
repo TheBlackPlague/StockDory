@@ -16,29 +16,29 @@ using BitBoard = uint64_t;
 constexpr BitBoard BBDefault = 0x0000000000000000ULL;
 constexpr BitBoard BBFilled  = 0xFFFFFFFFFFFFFFFFULL;
 
-constexpr inline uint8_t Count(const BitBoard bb)
+constexpr uint8_t Count(const BitBoard bb)
 {
     return std::popcount(bb);
 }
 
 template<bool Activate>
-constexpr inline void Set(BitBoard& bb, const Square sq)
+constexpr void Set(BitBoard& bb, const Square sq)
 {
-    if (Activate) bb |= 1ULL << sq;
-    else bb &= ~(1ULL << sq);
+    if (Activate) bb |=   1ULL << sq ;
+    else          bb &= ~(1ULL << sq);
 }
 
-constexpr inline bool Get(const BitBoard bb, const Square sq)
+constexpr bool Get(const BitBoard bb, const Square sq)
 {
     return bb >> sq & 1ULL;
 }
 
-constexpr inline BitBoard FromSquare(const Square sq)
+constexpr BitBoard FromSquare(const Square sq)
 {
     return 1ULL << sq;
 }
 
-constexpr inline Square ToSquare(const BitBoard bb)
+constexpr Square ToSquare(const BitBoard bb)
 {
     return static_cast<Square>(std::countr_zero(bb));
 }
@@ -54,7 +54,7 @@ class BitBoardIterator
         BB = value;
     }
 
-    constexpr inline Square Value()
+    constexpr Square Value()
     {
         uint8_t i = std::countr_zero(BB);
 
@@ -65,7 +65,7 @@ class BitBoardIterator
     }
 
     template<size_t N>
-    inline uint8_t ToArray(std::array<Square, N>& array)
+    uint8_t ToArray(std::array<Square, N>& array)
     {
         const uint8_t count = Count(BB);
 
@@ -78,12 +78,12 @@ class BitBoardIterator
 
 };
 
-constexpr inline BitBoardIterator Iterator(const BitBoard bb)
+constexpr BitBoardIterator Iterator(const BitBoard bb)
 {
     return BitBoardIterator(bb);
 }
 
-inline std::string ToString(const BitBoard bb)
+std::string ToString(const BitBoard bb)
 {
     std::string s;
 

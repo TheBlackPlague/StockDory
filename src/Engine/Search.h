@@ -6,8 +6,6 @@
 #ifndef STOCKDORY_SEARCH_H
 #define STOCKDORY_SEARCH_H
 
-#include <csetjmp>
-
 #include "../Backend/Board.h"
 #include "../Backend/Type/Move.h"
 #include "../Backend/Type/Zobrist.h"
@@ -46,31 +44,32 @@ namespace StockDory
             Depth = depth;
         }
 
-        [[nodiscard]]
-        inline bool BeyondLimit(const uint64_t nodes, const uint8_t depth) const
+        bool BeyondLimit(const uint64_t nodes, const uint8_t depth) const
         {
             return nodes > Nodes || depth > Depth;
         }
 
     };
 
-    class NoHandle
+    class DefaultHandler
     {
 
+        using PVEntry = PrincipleVariationEntry;
+
         public:
-        static void HandleDepthIteration([[maybe_unused]] const uint8_t                  depth,
-                                         [[maybe_unused]] const uint8_t                  selectiveDepth,
-                                         [[maybe_unused]] const int32_t                  evaluation,
-                                         [[maybe_unused]] const uint64_t                 nodes,
-                                         [[maybe_unused]] const uint64_t                 ttNodes,
-                                         [[maybe_unused]] const MS                       time,
-                                         [[maybe_unused]] const PrincipleVariationTable& pv) {}
+        static void HandleDepthIteration([[maybe_unused]] const uint8_t           depth,
+                                         [[maybe_unused]] const uint8_t  selectiveDepth,
+                                         [[maybe_unused]] const int32_t      evaluation,
+                                         [[maybe_unused]] const uint64_t          nodes,
+                                         [[maybe_unused]] const uint64_t        ttNodes,
+                                         [[maybe_unused]] const MS                 time,
+                                         [[maybe_unused]] const PVEntry&             pv) {}
 
         static void HandleBestMove([[maybe_unused]] const Move move) {}
 
     };
 
-    template<class EventHandler = NoHandle>
+    template<class EventHandler = DefaultHandler>
     class Search
     {
 
@@ -89,9 +88,9 @@ namespace StockDory
 
         RepetitionHistory Repetition = RepetitionHistory(0);
 
-        PrincipleVariationTable PvTable = PrincipleVariationTable();
-        KillerTable             KTable  = KillerTable();
-        HistoryTable            HTable  = HistoryTable();
+        PrincipleVariationTable PVTable = PrincipleVariationTable();
+        KillerTable             KTable  = {};
+        HistoryTable            HTable  = {};
 
         std::array<SearchStackEntry, MaxDepth> Stack = {};
 
@@ -107,8 +106,6 @@ namespace StockDory
 
         bool Stop = false;
 
-        std::jmp_buf SearchStop {};
-
         public:
         Search() = default;
 
@@ -123,11 +120,6 @@ namespace StockDory
 
         void IterativeDeepening(const Limit limit)
         {
-            if (setjmp(SearchStop)) {
-                EventHandler::HandleBestMove(BestMove);
-                return;
-            }
-
             Board.LoadForEvaluation();
 
             TC.Start();
@@ -140,7 +132,9 @@ namespace StockDory
                      Evaluation = Aspiration<White>(currentDepth);
                 else Evaluation = Aspiration<Black>(currentDepth);
 
-                BestMove = PvTable[0];
+                if (Stop) break;
+
+                BestMove = PVTable[0].PV[0];
 
                 BestMoveStabilityOptimisation(lastBestMove);
 
@@ -151,21 +145,21 @@ namespace StockDory
                     Nodes,
                     TTNodes,
                     TC.Elapsed(),
-                    PvTable
+                    PVTable[0]
                 );
                 currentDepth++;
             }
 
-            std::longjmp(SearchStop, true);
+            EventHandler::HandleBestMove(BestMove);
         }
 
         [[nodiscard]]
-        inline uint64_t NodesSearched() const
+        uint64_t NodesSearched() const
         {
             return Nodes;
         }
 
-        inline void ForceStop()
+        void ForceStop()
         {
             Stop = true;
         }
@@ -195,7 +189,7 @@ namespace StockDory
             uint8_t research = 0;
             while (true) {
                 //region Out of Time & Force Stop
-                if (Stop || TC.Finished<true>()) longjmp(SearchStop, true);
+                if (Stop || TC.Finished<true>()) [[unlikely]] { Stop = true; return Draw; }
                 //endregion
 
                 //region Reset Window
@@ -216,7 +210,7 @@ namespace StockDory
 
                     beta  = std::min(beta  + research * research * AspirationDelta,  Infinity);
 
-                    BestMove = PvTable[0];
+                    BestMove = PVTable[0].PV[0];
                 } else return bestEvaluation;
                 //endregion
             }
@@ -225,10 +219,14 @@ namespace StockDory
         template<Color Color, bool Pv, bool Root>
         int32_t AlphaBeta(const uint8_t ply, int16_t depth, int32_t alpha, int32_t beta)
         {
+            //region Out of Time & Force Stop
+            if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) [[unlikely]] { Stop = true; return Draw; }
+            //endregion
+
             constexpr auto OColor = Opposite(Color);
 
             //region PV Table Ply Initialization
-            PvTable.InitializePly(ply);
+            PVTable[ply].Ply = ply;
             //endregion
 
             //region Selected Depth Change
@@ -244,10 +242,6 @@ namespace StockDory
             //endregion
 
             if (!Root) {
-                //region Out of Time & Force Stop
-                if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) longjmp(SearchStop, true);
-                //endregion
-
                 //region Draw Detection
                 if (Stack[ply].HalfMoveCounter >= 100) return Draw;
 
@@ -270,28 +264,26 @@ namespace StockDory
             }
 
             //region Transposition Table Lookup
-            const EngineEntry& storedEntry = TTable[hash];
-            Move               ttMove      = NoMove;
-            bool               ttHit       = false;
+            const SearchState& ttState = TTable[hash];
+            Move               ttMove  = NoMove;
+            bool               ttHit   = false;
 
-            if (storedEntry.Type != Invalid && storedEntry.Hash == hash) {
+            if (ttState.Type != Invalid && ttState.Hash == hash) {
                 ttHit  = true;
-                ttMove = storedEntry.Move;
+                ttMove = ttState.Move;
 
-                if (!Pv && storedEntry.Depth >= depth) {
-                    if  (storedEntry.Type == Exact          ||
-                        (storedEntry.Type == BetaCutoff     && storedEntry.Evaluation >= beta ) ||
-                        (storedEntry.Type == AlphaUnchanged && storedEntry.Evaluation <= alpha)) {
-                        TTNodes++;
-                        return storedEntry.Evaluation;
-                    }
+                if (!Pv && ttState.Depth >= depth                                            &&
+                          (ttState.Type  == Exact                                            ||
+                          (ttState.Type  == BetaCutoff     && ttState.Evaluation >= beta )   ||
+                          (ttState.Type  == AlphaUnchanged && ttState.Evaluation <= alpha))) {
+                    TTNodes++;
+                    return ttState.Evaluation;
                 }
             }
             //endregion
 
             //region Static Evaluation
-            const int32_t staticEvaluation = ttHit
-                        ? StaticEvaluationTT<Color>(storedEntry) : Evaluation::Evaluate<Color>();
+            const int32_t staticEvaluation = ttHit ? StaticEvaluationTT<Color>(ttState) : Evaluation::Evaluate(Color);
 
             Stack[ply].StaticEvaluation = staticEvaluation;
             //endregion
@@ -334,15 +326,19 @@ namespace StockDory
             //endregion
 
             //region Fail-soft Alpha Beta Negamax
-            int32_t         bestEvaluation = -Infinity;
-            Move            bestMove       = NoMove;
-            EngineEntryType ttEntryType    = AlphaUnchanged;
-
             const uint8_t lmpQuietThreshold = LMPQuietThresholdBase + depth * depth;
             const bool    lmp               = !Root && !checked && depth <= LMPDepthThreshold;
             const bool    lmr               = depth >= LMRDepthThreshold && !checked;
             const int32_t historyBonus      = depth * depth;
             const uint8_t historyFactor     = std::max(depth / 3, 1);
+
+            SearchState abState {
+                hash,
+                -Infinity,
+                ttMove,
+                static_cast<uint8_t>(depth),
+                AlphaUnchanged
+            };
 
             uint8_t quietMoveCount = 0;
             for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -356,11 +352,11 @@ namespace StockDory
                 //endregion
 
                 //region Late Move Pruning
-                if (!Pv && lmp && bestEvaluation > -Infinity && quietMoveCount > lmpQuietThreshold)
+                if (!Pv && lmp && abState.Evaluation > -Infinity && quietMoveCount > lmpQuietThreshold)
                     break;
                 //endregion
 
-                const PreviousState state = EngineMove<true>(move, ply, quiet);
+                const PreviousState boardState = EngineMove<true>(move, ply, quiet);
 
                 int32_t evaluation = 0;
                 if (i == 0)
@@ -368,7 +364,7 @@ namespace StockDory
                 else {
                     //region Late Move Reduction
                     if (i >= LMRFullSearchThreshold && lmr) {
-                        int16_t r = LogarithmicReductionTable::Get(depth, i);
+                        int16_t r = LogarithmicReductionTable[depth][i];
 
                         if (!Pv) r++;
 
@@ -388,63 +384,60 @@ namespace StockDory
                     //endregion
                 }
 
-                EngineUndoMove<true>(state, move);
+                EngineUndoMove<true>(boardState, move);
 
                 //region Handle Evaluation
-                if (evaluation <= bestEvaluation) continue;
+                if (evaluation <= abState.Evaluation) continue;
 
-                bestEvaluation = evaluation;
+                abState.Evaluation = evaluation;
 
                 if (evaluation <= alpha) continue;
 
-                alpha       = evaluation;
-                bestMove    = move;
-                ttEntryType = Exact;
+                alpha = evaluation;
 
-                if (Pv) {
-                    PvTable.Insert(ply, move);
+                abState.Type = Exact;
+                abState.Move = move;
 
-                    for (uint8_t nPly = ply + 1; PvTable.PlyInitialized(ply, nPly); nPly++)
-                        PvTable.Copy(ply, nPly);
+                // ReSharper disable once CppDFAConstantConditions
+                if (Pv && !Stop) {
+                    PVTable[ply].PV[ply] = move;
 
-                    PvTable.Update(ply);
+                    for (uint8_t nPly = ply + 1; nPly < PVTable[ply + 1].Ply; nPly++)
+                        PVTable[ply].PV[nPly] = PVTable[ply + 1].PV[nPly];
+
+                    PVTable[ply].Ply = PVTable[ply + 1].Ply;
                 }
 
                 if (evaluation < beta) continue;
 
-                if (quiet) {
-                    if (KTable.Get<1> (ply) != move) {
-                        KTable.Reorder(ply);
-                        KTable.Set<1> (ply, move);
+                // ReSharper disable once CppDFAConstantConditions
+                if (quiet && !Stop) {
+                    if (KTable[0][ply] != move) {
+                        KTable[1][ply] = KTable[0][ply];
+                        KTable[0][ply] = move;
                     }
 
-                    HTable.Get(Board[move.From()].Piece(), Color, move.To()) += historyBonus + i * historyFactor;
+                    HTable[Color][Board[move.From()].Piece()][move.To()] += historyBonus + i * historyFactor;
 
                     for (uint8_t q = 1; q < quietMoveCount; q++) {
                         const Move other = moves.UnsortedAccess(i - q);
-                        HTable.Get(Board[other.From()].Piece(), Color, other.To()) -=
+                        HTable[Color][Board[other.From()].Piece()][other.To()] -=
                             historyBonus + (quietMoveCount - q) * historyFactor;
                     }
                 }
 
-                ttEntryType = BetaCutoff;
-                //endregion
+                abState.Type = BetaCutoff;
                 break;
+                //endregion
             }
             //endregion
 
             //region Transposition Table Insertion
-            const auto entry = EngineEntry {
-                .Hash = hash,
-                .Evaluation = bestEvaluation,
-                .Move = ttEntryType != AlphaUnchanged ? bestMove : ttMove,
-                .Depth = static_cast<uint8_t>(depth),
-                .Type = ttEntryType
-            };
-            InsertEntry(hash, entry);
+            // ReSharper disable once CppDFAConstantConditions
+            if (!Stop) InsertEntry(hash, abState);
             //endregion
 
-            return bestEvaluation;
+            return abState.Evaluation;
         }
 
         template<Color Color, bool Pv>
@@ -457,21 +450,19 @@ namespace StockDory
             //endregion
 
             //region Transposition Table Lookup
-            if (!Pv) {
-                const ZobristHash  hash  = Board.Zobrist();
-                // ReSharper disable once CppTooWideScopeInitStatement
-                const EngineEntry& entry = TTable[hash];
+            else {
+                const ZobristHash  hash    = Board.Zobrist();
+                const SearchState& ttState = TTable[hash];
 
-                if   (entry.Hash == hash           &&
-                     (entry.Type == Exact          ||
-                     (entry.Type == BetaCutoff     && entry.Evaluation >= beta ) ||
-                     (entry.Type == AlphaUnchanged && entry.Evaluation <= alpha) ))
-                    return entry.Evaluation;
+                if (ttState.Hash == hash           &&
+                   (ttState.Type == Exact          ||
+                   (ttState.Type == BetaCutoff     && ttState.Evaluation >= beta ) ||
+                   (ttState.Type == AlphaUnchanged && ttState.Evaluation <= alpha) )) return ttState.Evaluation;
             }
             //endregion
 
             //region Static Evaluation
-            const int32_t staticEvaluation = Evaluation::Evaluate<Color>();
+            const int32_t staticEvaluation = Evaluation::Evaluate(Color);
 
             if (staticEvaluation >= beta) return beta;
             if (staticEvaluation > alpha) alpha = staticEvaluation;
@@ -479,7 +470,7 @@ namespace StockDory
 
             //region MoveList
             using MoveList = OrderedMoveList<Color, true>;
-            MoveList moves(Board, ply, KTable, HTable, NoMove);
+            MoveList moves (Board, ply, KTable, HTable, NoMove);
             //endregion
 
             //region Fail-soft Alpha Beta Negamax
@@ -515,7 +506,7 @@ namespace StockDory
         }
 
         template<Color Color, bool Root>
-        inline bool NMP(const uint8_t ply, const int16_t depth, const int32_t staticEvaluation, const int32_t beta)
+        bool NMP(const uint8_t ply, const int16_t depth, const int32_t staticEvaluation, const int32_t beta)
         {
             if (Root || depth < NullMoveDepth || staticEvaluation < beta) return false;
 
@@ -524,7 +515,7 @@ namespace StockDory
             const auto reductionStep   = static_cast<int16_t>(depth / NullMoveDepth);
             const auto reductionFactor = static_cast<int16_t>((staticEvaluation - beta) / NullMoveEvaluationMargin);
             const auto reduction       = static_cast<int16_t>(NullMoveDepth + reductionStep +
-                                                              std::min<int16_t>(NullMoveDepth, reductionFactor));
+                                            std::min<int16_t>(NullMoveDepth, reductionFactor));
 
             const PreviousStateNull state = Board.Move();
 
@@ -537,8 +528,8 @@ namespace StockDory
         }
 
         template<Color Color>
-        inline int32_t PVS(      int32_t evaluation, const uint8_t ply , const int16_t depth,
-                           const int32_t alpha     , const int32_t beta)
+        int32_t PVS(      int32_t evaluation, const uint8_t ply , const int16_t depth,
+                    const int32_t alpha     , const int32_t beta)
         {
             if (evaluation <= alpha) return evaluation;
 
@@ -552,7 +543,7 @@ namespace StockDory
         }
 
         template<bool UpdateHistory>
-        inline PreviousState EngineMove(const Move move, const uint8_t ply, const bool quiet = false)
+        PreviousState EngineMove(const Move move, const uint8_t ply, const bool quiet = false)
         {
             constexpr MoveType MT = NNUE | ZOBRIST;
 
@@ -573,7 +564,7 @@ namespace StockDory
         }
 
         template<bool UpdateHistory>
-        inline void EngineUndoMove(const PreviousState state, const Move move)
+        void EngineUndoMove(const PreviousState state, const Move move)
         {
             constexpr MoveType MT = NNUE | ZOBRIST;
 
@@ -582,18 +573,18 @@ namespace StockDory
             if (UpdateHistory) Repetition.Pull();
         }
 
-        static inline bool RFP(const int16_t depth, const int32_t     staticEvaluation,
-                               const bool    improving, const int32_t beta)
+        static bool RFP(const int16_t depth, const int32_t     staticEvaluation,
+                        const bool    improving, const int32_t beta)
         {
             return depth < ReverseFutilityDepthThreshold &&
                    abs(beta) < Mate &&
                    staticEvaluation - ReverseFutilityD * depth + improving * ReverseFutilityI >= beta;
         }
 
-        static inline void InsertEntry(const ZobristHash hash, const EngineEntry& entry)
+        static void InsertEntry(const ZobristHash hash, const SearchState& entry)
         {
             // ReSharper disable once CppTooWideScopeInitStatement
-            const EngineEntry& old = TTable[hash];
+            const SearchState& old = TTable[hash];
             if (entry.Type == Exact || entry.Hash != old.Hash ||
                (old.  Type == AlphaUnchanged &&
                 entry.Type == BetaCutoff   ) ||
@@ -602,12 +593,12 @@ namespace StockDory
         }
 
         template<Color Color>
-        static inline int32_t StaticEvaluationTT(const EngineEntry& entry)
+        static int32_t StaticEvaluationTT(const SearchState& entry)
         {
             if (entry.Type == Exact) return entry.Evaluation;
 
             // ReSharper disable once CppTooWideScopeInitStatement
-            const int32_t staticEvaluation = Evaluation::Evaluate<Color>();
+            const int32_t staticEvaluation = Evaluation::Evaluate(Color);
 
             if ((staticEvaluation > entry.Evaluation && entry.Type == BetaCutoff    )  ||
                 (staticEvaluation < entry.Evaluation && entry.Type == AlphaUnchanged)) return staticEvaluation;

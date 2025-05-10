@@ -6,14 +6,14 @@
 #ifndef STOCKDORY_NETWORKARCHITECTURE_H
 #define STOCKDORY_NETWORKARCHITECTURE_H
 
-#include <MantaRay/Activation/ClippedReLU.h>
-#include <MantaRay/Perspective/PerspectiveNNUE.h>
+#include <MantaRay/Backend/Kernel/Activation/ClippedReLU.h>
+#include <MantaRay/Frontend/Architecture/Perspective.h>
 
 // Activation Function:
-using CRelu000255 = MantaRay::ClippedReLU<int16_t, 0, 255>;
+constexpr auto ClippedReLU = &MantaRay::ClippedReLU<MantaRay::i16, 0, 255>::Activate;
 
 // Architecture:
-using Starshard = MantaRay::PerspectiveNetwork<int16_t, int32_t, CRelu000255, 768, 256, 1, 512, 400, 255, 64>;
-using Aurora    = MantaRay::PerspectiveNetwork<int16_t, int32_t, CRelu000255, 768, 384, 1, 512, 400, 255, 64>;
+using Starshard = MantaRay::Perspective<MantaRay::i16, MantaRay::i32, ClippedReLU, 768, 256, 1, 512, 400, 255, 64>;
+using Aurora    = MantaRay::Perspective<MantaRay::i16, MantaRay::i32, ClippedReLU, 768, 384, 1, 512, 400, 255, 64>;
 
 #endif //STOCKDORY_NETWORKARCHITECTURE_H

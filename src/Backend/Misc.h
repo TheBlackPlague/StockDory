@@ -11,7 +11,7 @@
 #include <string>
 
 template<typename T, typename = std::enable_if_t<std::is_fundamental_v<T>>>
-inline std::string ToHex(const T v)
+std::string ToHex(const T v)
 {
     std::stringstream ss;
 

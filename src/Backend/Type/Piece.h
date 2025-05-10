@@ -22,7 +22,7 @@ enum Piece : uint8_t
 
 };
 
-constexpr inline Piece Next(const Piece p)
+constexpr Piece Next(const Piece p)
 {
     return static_cast<Piece>(static_cast<uint8_t>(p) + 1);
 }
@@ -37,12 +37,12 @@ constexpr std::array P_CHAR = {
     ' '
 };
 
-constexpr inline char FirstLetter(const Piece p)
+constexpr char FirstLetter(const Piece p)
 {
     return P_CHAR[p];
 }
 
-inline std::map<Piece, std::string> P_STRING = {
+std::map<Piece, std::string> P_STRING = {
     {Pawn  , "Pawn"  },
     {Knight, "Knight"},
     {Bishop, "Bishop"},
@@ -52,7 +52,7 @@ inline std::map<Piece, std::string> P_STRING = {
     {NAP   , "NAP"   }
 };
 
-inline std::string ToString(const Piece p)
+std::string ToString(const Piece p)
 {
     return P_STRING[p];
 }

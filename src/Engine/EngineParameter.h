@@ -6,7 +6,7 @@
 #ifndef STOCKDORY_ENGINEPARAMETER_H
 #define STOCKDORY_ENGINEPARAMETER_H
 
-#include "EngineEntry.h"
+#include "SearchState.h"
 #include "TranspositionTable.h"
 
 constexpr int32_t Infinity = 1000000     ;
@@ -57,6 +57,6 @@ constexpr std::array<std::pair<uint16_t, uint16_t>, 5> BestMoveStabilityOptimisa
     { 97, 100}
 }};
 
-inline auto TTable = StockDory::TranspositionTable<StockDory::EngineEntry>(16 * MB);
+inline auto TTable = StockDory::TranspositionTable<StockDory::SearchState>(16 * MB);
 
 #endif //STOCKDORY_ENGINEPARAMETER_H
