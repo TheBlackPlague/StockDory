@@ -13,11 +13,17 @@ ifeq ($(OS),Windows_NT)
     LLVM_PROFDATA = llvm-profdata
     SLASH         = \\
 else
+    UNIX_OS := $(shell uname -s)
+
     CP            = cp
     RM            = rm -rf
     EXT           =
     LLVM_PROFDATA = llvm-profdata-20
     SLASH         = /
+
+    ifeq ($(UNIX_OS), Darwin)
+        LLVM_PROFDATA = llvm-profdata
+    endif
 endif
 
 # === Targets ===
