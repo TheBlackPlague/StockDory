@@ -35,31 +35,37 @@ namespace StockDory
             NN.Refresh();
         }
 
+        [[clang::always_inline]]
         static void PreMove()
         {
             NN.Push();
         }
 
+        [[clang::always_inline]]
         static void PreUndoMove()
         {
             NN.Pop();
         }
 
+        [[clang::always_inline]]
         static void Activate(const Piece piece, const Color color, const Square sq)
         {
             NN.Insert(piece, color, sq);
         }
 
+        [[clang::always_inline]]
         static void Deactivate(const Piece piece, const Color color, const Square sq)
         {
             NN.Remove(piece, color, sq);
         }
 
+        [[clang::always_inline]]
         static void Transition(const Piece piece, const Color color, const Square from, const Square to)
         {
             NN.Move(piece, color, from, to);
         }
 
+        [[clang::always_inline]]
         static int32_t Evaluate(const Color color)
         {
             return NN.Evaluate(color);
