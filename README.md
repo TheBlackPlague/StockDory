@@ -37,7 +37,7 @@ instructions below.
 StockDory is written in C++ and uses CMake as its build system.
 
 **Requirements**:
-- 🏭 CMake >= 3.15
+- 🏭 CMake >= 3.21
 - 🐉 Clang (LLVM) >= 20.0.0
 - 🥷 Ninja >= 1.10.2
 
@@ -86,7 +86,7 @@ If you would like to report a bug, please open an issue on this GitHub repositor
 If you would like to contribute to the codebase, please fork this repository,
 create a new branch (naming it appropriately for the changes you are making),
 make your changes.
-Then, create an account on the [FindingChess Testing Framework](http://tests.findingchess.com/).
+Then, create an account on [Verdict](http://verdict.shaheryarsohail.com/).
 Once your account is approved, appropriately set the source repository on your profile, and
 create a test for your branch.
 
