@@ -6,38 +6,28 @@
 #ifndef STOCKDORY_LOGARITHMICREDUCTIONTABLE_H
 #define STOCKDORY_LOGARITHMICREDUCTIONTABLE_H
 
-#include <cstdint>
 #include <array>
+#include <cmath>
+#include <cstdint>
 
 #include "EngineParameter.h"
 
 namespace StockDory
 {
 
-    class LogarithmicReductionTable
+    std::array<std::array<int16_t, MaxMove>, MaxDepth> LogarithmicReductionTable =
+    [] -> std::array<std::array<int16_t, MaxMove>, MaxDepth>
     {
+        std::array<std::array<int16_t, MaxMove>, MaxDepth> temp = {};
 
-        private:
-            static std::array<std::array<int16_t, MaxMove>, MaxDepth> Internal;
+        for (uint8_t depth  = 1; depth < MaxDepth; depth++)
+        for (uint8_t move   = 1; move  < MaxMove ;  move++)
+            temp[depth]
+                [move ] = static_cast<int16_t>(std::log(depth) * std::log(move) / 2 - 0.2);
 
-        public:
-            static inline int16_t Get(const uint8_t depth, const uint8_t move)
-            {
-                return Internal[depth][move];
-            }
-
-    };
+        return temp;
+    }();
 
 } // StockDory
-
-std::array<std::array<int16_t, MaxMove>, MaxDepth> StockDory::LogarithmicReductionTable::Internal = []() {
-    std::array<std::array<int16_t, MaxMove>, MaxDepth> temp = {};
-
-    for (uint8_t depth = 1; depth < MaxDepth; depth++) for (uint8_t move = 1; move < MaxMove; move++) {
-        temp[depth][move] = static_cast<int16_t>(log(depth) * log(move) / 2 - 0.2);
-    }
-
-    return temp;
-}();
 
 #endif //STOCKDORY_LOGARITHMICREDUCTIONTABLE_H

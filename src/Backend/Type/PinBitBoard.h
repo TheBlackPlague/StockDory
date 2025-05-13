@@ -11,9 +11,8 @@
 struct PinBitBoard
 {
 
-    public:
-        BitBoard Straight = BBDefault;
-        BitBoard Diagonal = BBDefault;
+    BitBoard Straight = BBDefault;
+    BitBoard Diagonal = BBDefault;
 
 };
 

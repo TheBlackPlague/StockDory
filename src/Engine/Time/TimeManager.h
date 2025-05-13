@@ -28,73 +28,67 @@ namespace StockDory
     class TimeManager
     {
 
-        private:
-            constexpr static uint8_t TimePartition = 20;
-            constexpr static uint8_t TimeOverhead  = 10;
+        constexpr static uint8_t TimePartition = 20;
+        constexpr static uint8_t TimeOverhead  = 10;
 
-            constexpr static uint8_t IncrementPartitionNumerator   = 3;
-            constexpr static uint8_t IncrementPartitionDenominator = 4;
+        constexpr static uint8_t IncrementPartitionNumerator   = 3;
+        constexpr static uint8_t IncrementPartitionDenominator = 4;
 
-            constexpr static uint64_t MoveInstantTime      = 500;
-
-            constexpr static KillerTable  DummyKTable;
-            constexpr static HistoryTable DummyHTable;
+        constexpr static uint64_t MoveInstantTime = 500;
 
         public:
-            static TimeControl Default()
-            {
-                return {};
-            }
+        static TimeControl Default()
+        {
+            return {};
+        }
 
-            static TimeControl Fixed(const uint64_t time)
-            {
-                return TimeControl(time, time);
-            }
+        static TimeControl Fixed(const uint64_t time)
+        {
+            return TimeControl(time, time);
+        }
 
-            static TimeControl Optimal(const Board& board, const TimeData& data)
-            {
-                const Color color = board.ColorToMove();
+        static TimeControl Optimal(const Board& board, const TimeData& data)
+        {
+            const Color color = board.ColorToMove();
 
-                const uint64_t time = color == White ? data.WhiteTime      : data.BlackTime     ;
-                const uint64_t inc  = color == White ? data.WhiteIncrement : data.BlackIncrement;
+            const uint64_t time = color == White ? data.WhiteTime      : data.BlackTime     ;
+            const uint64_t inc  = color == White ? data.WhiteIncrement : data.BlackIncrement;
 
-                uint64_t actual = time / TimePartition;
+            uint64_t actual = time / TimePartition;
 
-                actual = data.MovesToGo > 0 ? std::max(actual, time / data.MovesToGo) : actual;
+            actual = data.MovesToGo > 0 ? std::max(actual, time / data.MovesToGo) : actual;
 
-                actual += inc * IncrementPartitionNumerator / IncrementPartitionDenominator;
+            actual += inc * IncrementPartitionNumerator / IncrementPartitionDenominator;
 
-                actual = MoveCountAdjustment(board, actual);
+            actual = MoveCountAdjustment(board, actual);
 
-                actual -= TimeOverhead;
+            actual -= TimeOverhead;
 
-                uint64_t optimal = actual;
+            return TimeControl(actual, actual, true);
+        }
 
-                return TimeControl(optimal, actual, true);
-            }
+        static void Optimize(TimeControl& control, const std::pair<uint16_t, uint16_t>& optimizationFactor)
+        {
+            if (!control.CanBeOptimised()) return;
 
-            static void Optimise(TimeControl& control, const std::pair<uint16_t, uint16_t> optimisationFactor)
-            {
-                if (!control.CanBeOptimised()) return;
+            const uint64_t time = control.GetOptimal();
 
-                const uint64_t time = control.GetOptimal();
-
-                control.SetOptimal(time * optimisationFactor.first / optimisationFactor.second);
-            }
+            control.SetOptimal(time * optimizationFactor.first / optimizationFactor.second);
+        }
 
         private:
-            static uint64_t MoveCountAdjustment(const Board& board, const uint64_t actual)
-            {
-                uint8_t moveCount = board.ColorToMove() == White ?
-                                    OrderedMoveList<White>(
-                                            board, 0, DummyKTable, DummyHTable, NoMove
-                                    ).Count() :
-                                    OrderedMoveList<Black>(
-                                            board, 0, DummyKTable, DummyHTable, NoMove
-                                    ).Count() ;
+        static uint64_t MoveCountAdjustment(const Board& board, const uint64_t actual)
+        {
+            const uint8_t moveCount = board.ColorToMove() == White
+                                    ? OrderedMoveList<White>(
+                                        board, 0, {}, {}, NoMove
+                                    ).Count()
+                                    : OrderedMoveList<Black>(
+                                        board, 0, {}, {}, NoMove
+                                    ).Count();
 
-                return moveCount == 1 ? std::min<uint64_t>(MoveInstantTime, actual) : actual;
-            }
+            return moveCount == 1 ? std::min<uint64_t>(MoveInstantTime, actual) : actual;
+        }
 
     };
 

@@ -1,5 +1,3 @@
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "cppcoreguidelines-pro-type-member-init"
 //
 // Copyright (c) 2023 StockDory authors. See the list of authors for more details.
 // Licensed under LGPL-3.0.
@@ -15,50 +13,46 @@
 struct PreviousState
 {
 
-    public:
-        PieceColor MovedPiece                 ;
-        PieceColor CapturedPiece              ;
-        Piece      PromotedPiece              ;
-        bool       EnPassantCapture           ;
-        Square     EnPassant                  ;
-        Square     CastlingFrom               ;
-        Square     CastlingTo                 ;
-        uint8_t    CastlingRightAndColorToMove;
+    PieceColor MovedPiece                 ;
+    PieceColor CapturedPiece              ;
+    Piece      PromotedPiece              ;
+    bool       EnPassantCapture           ;
+    Square     EnPassant                  ;
+    Square     CastlingFrom               ;
+    Square     CastlingTo                 ;
+    uint8_t    CastlingRightAndColorToMove;
 
-        ZobristHash Hash;
+    ZobristHash Hash;
 
-        constexpr PreviousState(const PieceColor movedPiece , const PieceColor capturedPiece              ,
-                                const Square     enPassant, const uint8_t    castlingRightAndColorToMove,
-                                const ZobristHash hash)
-        {
-            MovedPiece                  = movedPiece;
-            CapturedPiece               = capturedPiece;
-            EnPassant                   = enPassant;
-            CastlingRightAndColorToMove = castlingRightAndColorToMove;
+    constexpr PreviousState(const PieceColor  movedPiece, const PieceColor capturedPiece,
+                            const Square      enPassant,  const uint8_t    castlingRightAndColorToMove,
+                            const ZobristHash hash)
+    {
+        MovedPiece                  = movedPiece;
+        CapturedPiece               = capturedPiece;
+        EnPassant                   = enPassant;
+        CastlingRightAndColorToMove = castlingRightAndColorToMove;
 
-            EnPassantCapture = false;
-            PromotedPiece    = NAP;
-            CastlingFrom     = NASQ;
-            CastlingTo       = NASQ;
+        EnPassantCapture = false;
+        PromotedPiece    = NAP;
+        CastlingFrom     = NASQ;
+        CastlingTo       = NASQ;
 
-            Hash = hash;
-        }
+        Hash = hash;
+    }
 
 };
 
 struct PreviousStateNull
 {
 
-    public:
-        Square EnPassant;
+    Square EnPassant;
 
-        constexpr PreviousStateNull(const Square enPassant)
-        {
-            EnPassant = enPassant;
-        }
+    constexpr PreviousStateNull(const Square enPassant)
+    {
+        EnPassant = enPassant;
+    }
 
 };
 
 #endif //STOCKDORY_PREVIOUSSTATE_H
-
-#pragma clang diagnostic pop

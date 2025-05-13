@@ -1,22 +1,29 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.21)
 project(StockDory)
 
 set(VERSION  "0.1"     )
 set(CODENAME "Starfish")
 
-if(CI)
-    set(CI TRUE)
-else()
-    set(CI FALSE)
-endif()
+option(BUILD_NATIVE "Enable native CPU architecture optimizations" ON)
+option(PYMODULE "Enable if building Python Bindings" OFF)
+option(CI "Enable if building via Continuous Integration such as Github Actions" OFF)
+option(PGO "Enable profile-guided optimization - uses existing profile or creates instrumentation executable" OFF)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
+
 if(CMAKE_CXX_FLAGS STREQUAL "")
-    set(CMAKE_CXX_FLAGS "-march=native")
+    set(CMAKE_CXX_FLAGS "$ENV{CMAKE_CXX_FLAGS}")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
-if(PGO MATCHES "True")
+if(BUILD_NATIVE AND NOT (PYMODULE OR CI))
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+else()
+    set(NANOTHREAD_NATIVE_FLAGS "${CMAKE_CXX_FLAGS}")
+endif()
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto=full")
+
+if(PGO)
     message(STATUS "PGO: Enabled")
     if(EXISTS ${CMAKE_BINARY_DIR}/pgo.profdata)
         message(STATUS "PGO: Using existing profile data at: ${CMAKE_BINARY_DIR}/pgo.profdata")
@@ -30,9 +37,7 @@ endif()
 set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g -ftime-report")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
-set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
-
-set(CPM_DOWNLOAD_VERSION 0.38.0)
+set(CPM_DOWNLOAD_VERSION 0.40.8)
 
 if(CPM_SOURCE_CACHE)
     set(CPM_DOWNLOAD_LOCATION "${CPM_SOURCE_CACHE}/cpm/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
@@ -41,7 +46,7 @@ elseif(DEFINED ENV{CPM_SOURCE_CACHE})
     set(CPM_DOWNLOAD_LOCATION "$ENV{CPM_SOURCE_CACHE}/cpm/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
     message(STATUS "Setting CPM.cmake location to ${CPM_DOWNLOAD_LOCATION}")
 else()
-    set(CPM_DOWNLOAD_LOCATION "${CMAKE_BINARY_DIR}/cmake/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
+    set(CPM_DOWNLOAD_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
     message(STATUS "Setting CPM.cmake location to ${CPM_DOWNLOAD_LOCATION}")
 endif()
 
@@ -51,9 +56,9 @@ foreach(DOWNLOAD_ATTEMPT RANGE 1 ${CPM_DOWNLOAD_RETRY_COUNT})
         message(STATUS "CPM.cmake was not found at ${CPM_DOWNLOAD_LOCATION}")
         message(STATUS "Attempt: ${DOWNLOAD_ATTEMPT}/${CPM_DOWNLOAD_RETRY_COUNT}: Downloading CPM.cmake...")
         file(DOWNLOAD
-             https://github.com/TheLartians/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake
-             ${CPM_DOWNLOAD_LOCATION}
-             STATUS DOWNLOAD_STAT
+            https://github.com/cpm-cmake/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake
+            ${CPM_DOWNLOAD_LOCATION}
+            STATUS DOWNLOAD_STAT
         )
         list(GET DOWNLOAD_STAT 0 DOWNLOAD_RES)
         if(NOT DOWNLOAD_RES EQUAL 0)
@@ -76,7 +81,20 @@ endforeach()
 
 include(${CPM_DOWNLOAD_LOCATION})
 
-CPMAddPackage("gh:TheBlackPlague/MantaRay#4038386a746ae65881e7d1f02673e1805f729cc9")
+CPMAddPackage(
+        NAME MantaRay
+        GITHUB_REPOSITORY TheBlackPlague/MantaRay
+        GIT_TAG 1c547d179c7cdf4f24e4f8a1fea228c6178d0ae2
+        OPTIONS
+        "BUILD_TEST OFF"
+        "BUILD_MB OFF"
+)
+
+CPMAddPackage(
+        NAME nanothread
+        GITHUB_REPOSITORY TheBlackPlague/nanothread
+        GIT_TAG master
+)
 
 include(BinaryResource.cmake)
 
@@ -110,13 +128,56 @@ file(GLOB StockDoryFrontendType
         "src/Terminal/UCI/*.h"
         "src/Terminal/*.h")
 
-add_executable(StockDory src/Terminal/main.cpp
-        ${StockDoryBackendType} ${StockDoryEngineType} ${StockDoryExternalType} ${StockDoryFrontendType})
+if(PYMODULE)
+    message(STATUS "Configured to build Python Module")
 
-target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+    if(UNIX AND NOT APPLE)
+        message(STATUS "Enabling Position-Independent Code")
+        set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+        set_target_properties(nanothread PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    endif()
 
-target_link_libraries(StockDory MantaRay)
+    set(PYBIND11_FINDPYTHON ON)
+    CPMAddPackage("gh:pybind/pybind11#a2e59f0e7065404b44dfe92a28aca47ba1378dc4")
 
-if(NOT WIN32)
-    target_link_libraries(StockDory pthread)
+    pybind11_add_module(StockDory src/Python/binding.cpp
+            ${StockDoryBackendType}
+            ${StockDoryEngineType}
+            ${StockDoryExternalType}
+            ${StockDoryFrontendType}
+    )
+
+    target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+    target_link_libraries(StockDory PRIVATE MantaRay nanothread)
+    if(NOT WIN32)
+        target_link_libraries(StockDory PRIVATE pthread)
+    endif()
+
+    install(TARGETS StockDory DESTINATION .)
+else()
+    message(STATUS "Configured to build executable")
+
+    add_executable(StockDory src/Terminal/main.cpp
+            ${StockDoryBackendType}
+            ${StockDoryEngineType}
+            ${StockDoryExternalType}
+            ${StockDoryFrontendType}
+    )
+
+    target_include_directories(StockDory PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+    target_link_libraries(StockDory MantaRay nanothread)
+    if(NOT WIN32)
+        target_link_libraries(StockDory pthread)
+    endif()
+
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
+endif()
+
+message(STATUS "NANOTHREAD COMPILATION: ${NANOTHREAD_NATIVE_FLAGS}")
+
+message(STATUS "CXX         FLAGS: ${CMAKE_CXX_FLAGS}"        )
+if(CMAKE_BUILD_TYPE MATCHES "Debug")
+    message(STATUS "CXX DEBUG   FLAGS: ${CMAKE_CXX_FLAGS_DEBUG}"  )
+elseif(CMAKE_BUILD_TYPE MATCHES "Release")
+    message(STATUS "CXX RELEASE FLAGS: ${CMAKE_CXX_FLAGS_RELEASE}")
 endif()

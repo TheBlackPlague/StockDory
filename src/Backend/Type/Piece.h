@@ -3,8 +3,6 @@
 // Licensed under MIT.
 //
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 #ifndef STOCKDORY_PIECE_H
 #define STOCKDORY_PIECE_H
 
@@ -24,12 +22,12 @@ enum Piece : uint8_t
 
 };
 
-inline constexpr Piece Next(const Piece p)
+constexpr Piece Next(const Piece p)
 {
     return static_cast<Piece>(static_cast<uint8_t>(p) + 1);
 }
 
-constexpr std::array<char, 7> P_CHAR = {
+constexpr std::array P_CHAR = {
     'P',
     'N',
     'B',
@@ -39,26 +37,24 @@ constexpr std::array<char, 7> P_CHAR = {
     ' '
 };
 
-constexpr inline char FirstLetter(const Piece p)
+constexpr char FirstLetter(const Piece p)
 {
     return P_CHAR[p];
 }
 
 std::map<Piece, std::string> P_STRING = {
-    {Pawn, "Pawn"},
+    {Pawn  , "Pawn"  },
     {Knight, "Knight"},
     {Bishop, "Bishop"},
-    {Rook, "Rook"},
-    {Queen, "Queen"},
-    {King, "King"},
-    {NAP, "NAP"}
+    {Rook  , "Rook"  },
+    {Queen , "Queen" },
+    {King  , "King"  },
+    {NAP   , "NAP"   }
 };
 
-inline std::string ToString(const Piece p)
+std::string ToString(const Piece p)
 {
     return P_STRING[p];
 }
 
 #endif //STOCKDORY_PIECE_H
-
-#pragma clang diagnostic pop

@@ -7,10 +7,10 @@
 #define STOCKDORY_UCIOPTION_H
 
 #include <cstdint>
-#include <string>
-#include <sstream>
 #include <functional>
 #include <iostream>
+#include <sstream>
+#include <string>
 
 namespace StockDory
 {
@@ -19,94 +19,93 @@ namespace StockDory
     {
 
         public:
-            virtual ~UCIOptionBase() = default;
+        virtual ~UCIOptionBase() = default;
 
-            [[nodiscard]]
-            virtual std::string Log() const = 0;
+        [[nodiscard]]
+        virtual std::string Log() const = 0;
 
-            virtual void Set(const std::string& value) = 0;
+        virtual void Set(const std::string& value) = 0;
 
     };
 
     template<typename T>
-    class UCIOption : public UCIOptionBase
+    class UCIOption final : public UCIOptionBase
     {
 
-        private:
-            using Handler = std::function<void(const T&)>;
+        using Handler = std::function<void(const T&)>;
 
-            std::string Name;
+        std::string Name;
 
-            T Default;
+        T Default;
 
-            typename std::enable_if<std::is_integral_v<T>, T>::type Min;
-            typename std::enable_if<std::is_integral_v<T>, T>::type Max;
+        std::enable_if_t<std::is_integral_v<T>, T> Min;
+        std::enable_if_t<std::is_integral_v<T>, T> Max;
 
-            Handler OptionHandler;
+        Handler OptionHandler;
 
         public:
-            UCIOption(const std::string& name, const T& defaultValue, const Handler& handler)
-            {
-                static_assert(std::is_integral<T>::value, "Min and Max must be defined for integral types.");
+        UCIOption(const std::string& name, const T& defaultValue, const Handler& handler)
+        {
+            static_assert(std::is_integral_v<T>, "Min and Max must be defined for integral types.");
 
-                Name = name;
-                Default = defaultValue;
-                OptionHandler = handler;
+            Name          = name;
+            Default       = defaultValue;
+            OptionHandler = handler;
+        }
+
+        UCIOption(const std::string& name, const T& defaultValue, const T& min, const T& max, const Handler& handler)
+        {
+            static_assert(std::is_integral_v<T>, "Min and Max can only be used with integral types.");
+
+            Name          = name;
+            Default       = defaultValue;
+            Min           = min;
+            Max           = max;
+            OptionHandler = handler;
+        }
+
+        [[nodiscard]]
+        std::string GetName() const
+        {
+            return Name;
+        }
+
+        [[nodiscard]]
+        std::string Log() const override
+        {
+            std::stringstream output;
+
+            output << "option name " << Name << " ";
+
+            if (std::is_integral_v<T>)
+                output << "type spin ";
+            else if (std::is_same_v<T, bool>)
+                output << "type check ";
+            else if (std::is_same_v<T, std::string>)
+                output << "type string ";
+            else throw std::runtime_error("Unsupported type.");
+
+            if (std::is_same_v<T, uint8_t>)
+                 output << "default " << static_cast<uint16_t>(Default);
+            else if (std::is_same_v<T, int8_t>)
+                 output << "default " << static_cast< int16_t>(Default);
+            else output << "default " << Default;
+
+            if (std::is_integral_v<T>) {
+                if (std::is_same_v<T, uint8_t>)
+                     output << " min " << static_cast<uint16_t>(Min) << " max " << static_cast<uint16_t>(Max);
+                else if (std::is_same_v<T, int8_t>)
+                     output << " min " << static_cast< int16_t>(Min) << " max " << static_cast< int16_t>(Max);
+                else output << " min " << Min << " max " << Max;
             }
 
-            UCIOption(const std::string& name, const T& defaultValue, const T& min, const T& max, const Handler& handler)
-            {
-                static_assert(std::is_integral_v<T>, "Min and Max can only be used with integral types.");
+            return output.str();
+        }
 
-                Name = name;
-                Default = defaultValue;
-                Min = min;
-                Max = max;
-                OptionHandler = handler;
-            }
-
-            [[nodiscard]]
-            std::string GetName() const
-            {
-                return Name;
-            }
-
-            [[nodiscard]]
-            std::string Log() const override
-            {
-                std::stringstream output;
-
-                output << "option name " << Name << " ";
-
-                if (std::is_integral_v<T>)
-                    output << "type spin ";
-                else if (std::is_same_v<T, bool>)
-                    output << "type check ";
-                else if (std::is_same_v<T, std::string>)
-                    output << "type string ";
-                else throw std::runtime_error("Unsupported type.");
-
-                if      (std::is_same_v<T, uint8_t>)
-                     output << "default " << static_cast<uint16_t>(Default);
-                else if (std::is_same_v<T,  int8_t>)
-                     output << "default " << static_cast< int16_t>(Default);
-                else output << "default " << Default;
-
-                if (std::is_integral_v<T>) {
-                    if      (std::is_same_v<T, uint8_t>)
-                         output << " min " << static_cast<uint16_t>(Min) << " max " << static_cast<uint16_t>(Max);
-                    else if (std::is_same_v<T,  int8_t>)
-                         output << " min " << static_cast< int16_t>(Min) << " max " << static_cast< int16_t>(Max);
-                    else output << " min " << Min << " max " << Max;
-                }
-
-                return output.str();
-            }
-
-            void Set(const std::string& value) override
-            {
-                OptionHandler(strutil::parse_string<T>(value));
-            }
+        void Set(const std::string& value) override
+        {
+            OptionHandler(strutil::parse_string<T>(value));
+        }
 
     };
 

@@ -9,10 +9,10 @@
 #include <array>
 #include <cassert>
 
-#include "../EngineParameter.h"
-#include "Policy.h"
-#include "KillerTable.h"
 #include "HistoryTable.h"
+#include "KillerTable.h"
+#include "Policy.h"
+#include "../EngineParameter.h"
 
 #include "../../Backend/Move/MoveList.h"
 #include "../../Backend/Type/Move.h"
@@ -24,115 +24,126 @@ namespace StockDory
     class OrderedMoveList
     {
 
-        using OrderedMove = std::pair<int32_t, Move>;
+        struct OrderedMove
+        {
 
-        private:
-            std::array<OrderedMove, MaxMove> Internal = {};
-            uint8_t Size = 0;
+            int32_t Score;
+            Move    Move ;
 
-        public:
-            explicit OrderedMoveList(const Board& board, const uint8_t ply,
-                                     const KillerTable& kTable, const HistoryTable& hTable,
-                                     const Move ttMove)
-            {
-                const Move kOne = kTable.Get<1>(ply);
-                const Move kTwo = kTable.Get<2>(ply);
+            OrderedMove() = default;
 
-                const Policy<Color, CaptureOnly> policy (kOne, kTwo, ttMove);
+            OrderedMove(const int32_t score, const ::Move move) : Score(score), Move(move) {}
 
-                const PinBitBoard   pin   = board.Pin  <Color, Opposite(Color)>();
-                const CheckBitBoard check = board.Check<       Opposite(Color)>();
+            OrderedMove(const OrderedMove& other) : Score(other.Score), Move(other.Move) {}
 
-                if (check.DoubleCheck) {
-                    AddMoveLoop<King  >(board, hTable, policy, pin, check);
-                } else {
-                    AddMoveLoop<Pawn  >(board, hTable, policy, pin, check);
-                    AddMoveLoop<Knight>(board, hTable, policy, pin, check);
-                    AddMoveLoop<Bishop>(board, hTable, policy, pin, check);
-                    AddMoveLoop<Rook  >(board, hTable, policy, pin, check);
-                    AddMoveLoop<Queen >(board, hTable, policy, pin, check);
-                    AddMoveLoop<King  >(board, hTable, policy, pin, check);
-                }
-            }
+        };
 
-            template<Piece Piece>
-            inline void AddMoveLoop(const Board& board, const HistoryTable& hTable,
-                                    const Policy<Color, CaptureOnly>& policy,
-                                    const PinBitBoard& pin, const CheckBitBoard& check)
-            {
-                BitBoardIterator iterator (board.PieceBoard<Color>(Piece));
-
-                for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
-                    const MoveList<Piece, Color> moves (board, sq, pin, check);
-                    BitBoardIterator moveIterator = CaptureOnly ?
-                            (Piece == Pawn ?
-                             moves.Mask(~board[NAC] | board.EnPassant()) :
-                             moves.Mask(~board[NAC])).Iterator() :
-                             moves                         .Iterator() ;
-
-                    for (Square m = moveIterator.Value(); m != NASQ; m = moveIterator.Value()) {
-                        if (moves.Promotion(sq)) {
-                            Internal[Size++] = CreateOrdered<Piece, Queen >(board, hTable, policy, sq, m);
-                            Internal[Size++] = CreateOrdered<Piece, Knight>(board, hTable, policy, sq, m);
-                            Internal[Size++] = CreateOrdered<Piece, Rook  >(board, hTable, policy, sq, m);
-                            Internal[Size++] = CreateOrdered<Piece, Bishop>(board, hTable, policy, sq, m);
-                        } else {
-                            Internal[Size++] = CreateOrdered<Piece        >(board, hTable, policy, sq, m);
-                        }
-                    }
-                }
-            }
-
-        private:
-            template<Piece Piece, enum Piece Promotion = NAP>
-            inline std::pair<int32_t, Move> CreateOrdered(const Board& board,
-                                                          const HistoryTable& hTable,
-                                                          const Policy<Color, CaptureOnly>& policy,
-                                                          const Square from, const Square to)
-            {
-                const Move move = Move(from, to, Promotion);
-                return {policy.template Score<Piece, Promotion>(board, hTable, move), move };
-            }
+        std::array<OrderedMove, MaxMove> Internal;
+        uint8_t                          Size = 0;
 
         public:
-            [[nodiscard]]
-            inline Move operator [](const uint8_t index)
-            {
-                assert(index < Size);
+        explicit OrderedMoveList(const Board&        board, const uint8_t       ply   ,
+                                 const KillerTable& kTable, const HistoryTable& hTable,
+                                 const Move         ttMove)
+        {
+            const Move kOne = kTable[0][ply];
+            const Move kTwo = kTable[1][ply];
 
-                SortNext(index);
-                return Internal[index].second;
+            const Policy<Color, CaptureOnly> policy (kOne, kTwo, ttMove);
+
+            const PinBitBoard   pin   = board.Pin<Color, Opposite(Color)>();
+
+            if (const CheckBitBoard check = board.Check<Opposite(Color)>(); check.DoubleCheck) {
+                AddMoveLoop<King  >(board, hTable, policy, pin, check);
+            } else {
+                AddMoveLoop<Pawn  >(board, hTable, policy, pin, check);
+                AddMoveLoop<Knight>(board, hTable, policy, pin, check);
+                AddMoveLoop<Bishop>(board, hTable, policy, pin, check);
+                AddMoveLoop<Rook  >(board, hTable, policy, pin, check);
+                AddMoveLoop<Queen >(board, hTable, policy, pin, check);
+                AddMoveLoop<King  >(board, hTable, policy, pin, check);
             }
+        }
 
-            [[nodiscard]]
-            inline Move UnsortedAccess(const uint8_t index) const
-            {
-                assert(index < Size);
+        template<Piece Piece>
+        void AddMoveLoop(const Board&                      board, const HistoryTable& hTable,
+                         const Policy<Color, CaptureOnly>& policy,
+                         const PinBitBoard&                pin, const CheckBitBoard& check)
+        {
+            BitBoardIterator iterator (board.PieceBoard<Color>(Piece));
 
-                return Internal[index].second;
+            for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
+                const MoveList<Piece, Color> moves (board, sq, pin, check);
+                BitBoardIterator             moveIterator =
+                    CaptureOnly ? (Piece == Pawn
+                    ? moves.Mask(~board[NAC] | board.EnPassant())
+                    : moves.Mask(~board[NAC])).Iterator()
+                    : moves.Iterator();
+
+                for (Square m = moveIterator.Value(); m != NASQ; m = moveIterator.Value()) {
+                    if (moves.Promotion(sq)) {
+                        Internal[Size++] = CreateOrdered<Piece, Queen >(board, hTable, policy, sq, m);
+                        Internal[Size++] = CreateOrdered<Piece, Knight>(board, hTable, policy, sq, m);
+                        Internal[Size++] = CreateOrdered<Piece, Rook  >(board, hTable, policy, sq, m);
+                        Internal[Size++] = CreateOrdered<Piece, Bishop>(board, hTable, policy, sq, m);
+                    } else
+                        Internal[Size++] = CreateOrdered<Piece        >(board, hTable, policy, sq, m);
+                }
             }
-
-            [[nodiscard]]
-            inline uint8_t Count() const
-            {
-                return Size;
-            }
+        }
 
         private:
-            inline void SortNext(const uint8_t sorted)
-            {
-                uint8_t index = sorted    ;
-                uint8_t i     = sorted + 1;
+        // ReSharper disable once CppRedundantElaboratedTypeSpecifier
+        template<Piece Piece, enum Piece Promotion = NAP>
+        static OrderedMove CreateOrdered(const Board&                      board ,
+                                         const HistoryTable&               hTable,
+                                         const Policy<Color, CaptureOnly>& policy,
+                                         const Square                      from  ,
+                                         const Square                      to    )
+        {
+            const auto move = Move(from, to, Promotion);
+            return { policy.template Score<Piece, Promotion>(board, hTable, move), move };
+        }
 
-                while (i < Size) {
-                    if (Internal[i].first > Internal[index].first) index = i;
-                    i++;
-                }
+        public:
+        [[nodiscard]]
+        Move operator [](const uint8_t index)
+        {
+            assert(index < Size);
 
-                const OrderedMove temp = Internal[index];
-                Internal[index ] = Internal[sorted];
-                Internal[sorted] = temp;
+            SortNext(index);
+            return Internal[index].Move;
+        }
+
+        [[nodiscard]]
+        Move UnsortedAccess(const uint8_t index) const
+        {
+            assert(index < Size);
+
+            return Internal[index].Move;
+        }
+
+        [[nodiscard]]
+        uint8_t Count() const
+        {
+            return Size;
+        }
+
+        private:
+        void SortNext(const uint8_t sorted)
+        {
+            uint8_t index = sorted;
+            uint8_t i     = sorted + 1;
+
+            while (i < Size) {
+                if (Internal[i].Score > Internal[index].Score) index = i;
+                i++;
             }
+
+            const OrderedMove temp = Internal[index];
+            Internal[index]        = Internal[sorted];
+            Internal[sorted]       = temp;
+        }
 
     };
 

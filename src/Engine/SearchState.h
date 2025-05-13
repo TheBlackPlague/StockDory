@@ -3,16 +3,16 @@
 // Licensed under LGPL-3.0.
 //
 
-#ifndef STOCKDORY_ENGINEENTRY_H
-#define STOCKDORY_ENGINEENTRY_H
+#ifndef STOCKDORY_SEARCHSTATE_H
+#define STOCKDORY_SEARCHSTATE_H
 
-#include "../Backend/Type/Zobrist.h"
 #include "../Backend/Type/Move.h"
+#include "../Backend/Type/Zobrist.h"
 
 namespace StockDory
 {
 
-    enum EngineEntryType : uint8_t
+    enum SearchStateType : uint8_t
     {
 
         Exact,
@@ -22,17 +22,17 @@ namespace StockDory
 
     };
 
-    struct EngineEntry
+    struct SearchState
     {
 
         ZobristHash     Hash       = 0;
         int32_t         Evaluation = 0;
         Move            Move       = ::Move();
         uint8_t         Depth      = 0;
-        EngineEntryType Type       = Invalid;
+        SearchStateType Type       = Invalid;
 
     };
 
 } // StockDory
 
-#endif //STOCKDORY_ENGINEENTRY_H
+#endif //STOCKDORY_SEARCHSTATE_H

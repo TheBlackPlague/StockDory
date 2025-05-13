@@ -3,14 +3,12 @@
 // Licensed under MIT.
 //
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 #ifndef STOCKDORY_SQUARE_H
 #define STOCKDORY_SQUARE_H
 
-#include <cstdint>
 #include <array>
-#include <string>
+#include <cstdint>
+#include <sstream>
 
 enum Square : uint8_t
 {
@@ -26,12 +24,12 @@ enum Square : uint8_t
 
 };
 
-inline constexpr Square Next(const Square sq)
+constexpr Square Next(const Square sq)
 {
     return static_cast<Square>(static_cast<uint8_t>(sq) + 1);
 }
 
-constexpr std::array<char, 65> FILE_CHAR {
+constexpr std::array FILE_CHAR {
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
@@ -39,10 +37,10 @@ constexpr std::array<char, 65> FILE_CHAR {
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', ' '
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'X'
 };
 
-constexpr std::array<char, 65> RANK {
+constexpr std::array RANK_CHAR {
     '1', '1', '1', '1', '1', '1', '1', '1',
     '2', '2', '2', '2', '2', '2', '2', '2',
     '3', '3', '3', '3', '3', '3', '3', '3',
@@ -50,19 +48,34 @@ constexpr std::array<char, 65> RANK {
     '5', '5', '5', '5', '5', '5', '5', '5',
     '6', '6', '6', '6', '6', '6', '6', '6',
     '7', '7', '7', '7', '7', '7', '7', '7',
-    '8', '8', '8', '8', '8', '8', '8', '8', ' '
+    '8', '8', '8', '8', '8', '8', '8', '8', '0'
 };
 
-inline constexpr char File(const Square sq)
+constexpr char File(const Square sq)
 {
     return FILE_CHAR[sq];
 }
 
-inline constexpr char Rank(const Square sq)
+constexpr char Rank(const Square sq)
 {
-    return RANK[sq];
+    return RANK_CHAR[sq];
+}
+
+std::string ToString(const Square sq)
+{
+    std::stringstream ss;
+    ss << static_cast<char>(tolower(FILE_CHAR[sq]));
+    ss << RANK_CHAR[sq];
+
+    return ss.str();
+}
+
+Square FromString(const std::string& s)
+{
+    const uint8_t file = tolower(s[0]) - 97;
+    const uint8_t rank = tolower(s[1]) - 49;
+
+    return static_cast<Square>(rank * 8 + file);
 }
 
 #endif //STOCKDORY_SQUARE_H
-
-#pragma clang diagnostic pop

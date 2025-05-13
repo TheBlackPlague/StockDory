@@ -18,12 +18,12 @@ enum Color : uint8_t
 
 };
 
-inline constexpr Color Next(const Color c)
+constexpr Color Next(const Color c)
 {
-    return static_cast<Color>(static_cast<uint8_t>(c) + 1);
+    return static_cast<Color>(static_cast<uint8_t>(c) +   1);
 }
 
-inline constexpr Color Opposite(const Color c)
+constexpr Color Opposite(const Color c)
 {
     return static_cast<Color>(static_cast<uint8_t>(c) ^ 0x1);
 }
@@ -31,10 +31,10 @@ inline constexpr Color Opposite(const Color c)
 std::map<Color, std::string> C_STRING = {
     {White, "White"},
     {Black, "Black"},
-    {NAC, "NAC"}
+    {NAC  , "NAC"  }
 };
 
-inline std::string ToString(const Color c)
+std::string ToString(const Color c)
 {
     return C_STRING[c];
 }
