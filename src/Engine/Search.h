@@ -412,10 +412,8 @@ namespace StockDory
 
                 // ReSharper disable once CppDFAConstantConditions
                 if (quiet && !Stop) {
-                    if (KTable[0][ply] != move) {
-                        KTable[1][ply] = KTable[0][ply];
-                        KTable[0][ply] = move;
-                    }
+                    KTable[1][ply] = KTable[0][ply] != move ? KTable[0][ply] : KTable[1][ply];
+                    KTable[0][ply] = move;
 
                     HTable[Color][Board[move.From()].Piece()][move.To()] += historyBonus + i * historyFactor;
 
