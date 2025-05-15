@@ -290,9 +290,11 @@ namespace StockDory
 
             const bool checked   = Board.Checked<Color>();
             bool       improving = false;
+            bool       faltering = false;
 
             if (!Pv && !checked) {
-                improving = ply >= 2 && staticEvaluation >= Stack[ply - 2].StaticEvaluation;
+                improving = ply >= 2 &&                staticEvaluation >= Stack[ply - 2].StaticEvaluation;
+                faltering = ply >= 3 && Stack[ply - 1].StaticEvaluation >= Stack[ply - 3].StaticEvaluation;
 
                 //region Reverse Futility Pruning
                 if (RFP(depth, staticEvaluation, improving, beta)) return beta;
@@ -366,11 +368,12 @@ namespace StockDory
                     if (i >= LMRFullSearchThreshold && lmr) {
                         int16_t r = LogarithmicReductionTable[depth][i];
 
+                        // improving = !PV && !checked ? value : false;
+
                         if (!Pv) r++;
 
-                        if (!improving) r++;
-
-                        if (Board.Checked<OColor>()) r--;
+                        if ( improving) r++;
+                        if (!faltering) r++;
 
                         const int16_t reducedDepth = static_cast<int16_t>(std::max(depth - r, 1));
 
