@@ -372,8 +372,8 @@ namespace StockDory
 
                         if (!Pv) r++;
 
-                        if ( improving) r++;
-                        if (!faltering) r++;
+                        if (!improving) r++;
+                        if ( faltering) r++;
 
                         const int16_t reducedDepth = static_cast<int16_t>(std::max(depth - r, 1));
 
