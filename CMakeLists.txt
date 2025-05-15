@@ -84,7 +84,7 @@ include(${CPM_DOWNLOAD_LOCATION})
 CPMAddPackage(
         NAME MantaRay
         GITHUB_REPOSITORY TheBlackPlague/MantaRay
-        GIT_TAG 1c547d179c7cdf4f24e4f8a1fea228c6178d0ae2
+        GIT_TAG e14649cc38621745d2fad3f4de3971c367736df5
         OPTIONS
         "BUILD_TEST OFF"
         "BUILD_MB OFF"
