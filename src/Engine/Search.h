@@ -368,9 +368,7 @@ namespace StockDory
 
                         if (!Pv) r++;
 
-                        if (!improving) r++;
-
-                        if (Board.Checked<OColor>()) r--;
+                        if (improving) r++;
 
                         const int16_t reducedDepth = static_cast<int16_t>(std::max(depth - r, 1));
 
