@@ -272,7 +272,7 @@ namespace StockDory
                 ttHit  = true;
                 ttMove = ttState.Move;
 
-                if (!Pv && ttState.Depth >= depth                                            &&
+                if (!Pv && ttState.Depth >= depth && Stack[ply].HalfMoveCounter < 100        &&
                           (ttState.Type  == Exact                                            ||
                           (ttState.Type  == BetaCutoff     && ttState.Evaluation >= beta )   ||
                           (ttState.Type  == AlphaUnchanged && ttState.Evaluation <= alpha))) {
