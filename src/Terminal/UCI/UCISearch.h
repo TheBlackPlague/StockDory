@@ -13,7 +13,7 @@
 namespace StockDory
 {
 
-    class UCIHandler
+    class UCIHandler : DefaultHandler
     {
 
         using PVEntry = PrincipleVariationEntry;
@@ -31,9 +31,8 @@ namespace StockDory
         }
 
         public:
-        static void HandleDepthIteration(const uint8_t  depth, const uint8_t  selectiveDepth, const int32_t evaluation,
-                                         const uint64_t nodes, const uint64_t _ ,
-                                         const MS       time,  const PVEntry& pv)
+        static void HandleDepthIteration(const uint8_t  depth, const uint8_t selectiveDepth, const int32_t  evaluation,
+                                         const uint64_t nodes, const MS      time          , const PVEntry& pv)
         {
             std::stringstream output;
 
@@ -58,6 +57,21 @@ namespace StockDory
             output << "nps " << nps << " ";
             output << "time " << displayedTime << " ";
             output << "pv " << PvLine(pv);
+
+            std::cout << output.str() << std::endl;
+        }
+
+        static void HandleTTIteration(const uint8_t  depth,
+                                      const uint64_t exact, const uint64_t betaCutoff, const uint64_t alphaUnchanged)
+        {
+            std::stringstream output;
+
+            output << "info string ";
+            output << "depth " << static_cast<uint16_t>(depth) << " ";
+
+            output << "tt-exact "           << exact          << " ";
+            output << "tt-beta-cutoff "     << betaCutoff     << " ";
+            output << "tt-alpha-unchanged " << alphaUnchanged << " ";
 
             std::cout << output.str() << std::endl;
         }

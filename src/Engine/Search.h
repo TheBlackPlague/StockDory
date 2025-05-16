@@ -61,9 +61,13 @@ namespace StockDory
                                          [[maybe_unused]] const uint8_t  selectiveDepth,
                                          [[maybe_unused]] const int32_t      evaluation,
                                          [[maybe_unused]] const uint64_t          nodes,
-                                         [[maybe_unused]] const uint64_t        ttNodes,
                                          [[maybe_unused]] const MS                 time,
                                          [[maybe_unused]] const PVEntry&             pv) {}
+
+        static void HandleTTIteration([[maybe_unused]] const uint8_t           depth,
+                                      [[maybe_unused]] const uint64_t          exact,
+                                      [[maybe_unused]] const uint64_t     betaCutoff,
+                                      [[maybe_unused]] const uint64_t alphaUnchanged) {}
 
         static void HandleBestMove([[maybe_unused]] const Move move) {}
 
@@ -94,10 +98,11 @@ namespace StockDory
 
         std::array<SearchStackEntry, MaxDepth> Stack = {};
 
+        std::array<uint64_t, 3> TTHits = {};
+
         uint8_t SelectiveDepth = 0;
 
-        uint64_t   Nodes = 0;
-        uint64_t TTNodes = 0;
+        uint64_t Nodes = 0;
 
         int32_t Evaluation = -Infinity;
         Move    BestMove   = NoMove;
@@ -143,9 +148,14 @@ namespace StockDory
                     SelectiveDepth,
                     Evaluation,
                     Nodes,
-                    TTNodes,
                     TC.Elapsed(),
                     PVTable[0]
+                );
+                EventHandler::HandleTTIteration(
+                    currentDepth,
+                    TTHits[Exact],
+                    TTHits[BetaCutoff],
+                    TTHits[AlphaUnchanged]
                 );
                 currentDepth++;
             }
@@ -272,12 +282,14 @@ namespace StockDory
                 ttHit  = true;
                 ttMove = ttState.Move;
 
-                if (!Pv && ttState.Depth >= depth                                            &&
-                          (ttState.Type  == Exact                                            ||
-                          (ttState.Type  == BetaCutoff     && ttState.Evaluation >= beta )   ||
-                          (ttState.Type  == AlphaUnchanged && ttState.Evaluation <= alpha))) {
-                    TTNodes++;
-                    return ttState.Evaluation;
+                if (!Pv && ttState.Depth >= depth) {
+                    TTHits[ttState.Type]++;
+
+                    if (ttState.Type == Exact                                        ) return ttState.Evaluation;
+                    if (ttState.Type == BetaCutoff     && ttState.Evaluation >= beta ) return ttState.Evaluation;
+                    if (ttState.Type == AlphaUnchanged && ttState.Evaluation <= alpha) return ttState.Evaluation;
+
+                    TTHits[ttState.Type]--;
                 }
             }
             //endregion
@@ -454,10 +466,11 @@ namespace StockDory
                 const ZobristHash  hash    = Board.Zobrist();
                 const SearchState& ttState = TTable[hash];
 
-                if (ttState.Hash == hash           &&
-                   (ttState.Type == Exact          ||
-                   (ttState.Type == BetaCutoff     && ttState.Evaluation >= beta ) ||
-                   (ttState.Type == AlphaUnchanged && ttState.Evaluation <= alpha) )) return ttState.Evaluation;
+                if (ttState.Hash == hash) {
+                    if (ttState.Type == Exact                                        ) return ttState.Evaluation;
+                    if (ttState.Type == BetaCutoff     && ttState.Evaluation >= beta ) return ttState.Evaluation;
+                    if (ttState.Type == AlphaUnchanged && ttState.Evaluation <= alpha) return ttState.Evaluation;
+                }
             }
             //endregion
 

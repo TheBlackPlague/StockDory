@@ -22,7 +22,7 @@
 
 namespace py = pybind11;
 
-constexpr size_t API_VERSION = 0;
+constexpr size_t API_VERSION = 1;
 
 class PyMoveList
 {
@@ -188,7 +188,7 @@ class PyMoveList
 template<size_t T>
 class PyConstantHolder {};
 
-class PySearchHandler
+class PySearchHandler : StockDory::DefaultHandler
 {
 
     using PV = StockDory::PrincipleVariationEntry;
@@ -197,7 +197,6 @@ class PySearchHandler
         uint8_t ,
         uint8_t ,
          int32_t,
-        uint64_t,
         uint64_t,
          int64_t,
         const PV&
@@ -208,7 +207,6 @@ class PySearchHandler
     static inline DepthIterationHandler DepthIterationMethod = [](const uint8_t ,
                                                                   const uint8_t ,
                                                                   const  int32_t,
-                                                                  const uint64_t,
                                                                   const uint64_t,
                                                                   const  int64_t,
                                                                   const PV& ) -> void {};
@@ -225,16 +223,15 @@ class PySearchHandler
               BestMoveMethod = std::move(handler);
     }
 
-    static void HandleDepthIteration(const uint8_t       a, const uint8_t  b, const int32_t c,
-                                     const uint64_t      d, const uint64_t e,
-                                     const StockDory::MS f, const PV&      g)
+    static void HandleDepthIteration(const uint8_t       a, const uint8_t       b, const int32_t c,
+                                     const uint64_t      d, const StockDory::MS e, const PV&     f)
     {
-        DepthIterationMethod(a, b, c, d, e, f.count(), g);
+        DepthIterationMethod(a, b, c, d, e.count(), f);
     }
 
     static void HandleBestMove(const Move a)
     {
-              BestMoveMethod(a                          );
+              BestMoveMethod(a                       );
     }
 
 };
@@ -823,13 +820,13 @@ PYBIND11_MODULE(StockDory, m)
             {
                 PySearchHandler::RegisterDepthIterationHandler(
                     [callback = std::move(callback)](const uint8_t       a, const uint8_t  b, const int32_t c,
-                                                     const uint64_t      d, const uint64_t e, const int64_t f,
-                                                     const StockDory::PrincipleVariationEntry& g) -> void
+                                                     const uint64_t      d,                   const int64_t e,
+                                                     const StockDory::PrincipleVariationEntry& f) -> void
                     {
                         py::gil_scoped_acquire _;
 
                         // ReSharper disable once CppExpressionWithoutSideEffects
-                        callback(a, b, c, d, e, f, g);
+                        callback(a, b, c, d, e, f);
                     }
                 );
             },
@@ -846,7 +843,7 @@ PYBIND11_MODULE(StockDory, m)
                         py::gil_scoped_acquire _;
 
                         // ReSharper disable once CppExpressionWithoutSideEffects
-                        callback(a                  );
+                        callback(a               );
                     }
                 );
             },
