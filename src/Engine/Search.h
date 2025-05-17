@@ -204,11 +204,11 @@ namespace StockDory
                 if (bestEvaluation <= alpha) {
                     research++;
 
-                    alpha = std::max(alpha - research * research * AspirationDelta, -Infinity);
+                    alpha = std::max<Score>(alpha - research * research * AspirationDelta, -Infinity);
                 } else if (bestEvaluation >= beta) {
                     research++;
 
-                    beta  = std::min(beta  + research * research * AspirationDelta,  Infinity);
+                    beta  = std::min<Score>(beta  + research * research * AspirationDelta,  Infinity);
 
                     BestMove = PVTable[0].PV[0];
                 } else return bestEvaluation;
@@ -257,8 +257,8 @@ namespace StockDory
                 //endregion
 
                 //region Mate Pruning
-                alpha = std::max(alpha, -Mate + ply    );
-                beta  = std::min(beta ,  Mate - ply - 1);
+                alpha = std::max<Score>(alpha, -Mate + ply    );
+                beta  = std::min<Score>(beta ,  Mate - ply - 1);
                 if (alpha >= beta) return alpha;
                 //endregion
             }

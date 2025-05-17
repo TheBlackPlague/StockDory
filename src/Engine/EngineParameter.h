@@ -9,7 +9,7 @@
 #include "SearchState.h"
 #include "TranspositionTable.h"
 
-constexpr StockDory::Score Infinity = 1000000     ;
+constexpr StockDory::Score Infinity = 32000       ;
 constexpr StockDory::Score Mate     = Infinity - 1;
 constexpr StockDory::Score Draw     = 0           ;
 

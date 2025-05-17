@@ -14,7 +14,7 @@
 namespace StockDory
 {
 
-    using Score = int32_t;
+    using Score = int16_t;
 
     class Evaluation
     {
@@ -70,7 +70,11 @@ namespace StockDory
         [[clang::always_inline]]
         static Score Evaluate(const Color color)
         {
-            return static_cast<Score>(NN.Evaluate(color));
+            return static_cast<Score>(std::clamp<MantaRay::i32>(
+                NN.Evaluate(color),
+                std::numeric_limits<Score>::min(),
+                std::numeric_limits<Score>::max()
+            ));
         }
 
     };
