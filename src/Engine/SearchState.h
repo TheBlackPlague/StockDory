@@ -9,6 +9,8 @@
 #include "../Backend/Type/Move.h"
 #include "../Backend/Type/Zobrist.h"
 
+#include "Evaluation.h"
+
 namespace StockDory
 {
 
@@ -26,7 +28,7 @@ namespace StockDory
     {
 
         ZobristHash     Hash       = 0;
-        int32_t         Evaluation = 0;
+        Score           Evaluation = 0;
         Move            Move       = ::Move();
         uint8_t         Depth      = 0;
         SearchStateType Type       = Invalid;

@@ -14,6 +14,8 @@
 namespace StockDory
 {
 
+    using Score = int32_t;
+
     class Evaluation
     {
 
@@ -66,9 +68,9 @@ namespace StockDory
         }
 
         [[clang::always_inline]]
-        static int32_t Evaluate(const Color color)
+        static Score Evaluate(const Color color)
         {
-            return NN.Evaluate(color);
+            return static_cast<Score>(NN.Evaluate(color));
         }
 
     };

@@ -59,7 +59,7 @@ namespace StockDory
         public:
         static void HandleDepthIteration([[maybe_unused]] const uint8_t           depth,
                                          [[maybe_unused]] const uint8_t  selectiveDepth,
-                                         [[maybe_unused]] const int32_t      evaluation,
+                                         [[maybe_unused]] const Score        evaluation,
                                          [[maybe_unused]] const uint64_t          nodes,
                                          [[maybe_unused]] const uint64_t        ttNodes,
                                          [[maybe_unused]] const MS                 time,
@@ -78,7 +78,7 @@ namespace StockDory
         struct SearchStackEntry
         {
 
-            int32_t StaticEvaluation = 0;
+            Score   StaticEvaluation = 0;
             uint8_t HalfMoveCounter  = 0;
 
         };
@@ -99,8 +99,8 @@ namespace StockDory
         uint64_t   Nodes = 0;
         uint64_t TTNodes = 0;
 
-        int32_t Evaluation = -Infinity;
-        Move    BestMove   = NoMove;
+        Score Evaluation = -Infinity;
+        Move  BestMove   = NoMove;
 
         uint8_t BestMoveStability = 0;
 
@@ -174,11 +174,11 @@ namespace StockDory
         }
 
         template<Color Color>
-        int32_t Aspiration(const int16_t depth)
+        Score Aspiration(const int16_t depth)
         {
             //region Window Setting
-            int32_t alpha = -Infinity;
-            int32_t beta  =  Infinity;
+            Score alpha = -Infinity;
+            Score beta  =  Infinity;
 
             if (depth > AspirationDepth) {
                 alpha = Evaluation - AspirationSize;
@@ -198,7 +198,7 @@ namespace StockDory
                 //endregion
 
                 // ReSharper disable once CppTooWideScopeInitStatement
-                const int32_t bestEvaluation = AlphaBeta<Color, true, true>(0, depth, alpha, beta);
+                const Score bestEvaluation = AlphaBeta<Color, true, true>(0, depth, alpha, beta);
 
                 //region Modify Window
                 if (bestEvaluation <= alpha) {
@@ -217,7 +217,7 @@ namespace StockDory
         }
 
         template<Color Color, bool Pv, bool Root>
-        int32_t AlphaBeta(const uint8_t ply, int16_t depth, int32_t alpha, int32_t beta)
+        Score AlphaBeta(const uint8_t ply, int16_t depth, Score alpha, Score beta)
         {
             //region Out of Time & Force Stop
             if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) [[unlikely]] { Stop = true; return Draw; }
@@ -283,7 +283,7 @@ namespace StockDory
             //endregion
 
             //region Static Evaluation
-            const int32_t staticEvaluation = ttHit ? StaticEvaluationTT<Color>(ttState) : Evaluation::Evaluate(Color);
+            const Score staticEvaluation = ttHit ? StaticEvaluationTT<Color>(ttState) : Evaluation::Evaluate(Color);
 
             Stack[ply].StaticEvaluation = staticEvaluation;
             //endregion
@@ -358,7 +358,7 @@ namespace StockDory
 
                 const PreviousState boardState = EngineMove<true>(move, ply, quiet);
 
-                int32_t evaluation = 0;
+                Score evaluation = 0;
                 if (i == 0)
                     evaluation = -AlphaBeta<OColor, Pv, false>(ply + 1, depth - 1, -beta, -alpha);
                 else {
@@ -441,7 +441,7 @@ namespace StockDory
         }
 
         template<Color Color, bool Pv>
-        int32_t Q(const uint8_t ply, int32_t alpha, const int32_t beta)
+        Score Q(const uint8_t ply, Score alpha, const Score beta)
         {
             constexpr auto OColor = Opposite(Color);
 
@@ -462,7 +462,7 @@ namespace StockDory
             //endregion
 
             //region Static Evaluation
-            const int32_t staticEvaluation = Evaluation::Evaluate(Color);
+            const Score staticEvaluation = Evaluation::Evaluate(Color);
 
             if (staticEvaluation >= beta) return beta;
             if (staticEvaluation > alpha) alpha = staticEvaluation;
@@ -474,7 +474,7 @@ namespace StockDory
             //endregion
 
             //region Fail-soft Alpha Beta Negamax
-            int32_t bestEvaluation = staticEvaluation;
+            Score bestEvaluation = staticEvaluation;
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move = moves[i];
 
@@ -484,7 +484,7 @@ namespace StockDory
 
                 const PreviousState state = EngineMove<false>(move, ply);
 
-                const int32_t evaluation = -Q<OColor, Pv>(ply + 1, -beta, -alpha);
+                const Score evaluation = -Q<OColor, Pv>(ply + 1, -beta, -alpha);
 
                 EngineUndoMove<false>(state, move);
 
@@ -506,7 +506,7 @@ namespace StockDory
         }
 
         template<Color Color, bool Root>
-        bool NMP(const uint8_t ply, const int16_t depth, const int32_t staticEvaluation, const int32_t beta)
+        bool NMP(const uint8_t ply, const int16_t depth, const Score staticEvaluation, const Score beta)
         {
             if (Root || depth < NullMoveDepth || staticEvaluation < beta) return false;
 
@@ -519,7 +519,7 @@ namespace StockDory
 
             const PreviousStateNull state = Board.Move();
 
-            const int32_t evaluation = -AlphaBeta<OColor, false, false>
+            const Score evaluation = -AlphaBeta<OColor, false, false>
                     (ply + 1, depth - reduction, -beta, -beta + 1);
 
             Board.UndoMove(state);
@@ -528,8 +528,9 @@ namespace StockDory
         }
 
         template<Color Color>
-        int32_t PVS(      int32_t evaluation, const uint8_t ply , const int16_t depth,
-                    const int32_t alpha     , const int32_t beta)
+        Score PVS(      Score evaluation, const uint8_t ply , const int16_t depth,
+                  const Score alpha,
+                  const Score beta)
         {
             if (evaluation <= alpha) return evaluation;
 
@@ -573,8 +574,8 @@ namespace StockDory
             if (UpdateHistory) Repetition.Pull();
         }
 
-        static bool RFP(const int16_t depth, const int32_t     staticEvaluation,
-                        const bool    improving, const int32_t beta)
+        static bool RFP(const int16_t depth    , const Score staticEvaluation,
+                        const bool    improving, const Score beta)
         {
             return depth < ReverseFutilityDepthThreshold &&
                    abs(beta) < Mate &&
@@ -593,12 +594,12 @@ namespace StockDory
         }
 
         template<Color Color>
-        static int32_t StaticEvaluationTT(const SearchState& entry)
+        static Score StaticEvaluationTT(const SearchState& entry)
         {
             if (entry.Type == Exact) return entry.Evaluation;
 
             // ReSharper disable once CppTooWideScopeInitStatement
-            const int32_t staticEvaluation = Evaluation::Evaluate(Color);
+            const Score staticEvaluation = Evaluation::Evaluate(Color);
 
             if ((staticEvaluation > entry.Evaluation && entry.Type == BetaCutoff    )  ||
                 (staticEvaluation < entry.Evaluation && entry.Type == AlphaUnchanged)) return staticEvaluation;

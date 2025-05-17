@@ -9,9 +9,9 @@
 #include "SearchState.h"
 #include "TranspositionTable.h"
 
-constexpr int32_t Infinity = 1000000     ;
-constexpr int32_t Mate     = Infinity - 1;
-constexpr int32_t Draw     = 0           ;
+constexpr StockDory::Score Infinity = 1000000     ;
+constexpr StockDory::Score Mate     = Infinity - 1;
+constexpr StockDory::Score Draw     = 0           ;
 
 constexpr uint8_t MaxDepth = 128;
 constexpr uint8_t MaxMove  = 218;
