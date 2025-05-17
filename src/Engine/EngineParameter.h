@@ -36,8 +36,6 @@ constexpr uint8_t FutilityDepthFactor = 150;
 
 constexpr uint8_t CheckExtension = 1;
 
-constexpr size_t MB = 1024 * 1024;
-
 constexpr uint8_t ReplacementThreshold = 3;
 
 constexpr auto NoMove = Move();
@@ -50,6 +48,6 @@ constexpr std::array<std::pair<uint16_t, uint16_t>, 5> BestMoveStabilityOptimisa
     { 97, 100}
 }};
 
-inline auto TTable = StockDory::TranspositionTable<StockDory::SearchState>(16 * MB);
+inline auto TTable = StockDory::TranspositionTable<StockDory::SearchState>(16 * StockDory::MB);
 
 #endif //STOCKDORY_ENGINEPARAMETER_H
