@@ -8,13 +8,12 @@
 
 #include "../Backend/Type/Square.h"
 
+#include "Common.h"
 #include "NetworkArchitecture.h"
 #include "Model/NeuralNetworkBinary.h"
 
 namespace StockDory
 {
-
-    using Score = int16_t;
 
     class Evaluation
     {
@@ -72,8 +71,8 @@ namespace StockDory
         {
             return static_cast<Score>(std::clamp<MantaRay::i32>(
                 NN.Evaluate(color),
-                std::numeric_limits<Score>::min(),
-                std::numeric_limits<Score>::max()
+                -Mate + MaxDepth,
+                 Mate + MaxDepth
             ));
         }
 

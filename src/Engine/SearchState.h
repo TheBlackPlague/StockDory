@@ -9,7 +9,7 @@
 #include "../Backend/Type/Move.h"
 #include "../Backend/Type/Zobrist.h"
 
-#include "Evaluation.h"
+#include "Common.h"
 
 namespace StockDory
 {
