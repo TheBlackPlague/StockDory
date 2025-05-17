@@ -24,6 +24,7 @@ namespace StockDory
 
     };
 
+    BEGIN_PACK
     struct SearchState
     {
 
@@ -34,6 +35,7 @@ namespace StockDory
         SearchStateType Type       = Invalid;
 
     };
+    END_PACK
 
 } // StockDory
 

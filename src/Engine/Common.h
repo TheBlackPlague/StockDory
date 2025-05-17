@@ -8,6 +8,9 @@
 
 #include <cstdint>
 
+#define BEGIN_PACK __pragma(pack(push, 1))
+#define END_PACK   __pragma(pack(pop))
+
 namespace StockDory
 {
 
