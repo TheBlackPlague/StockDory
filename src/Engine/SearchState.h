@@ -24,8 +24,7 @@ namespace StockDory
 
     };
 
-    BEGIN_PACK
-    struct SearchState
+    struct PACKED SearchState
     {
 
         ZobristHash     Hash       = 0;
@@ -35,7 +34,6 @@ namespace StockDory
         SearchStateType Type       = Invalid;
 
     };
-    END_PACK
 
 } // StockDory
 
