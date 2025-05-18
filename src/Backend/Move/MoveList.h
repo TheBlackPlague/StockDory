@@ -53,7 +53,7 @@ namespace StockDory
             if (Piece == ::Bishop) Bishop (board, pin, check, sq);
             if (Piece == ::Rook  ) Rook   (board, pin, check, sq);
             if (Piece == ::Queen ) Queen  (board, pin, check, sq);
-            if (Piece == ::King  ) King   (board,             sq);
+            if (Piece == ::King  ) King   (board,      check, sq);
         }
 
         [[nodiscard]]
@@ -195,7 +195,7 @@ namespace StockDory
         }
 
         [[clang::always_inline]]
-        void King  (const Board& board,                                                     const Square sq)
+        void King  (const Board& board,                         const CheckBitBoard& check, const Square sq)
         {
             BitBoard king = AttackTable::King[sq] & ~board[Color];
 
@@ -208,7 +208,7 @@ namespace StockDory
 
             InternalContainer |= king;
 
-            if (!KingMoveLegal(board, sq)) return;
+            if (check.Check != BBFilled) return;
 
             const bool  kingSide = board.CastlingRightK<Color>(),
                        queenSide = board.CastlingRightQ<Color>();
