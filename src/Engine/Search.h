@@ -126,6 +126,8 @@ namespace StockDory
 
             int16_t currentDepth = 1;
             while (!limit.BeyondLimit(Nodes, currentDepth) && !TC.Finished<false>()) {
+                if (currentDepth != 1) HistoryDecay();
+
                 const Move lastBestMove = BestMove;
 
                 if (Board.ColorToMove() ==   White)
@@ -571,6 +573,14 @@ namespace StockDory
             Board.UndoMove<MT>(state, move.From(), move.To());
 
             if (UpdateHistory) Repetition.Pull();
+        }
+
+        void HistoryDecay()
+        {
+            for (auto& color : HTable)
+            for (auto& piece : color)
+            for (auto& entry : piece)
+                entry /= 2;
         }
 
         static bool RFP(const int16_t depth, const int32_t     staticEvaluation,
