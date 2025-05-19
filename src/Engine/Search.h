@@ -181,8 +181,8 @@ namespace StockDory
             int32_t beta  =  Infinity;
 
             if (depth > AspirationDepth) {
-                alpha = Evaluation - AspirationSize;
-                beta  = Evaluation + AspirationSize;
+                alpha = Evaluation - AspirationSize * 5 / depth;
+                beta  = Evaluation + AspirationSize * 5 / depth;
             }
             //endregion
 
@@ -204,11 +204,11 @@ namespace StockDory
                 if (bestEvaluation <= alpha) {
                     research++;
 
-                    alpha = std::max(alpha - research * research * AspirationDelta, -Infinity);
+                    alpha = std::max(alpha - research * research * AspirationDelta * 5 / depth, -Infinity);
                 } else if (bestEvaluation >= beta) {
                     research++;
 
-                    beta  = std::min(beta  + research * research * AspirationDelta,  Infinity);
+                    beta  = std::min(beta  + research * research * AspirationDelta * 5 / depth,  Infinity);
 
                     BestMove = PVTable[0].PV[0];
                 } else return bestEvaluation;

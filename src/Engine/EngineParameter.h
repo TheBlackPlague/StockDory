@@ -22,7 +22,7 @@ constexpr uint8_t NullMoveEvaluationMargin = 180;
 constexpr uint16_t AspirationBound = 3500;
 constexpr uint8_t  AspirationSize  = 16  ;
 constexpr uint8_t  AspirationDelta = 23  ;
-constexpr uint8_t  AspirationDepth = 4   ;
+constexpr uint8_t  AspirationDepth = 1   ;
 
 constexpr uint8_t RazoringEvaluationThreshold = 150;
 
