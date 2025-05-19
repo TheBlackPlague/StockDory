@@ -358,6 +358,8 @@ namespace StockDory
 
                 const PreviousState boardState = EngineMove<true>(move, ply, quiet);
 
+                const bool tactical = !quiet || move.Promotion() != NAP || Board.Checked<OColor>();
+
                 int32_t evaluation = 0;
                 if (i == 0)
                     evaluation = -AlphaBeta<OColor, Pv, false>(ply + 1, depth - 1, -beta, -alpha);
@@ -370,7 +372,7 @@ namespace StockDory
 
                         if (!improving) r++;
 
-                        if (Board.Checked<OColor>()) r--;
+                        if (tactical) r = 0;
 
                         const int16_t reducedDepth = static_cast<int16_t>(std::max(depth - r, 1));
 
