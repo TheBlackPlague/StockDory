@@ -374,7 +374,7 @@ namespace StockDory
 
                         if (tactical) r--;
 
-                        const int16_t reducedDepth = std::clamp<int16_t>(depth - r, 1, depth - 1);
+                        const int16_t reducedDepth = std::max<int16_t>(depth - r, 1);
 
                         evaluation =
                             -AlphaBeta<OColor, false, false>(ply + 1, reducedDepth, -alpha - 1, -alpha);
