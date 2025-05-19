@@ -372,7 +372,7 @@ namespace StockDory
 
                         if (!improving) r++;
 
-                        if (tactical) r = 0;
+                        if (tactical) r--;
 
                         const int16_t reducedDepth = std::clamp<int16_t>(depth - r, 1, depth - 1);
 
