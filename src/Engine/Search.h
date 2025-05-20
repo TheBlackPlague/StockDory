@@ -6,6 +6,8 @@
 #ifndef STOCKDORY_SEARCH_H
 #define STOCKDORY_SEARCH_H
 
+#include <ranges>
+
 #include "../Backend/Board.h"
 #include "../Backend/Type/Move.h"
 #include "../Backend/Type/Zobrist.h"
@@ -118,6 +120,13 @@ namespace StockDory
         }
         // ReSharper restore CppPassValueParameterByConstReference
 
+        void HistoryStatistic()
+        {
+            std::cout << "History Statistics: " << std::endl;
+            std::cout << "Minimum: " << std::ranges::min(HTable | std::views::join | std::views::join) << std::endl;
+            std::cout << "Maximum: " << std::ranges::max(HTable | std::views::join | std::views::join) << std::endl;
+        }
+
         void IterativeDeepening(const Limit limit)
         {
             Board.LoadForEvaluation();
@@ -126,7 +135,9 @@ namespace StockDory
 
             int16_t currentDepth = 1;
             while (!limit.BeyondLimit(Nodes, currentDepth) && !TC.Finished<false>()) {
-                if (currentDepth != 1) HistoryDecay();
+                HistoryDecay(currentDepth);
+
+                // HistoryStatistic();
 
                 const Move lastBestMove = BestMove;
 
@@ -575,12 +586,12 @@ namespace StockDory
             if (UpdateHistory) Repetition.Pull();
         }
 
-        void HistoryDecay()
+        void HistoryDecay(const int16_t depth)
         {
             for (auto& color : HTable)
             for (auto& piece : color)
             for (auto& entry : piece)
-                entry /= 2;
+                entry /= std::max(depth / 3, 1);
         }
 
         static bool RFP(const int16_t depth, const int32_t     staticEvaluation,
