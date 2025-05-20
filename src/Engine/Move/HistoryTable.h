@@ -14,7 +14,7 @@
 namespace StockDory
 {
 
-    using HistoryTable = std::array<std::array<std::array<int32_t, 64>, 6>, 2>;
+    using HistoryTable = std::array<std::array<std::array<int16_t, 64>, 6>, 2>;
 
 } // StockDory
 
