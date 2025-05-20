@@ -43,6 +43,9 @@ constexpr uint8_t FutilityDepthFactor = 150;
 
 constexpr uint8_t CheckExtension = 1;
 
+constexpr int16_t HistoryMax =       16384;
+constexpr int16_t HistoryMin = -HistoryMax;
+
 constexpr size_t MB = 1024 * 1024;
 
 constexpr uint8_t ReplacementThreshold = 3;
