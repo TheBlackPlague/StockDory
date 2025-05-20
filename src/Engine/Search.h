@@ -573,11 +573,11 @@ namespace StockDory
         template<Color Color, bool Increase>
         void UpdateHistory(const Move move, const int16_t depth)
         {
-            const int16_t bonus = std::clamp<int16_t>(300 * depth - 250, HistoryMin, HistoryMax);
+            const int16_t bonus = std::min<int16_t>(300 * depth - 250, HistoryLimit);
 
             int16_t& history = HTable[Color][Board[move.From()].Piece()][move.To()];
 
-            history += bonus * (Increase ? 1 : -1) - history * std::abs(bonus) / HistoryMax;
+            history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
         }
 
         static bool RFP(const int16_t depth, const int32_t     staticEvaluation,
