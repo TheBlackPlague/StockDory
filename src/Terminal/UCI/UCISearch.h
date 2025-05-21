@@ -62,16 +62,16 @@ namespace StockDory
         }
 
         static void HandleTTIteration(const uint8_t  depth,
-                                      const uint64_t exact, const uint64_t betaCutoff, const uint64_t alphaUnchanged)
+                                      const uint64_t exact, const uint64_t beta, const uint64_t alpha)
         {
             std::stringstream output;
 
             output << "info string ";
             output << "depth " << static_cast<uint16_t>(depth) << " ";
 
-            output << "tt-exact "           << exact          << " ";
-            output << "tt-beta-cutoff "     << betaCutoff     << " ";
-            output << "tt-alpha-unchanged " << alphaUnchanged << " ";
+            output << "tt-exact " << exact << " ";
+            output << "tt-beta "  << beta  << " ";
+            output << "tt-alpha " << alpha << " ";
 
             std::cout << output.str() << std::endl;
         }

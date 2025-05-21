@@ -66,8 +66,8 @@ namespace StockDory
 
         static void HandleTTIteration([[maybe_unused]] const uint8_t           depth,
                                       [[maybe_unused]] const uint64_t          exact,
-                                      [[maybe_unused]] const uint64_t     betaCutoff,
-                                      [[maybe_unused]] const uint64_t alphaUnchanged) {}
+                                      [[maybe_unused]] const uint64_t           beta,
+                                      [[maybe_unused]] const uint64_t          alpha) {}
 
         static void HandleBestMove([[maybe_unused]] const Move move) {}
 
@@ -98,7 +98,7 @@ namespace StockDory
 
         std::array<SearchStackEntry, MaxDepth> Stack = {};
 
-        std::array<uint64_t, 3> TTHits = {};
+        std::array<uint64_t, 3> TTCutoff = {};
 
         uint8_t SelectiveDepth = 0;
 
@@ -153,9 +153,9 @@ namespace StockDory
                 );
                 EventHandler::HandleTTIteration(
                     currentDepth,
-                    TTHits[Exact],
-                    TTHits[BetaCutoff],
-                    TTHits[AlphaUnchanged]
+                    TTCutoff[Exact         ],
+                    TTCutoff[BetaCutoff    ],
+                    TTCutoff[AlphaUnchanged]
                 );
                 currentDepth++;
             }
@@ -167,6 +167,11 @@ namespace StockDory
         uint64_t NodesSearched() const
         {
             return Nodes;
+        }
+
+        std::array<uint64_t, 3> TTNodeCutoff() const
+        {
+            return TTCutoff;
         }
 
         void ForceStop()
@@ -283,13 +288,13 @@ namespace StockDory
                 ttMove = ttState.Move;
 
                 if (!Pv && ttState.Depth >= depth) {
-                    TTHits[ttState.Type]++;
+                    TTCutoff[ttState.Type]++;
 
-                    if (ttState.Type == Exact                                        ) return ttState.Evaluation;
                     if (ttState.Type == BetaCutoff     && ttState.Evaluation >= beta ) return ttState.Evaluation;
                     if (ttState.Type == AlphaUnchanged && ttState.Evaluation <= alpha) return ttState.Evaluation;
+                    if (ttState.Type == Exact                                        ) return ttState.Evaluation;
 
-                    TTHits[ttState.Type]--;
+                    TTCutoff[ttState.Type]--;
                 }
             }
             //endregion
@@ -341,8 +346,6 @@ namespace StockDory
             const uint8_t lmpQuietThreshold = LMPQuietThresholdBase + depth * depth;
             const bool    lmp               = !Root && !checked && depth <= LMPDepthThreshold;
             const bool    lmr               = depth >= LMRDepthThreshold && !checked;
-            const int32_t historyBonus      = depth * depth;
-            const uint8_t historyFactor     = std::max(depth / 3, 1);
 
             SearchState abState {
                 hash,
@@ -429,12 +432,11 @@ namespace StockDory
                         KTable[0][ply] = move;
                     }
 
-                    HTable[Color][Board[move.From()].Piece()][move.To()] += historyBonus + i * historyFactor;
+                    UpdateHistory<Color, true>(move, depth);
 
                     for (uint8_t q = 1; q < quietMoveCount; q++) {
                         const Move other = moves.UnsortedAccess(i - q);
-                        HTable[Color][Board[other.From()].Piece()][other.To()] -=
-                            historyBonus + (quietMoveCount - q) * historyFactor;
+                        UpdateHistory<Color, false>(other, depth);
                     }
                 }
 
@@ -467,9 +469,9 @@ namespace StockDory
                 const SearchState& ttState = TTable[hash];
 
                 if (ttState.Hash == hash) {
-                    if (ttState.Type == Exact                                        ) return ttState.Evaluation;
                     if (ttState.Type == BetaCutoff     && ttState.Evaluation >= beta ) return ttState.Evaluation;
                     if (ttState.Type == AlphaUnchanged && ttState.Evaluation <= alpha) return ttState.Evaluation;
+                    if (ttState.Type == Exact                                        ) return ttState.Evaluation;
                 }
             }
             //endregion
@@ -584,6 +586,16 @@ namespace StockDory
             Board.UndoMove<MT>(state, move.From(), move.To());
 
             if (UpdateHistory) Repetition.Pull();
+        }
+
+        template<Color Color, bool Increase>
+        void UpdateHistory(const Move move, const int16_t depth)
+        {
+            const int16_t bonus = std::min<int16_t>(300 * depth - 250, HistoryLimit);
+
+            int16_t& history = HTable[Color][Board[move.From()].Piece()][move.To()];
+
+            history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
         }
 
         static bool RFP(const int16_t depth, const int32_t     staticEvaluation,

@@ -32,6 +32,8 @@ namespace StockDory
             std::array<uint64_t, BenchLength> nodes;
             std::array<   MS   , BenchLength> times;
 
+            std::array<std::array<uint64_t, 3>, BenchLength> ttCutoff;
+
             for (size_t i = 0; i < BenchLength; i++) {
                 std::cout << "Position (" << std::setw(2) << std::setfill('0')
                           << static_cast<uint16_t>(i + 1) << "/" << static_cast<uint16_t>(BenchLength) << "): ";
@@ -50,7 +52,34 @@ namespace StockDory
 
                 nodes[i] = search.NodesSearched();
                 times[i] = std::chrono::duration_cast<MS>(t1 - t0);
+
+                ttCutoff[i] = search.TTNodeCutoff();
             }
+
+            const uint64_t exact = std::accumulate(ttCutoff.begin(), ttCutoff.end(), 0ULL,
+                [](const uint64_t sum, const std::array<uint64_t, 3>& tt) {
+                    return sum + tt[Exact         ];
+                }
+            );
+            const uint64_t beta  = std::accumulate(ttCutoff.begin(), ttCutoff.end(), 0ULL,
+                [](const uint64_t sum, const std::array<uint64_t, 3>& tt) {
+                    return sum + tt[BetaCutoff    ];
+                }
+            );
+            const uint64_t alpha = std::accumulate(ttCutoff.begin(), ttCutoff.end(), 0ULL,
+                [](const uint64_t sum, const std::array<uint64_t, 3>& tt) {
+                    return sum + tt[AlphaUnchanged];
+                }
+            );
+
+            std::cout << std::endl;
+
+            std::cout << "-- TT Cutoffs --" << std::endl;
+            std::cout << "Exact: " << exact << std::endl;
+            std::cout << "Beta : " << beta  << std::endl;
+            std::cout << "Alpha: " << alpha << std::endl;
+
+            std::cout << std::endl;
 
             const uint64_t nodeC = std::accumulate(nodes.begin(), nodes.end(),  0ULL);
             const    MS    timeC = std::accumulate(times.begin(), times.end(), MS(0));
