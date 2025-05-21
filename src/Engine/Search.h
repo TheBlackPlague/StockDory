@@ -295,7 +295,7 @@ namespace StockDory
                 improving = ply >= 2 && staticEvaluation >= Stack[ply - 2].StaticEvaluation;
 
                 //region Reverse Futility Pruning
-                if (RFP(depth, staticEvaluation, improving, beta)) return beta;
+                if (RFP(depth, staticEvaluation, improving, beta)) return (staticEvaluation + beta) / 2;
                 //endregion
 
                 //region Razoring
