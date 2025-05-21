@@ -8,6 +8,7 @@
 
 #include "../Backend/Type/Square.h"
 
+#include "Common.h"
 #include "NetworkArchitecture.h"
 #include "Model/NeuralNetworkBinary.h"
 
@@ -66,7 +67,7 @@ namespace StockDory
         }
 
         [[clang::always_inline]]
-        static int32_t Evaluate(const Color color)
+        static Score Evaluate(const Color color)
         {
             return NN.Evaluate(color);
         }
