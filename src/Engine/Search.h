@@ -268,7 +268,7 @@ namespace StockDory
             Move               ttMove  = NoMove;
             bool               ttHit   = false;
 
-            if (ttState.Type != Invalid && ttState.Hash == hash) {
+            if (ttState.Type != Invalid && ttState.Hash == CompressHash(hash)) {
                 ttHit  = true;
                 ttMove = ttState.Move;
 
@@ -331,12 +331,14 @@ namespace StockDory
             const bool    lmr               = depth >= LMRDepthThreshold && !checked;
 
             SearchState abState {
-                hash,
-                -Infinity,
+                CompressHash(hash),
+                -CompressedInfinity,
                 ttMove,
                 static_cast<uint8_t>(depth),
                 AlphaUnchanged
             };
+
+            Score bestEvaluation = -Infinity;
 
             uint8_t quietMoveCount = 0;
             for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -350,7 +352,7 @@ namespace StockDory
                 //endregion
 
                 //region Late Move Pruning
-                if (!Pv && lmp && abState.Evaluation > -Infinity && quietMoveCount > lmpQuietThreshold)
+                if (!Pv && lmp && bestEvaluation > -Infinity && quietMoveCount > lmpQuietThreshold)
                     break;
                 //endregion
 
@@ -385,9 +387,9 @@ namespace StockDory
                 EngineUndoMove<true>(boardState, move);
 
                 //region Handle Evaluation
-                if (evaluation <= abState.Evaluation) continue;
+                if (evaluation <= bestEvaluation) continue;
 
-                abState.Evaluation = evaluation;
+                bestEvaluation = evaluation;
 
                 if (evaluation <= alpha) continue;
 
@@ -429,12 +431,14 @@ namespace StockDory
             }
             //endregion
 
+            abState.Evaluation = CompressScore(bestEvaluation);
+
             //region Transposition Table Insertion
             // ReSharper disable once CppDFAConstantConditions
             if (!Stop) InsertEntry(hash, abState);
             //endregion
 
-            return abState.Evaluation;
+            return bestEvaluation;
         }
 
         template<Color Color, bool Pv>
@@ -451,10 +455,10 @@ namespace StockDory
                 const ZobristHash  hash    = Board.Zobrist();
                 const SearchState& ttState = TTable[hash];
 
-                if (ttState.Hash == hash           &&
-                   (ttState.Type == Exact          ||
-                   (ttState.Type == BetaCutoff     && ttState.Evaluation >= beta ) ||
-                   (ttState.Type == AlphaUnchanged && ttState.Evaluation <= alpha) )) return ttState.Evaluation;
+                if (ttState.Hash == CompressHash(hash) &&
+                   (ttState.Type == Exact              ||
+                   (ttState.Type == BetaCutoff         && ttState.Evaluation >= beta ) ||
+                   (ttState.Type == AlphaUnchanged     && ttState.Evaluation <= alpha) )) return ttState.Evaluation;
             }
             //endregion
 
