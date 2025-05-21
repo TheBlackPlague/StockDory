@@ -29,8 +29,12 @@ namespace StockDory
 
     constexpr CompressedScore CompressedInfinity = 32000;
 
-    CompressedHash  CompressHash (const ZobristHash hash) { return static_cast<CompressedHash >(hash ); }
-    CompressedScore CompressScore(const Score      score) { return static_cast<CompressedScore>(score); }
+    CompressedHash  CompressHash (const ZobristHash hash) { return hash; }
+
+    CompressedScore CompressScore(const Score      score)
+    {
+        return std::clamp<Score>(score, -CompressedInfinity, CompressedInfinity);
+    }
 
     struct SearchState
     {
