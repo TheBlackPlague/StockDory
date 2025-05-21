@@ -341,8 +341,6 @@ namespace StockDory
             const uint8_t lmpQuietThreshold = LMPQuietThresholdBase + depth * depth;
             const bool    lmp               = !Root && !checked && depth <= LMPDepthThreshold;
             const bool    lmr               = depth >= LMRDepthThreshold && !checked;
-            const int32_t historyBonus      = depth * depth;
-            const uint8_t historyFactor     = std::max(depth / 3, 1);
 
             SearchState abState {
                 hash,
@@ -429,12 +427,11 @@ namespace StockDory
                         KTable[0][ply] = move;
                     }
 
-                    HTable[Color][Board[move.From()].Piece()][move.To()] += historyBonus + i * historyFactor;
+                    UpdateHistory<Color, true>(move, depth);
 
                     for (uint8_t q = 1; q < quietMoveCount; q++) {
                         const Move other = moves.UnsortedAccess(i - q);
-                        HTable[Color][Board[other.From()].Piece()][other.To()] -=
-                            historyBonus + (quietMoveCount - q) * historyFactor;
+                        UpdateHistory<Color, false>(other, depth);
                     }
                 }
 
@@ -584,6 +581,16 @@ namespace StockDory
             Board.UndoMove<MT>(state, move.From(), move.To());
 
             if (UpdateHistory) Repetition.Pull();
+        }
+
+        template<Color Color, bool Increase>
+        void UpdateHistory(const Move move, const int16_t depth)
+        {
+            const int16_t bonus = std::min<int16_t>(300 * depth - 250, HistoryLimit);
+
+            int16_t& history = HTable[Color][Board[move.From()].Piece()][move.To()];
+
+            history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
         }
 
         static bool RFP(const int16_t depth, const int32_t     staticEvaluation,
