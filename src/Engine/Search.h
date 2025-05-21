@@ -291,7 +291,11 @@ namespace StockDory
             const bool checked   = Board.Checked<Color>();
             bool       improving = false;
 
-            if (!Pv && !checked) {
+            depth += CheckExtension * checked;
+
+            if (checked) goto MoveLoop;
+
+            if (!Pv) {
                 improving = ply >= 2 && staticEvaluation >= Stack[ply - 2].StaticEvaluation;
 
                 //region Reverse Futility Pruning
@@ -306,15 +310,13 @@ namespace StockDory
                 //region Null Move Pruning
                 if (NMP<Color, Root>(ply, depth, staticEvaluation, beta)) return beta;
                 //endregion
-            } else if (checked) {
-                //region Check Extension
-                depth += CheckExtension;
-                //endregion
             }
 
             //region IIR
             if (depth > IIRDepthThreshold && !ttHit) depth -= IIRDepthReduction;
             //endregion
+
+            MoveLoop:
 
             //region MoveList
             using MoveList = OrderedMoveList<Color>;
