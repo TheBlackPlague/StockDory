@@ -69,11 +69,7 @@ namespace StockDory
         [[clang::always_inline]]
         static Score Evaluate(const Color color)
         {
-            return static_cast<Score>(std::clamp<MantaRay::i32>(
-                NN.Evaluate(color),
-                -Mate + MaxDepth,
-                 Mate + MaxDepth
-            ));
+            return NN.Evaluate(color);
         }
 
     };

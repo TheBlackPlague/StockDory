@@ -11,9 +11,9 @@
 namespace StockDory
 {
 
-    using Score = int16_t;
+    using Score = int32_t;
 
-    constexpr Score Infinity = 32000       ;
+    constexpr Score Infinity = 1000000     ;
     constexpr Score Mate     = Infinity - 1;
     constexpr Score Draw     = 0           ;
 
