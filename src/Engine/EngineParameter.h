@@ -17,7 +17,9 @@ constexpr uint8_t  AspirationSize  = 16  ;
 constexpr uint8_t  AspirationDelta = 23  ;
 constexpr uint8_t  AspirationDepth = 4   ;
 
-constexpr uint8_t RazoringEvaluationThreshold = 150;
+constexpr uint8_t RazoringAlphaThreshold = 2000;
+constexpr uint8_t RazoringDepthFactor    = 350 ;
+constexpr uint8_t RazoringDepthShift     = 0   ;
 
 constexpr uint8_t LMRFullSearchThreshold = 4;
 constexpr uint8_t LMRDepthThreshold      = 3;

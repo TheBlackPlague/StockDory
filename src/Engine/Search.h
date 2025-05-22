@@ -299,8 +299,12 @@ namespace StockDory
                 //endregion
 
                 //region Razoring
-                if (depth == 1 && staticEvaluation + RazoringEvaluationThreshold < alpha)
-                    return Q<Color, false>(ply, alpha, beta);
+                if (                   alpha < RazoringAlphaThreshold &&
+                    staticEvaluation < alpha - depth * RazoringDepthFactor - RazoringDepthShift) {
+                    const Score evaluation = Q<Color, false>(ply, alpha, beta);
+
+                    if (evaluation <= alpha) return evaluation;
+                }
                 //endregion
 
                 //region Null Move Pruning
