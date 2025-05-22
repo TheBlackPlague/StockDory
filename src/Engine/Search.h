@@ -587,7 +587,7 @@ namespace StockDory
 
         static Score RazorMargin(const int16_t depth, const bool improving)
         {
-            return 300 - depth * 75 + !improving * 50;
+            return 225 - depth * 75 + !improving * 50;
         }
 
         static bool RFP(const int16_t depth    , const Score staticEvaluation,
