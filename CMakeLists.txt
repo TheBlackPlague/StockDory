@@ -107,26 +107,13 @@ include(Information.cmake)
 
 Information(${VERSION} ${CODENAME} ${CI})
 
-file(GLOB StockDoryBackendType
-        "src/Backend/Type/*.h"
-        "src/Backend/Template/*.h"
-        "src/Backend/Move/*.h"
-        "src/Backend/*.h")
+file(GLOB_RECURSE StockDoryBackendType "src/Backend/*.h")
 
-file(GLOB StockDoryEngineType
-        "src/Engine/Move/*.h"
-        "src/Engine/Time/*.h"
-        "src/Engine/*.h")
+file(GLOB_RECURSE StockDoryEngineType "src/Engine/*.h")
 
-file(GLOB StockDoryExternalType
-        "src/External/*.h"
-        "src/External/thread_pool.hpp")
+file(GLOB_RECURSE StockDoryExternalType "src/External/*.h")
 
-file(GLOB StockDoryFrontendType
-        "src/Terminal/UI/*.h"
-        "src/Terminal/Perft/*.h"
-        "src/Terminal/UCI/*.h"
-        "src/Terminal/*.h")
+file(GLOB_RECURSE StockDoryFrontendType "src/Terminal/*.h")
 
 if(PYMODULE)
     message(STATUS "Configured to build Python Module")
@@ -140,7 +127,7 @@ if(PYMODULE)
     set(PYBIND11_FINDPYTHON ON)
     CPMAddPackage("gh:pybind/pybind11#a2e59f0e7065404b44dfe92a28aca47ba1378dc4")
 
-    pybind11_add_module(StockDory src/Python/binding.cpp
+    pybind11_add_module(StockDory src/python_binding.cpp
             ${StockDoryBackendType}
             ${StockDoryEngineType}
             ${StockDoryExternalType}
@@ -157,7 +144,7 @@ if(PYMODULE)
 else()
     message(STATUS "Configured to build executable")
 
-    add_executable(StockDory src/Terminal/main.cpp
+    add_executable(StockDory src/main.cpp
             ${StockDoryBackendType}
             ${StockDoryEngineType}
             ${StockDoryExternalType}

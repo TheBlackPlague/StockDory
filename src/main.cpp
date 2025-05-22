@@ -7,8 +7,8 @@
 
 #include "Information.h"
 
-#include "BenchHash.h"
-#include "UCI/UCIInterface.h"
+#include "Terminal/BenchHash.h"
+#include "Terminal/UCI/UCIInterface.h"
 
 void DisplayTitle()
 {

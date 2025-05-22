@@ -7,6 +7,7 @@
 #define STOCKDORY_COMMON_H
 
 #include <cstdint>
+#include <chrono>
 
 namespace StockDory
 {
@@ -19,6 +20,11 @@ namespace StockDory
 
     constexpr uint8_t MaxDepth = 128;
     constexpr uint8_t MaxMove  = 218;
+
+    constexpr size_t MB = 1024 * 1024;
+
+    using MS = std::chrono::milliseconds;
+    using TP = std::chrono::time_point<std::chrono::steady_clock>;
 
 } // StockDory
 

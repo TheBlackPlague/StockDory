@@ -21,4 +21,25 @@ std::string ToHex(const T v)
     return ss.str();
 }
 
+template<typename T, size_t N, size_t... Ns>
+struct IArray { using Internal = std::array<typename IArray<T, Ns...>::Internal, N>; };
+
+template<typename T, size_t N>
+struct IArray<T, N> { using Internal = std::array<T, N>; };
+
+template<typename T, size_t... Ns>
+using Array = typename IArray<T, Ns...>::Internal; // Fixed size N-dimensional array of values
+
+template<typename T, size_t N>
+std::enable_if_t<!std::is_class_v<T>> Fill(std::array<T, N>& array, const T value)
+{
+    array.fill(value);
+}
+
+template<typename T, size_t N>
+std::enable_if_t<std::is_class_v<T>> Fill(std::array<T, N>& array, const typename T::value_type value)
+{
+    for (auto& sub : array) Fill(sub, value);
+}
+
 #endif //STOCKDORY_MISC_H

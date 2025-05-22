@@ -8,11 +8,10 @@
 
 #include <chrono>
 
+#include "Common.h"
+
 namespace StockDory
 {
-
-    using MS = std::chrono::milliseconds;
-    using TP = std::chrono::time_point<std::chrono::steady_clock>;
 
     class TimeControl
     {

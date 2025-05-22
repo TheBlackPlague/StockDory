@@ -6,19 +6,19 @@
 #include <pybind11/pybind11.h>
 
 #include "Information.h"
-#include "../Backend/Board.h"
-#include "../Backend/Move/MoveList.h"
-#include "../Backend/Type/Color.h"
-#include "../Backend/Type/Move.h"
-#include "../Backend/Type/Piece.h"
-#include "../Backend/Type/Square.h"
-#include "../Engine/EngineParameter.h"
-#include "../Engine/RepetitionHistory.h"
-#include "../Engine/Search.h"
-#include "../Engine/Move/PrincipleVariationTable.h"
-#include "../Engine/Time/TimeManager.h"
-#include "../External/strutil.h"
-#include "../Terminal/Perft/PerftRunner.h"
+#include "Backend/Board.h"
+#include "Backend/Move/MoveList.h"
+#include "Backend/Type/Color.h"
+#include "Backend/Type/Move.h"
+#include "Backend/Type/Piece.h"
+#include "Backend/Type/Square.h"
+#include "Engine/EngineParameter.h"
+#include "Engine/RepetitionHistory.h"
+#include "Engine/Search.h"
+#include "Engine/Move/PrincipleVariationTable.h"
+#include "Engine/Time/TimeManager.h"
+#include "External/strutil.h"
+#include "Terminal/Perft/PerftRunner.h"
 
 namespace py = pybind11;
 
