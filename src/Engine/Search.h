@@ -299,12 +299,8 @@ namespace StockDory
                 //endregion
 
                 //region Razoring
-                if (                   alpha < RazoringAlphaThreshold &&
-                    staticEvaluation < alpha - depth * RazoringDepthFactor - RazoringDepthShift) {
-                    const Score evaluation = Q<Color, false>(ply, alpha, beta);
-
-                    if (evaluation <= alpha) return evaluation;
-                }
+                if (depth < RazoringDepthCutoff && staticEvaluation + RazorMargin(depth, improving) < alpha)
+                    return Q<Color, false>(ply, alpha, beta);
                 //endregion
 
                 //region Null Move Pruning
@@ -587,6 +583,11 @@ namespace StockDory
             int16_t& history = HTable[Color][Board[move.From()].Piece()][move.To()];
 
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
+        }
+
+        static Score RazorMargin(const int16_t depth, const bool improving)
+        {
+            return 300 - depth * 75 + !improving * 50;
         }
 
         static bool RFP(const int16_t depth    , const Score staticEvaluation,
