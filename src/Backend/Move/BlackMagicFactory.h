@@ -167,7 +167,7 @@ namespace StockDory
 
 } // StockDory
 
-auto StockDory::AttackTable::Sliding = [] -> std::array<BitBoard, 87988>
+std::array<BitBoard, 87988> StockDory::AttackTable::Sliding = [] -> std::array<BitBoard, 87988>
 {
     auto temp = std::array<BitBoard, 87988>();
 
@@ -230,7 +230,7 @@ auto StockDory::AttackTable::Sliding = [] -> std::array<BitBoard, 87988>
     return temp;
 }();
 
-auto StockDory::RayTable::Between = [] -> std::array<std::array<BitBoard, 64>, 64>
+std::array<std::array<BitBoard, 64>, 64> StockDory::RayTable::Between = [] -> std::array<std::array<BitBoard, 64>, 64>
 {
     std::array<std::array<BitBoard, 64>, 64> temp = {};
 
