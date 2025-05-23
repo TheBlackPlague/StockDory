@@ -286,8 +286,10 @@ namespace StockDory
 
     };
 
-    template<bool Timed = false, class EventHandler = DefaultSearchEventHandler>
-    SearchThread<Main, Timed, EventHandler>& Search(
+    inline std::vector<SearchThread<Parallel>> ParallelThreads;
+
+    template<class EventHandler = DefaultSearchEventHandler, bool Timed = false>
+    std::unique_ptr<SearchThread<Main, Timed, EventHandler>>& Search(
         const Limit<Timed>   &      limit,
         const Board          &      board,
         const RepetitionStack& repetition,
@@ -296,15 +298,14 @@ namespace StockDory
         limit.Start();
 
         // Allocate the parallel threads
-        std::vector<SearchThread<Parallel>> threads;
-        threads.reserve(ThreadPool.Size() - 1);
+        ParallelThreads.reserve(ThreadPool.Size() - 1);
 
         // Start the parallel threads
         for (size_t i = 0; i < ThreadPool.Size() - 1; i++) ThreadPool.Execute(
-            [i, &threads, &limit, &board, &repetition, hmc] -> void
+            [i, &limit, &board, &repetition, hmc] -> void
             {
-                threads[i] = SearchThread<Parallel>(limit, board, repetition, hmc);
-                threads[i].IterativeDeepening();
+                ParallelThreads[i] = SearchThread<Parallel>(limit, board, repetition, hmc);
+                ParallelThreads[i].IterativeDeepening();
             }
         );
 
@@ -313,12 +314,12 @@ namespace StockDory
 
         // Start the main thread
         ThreadPool.Execute(
-            [&main, &threads] -> void
+            [&main] -> void
             {
                 main.IterativeDeepening();
 
                 // Once the main thread is done, stop all parallel threads
-                for (auto& thread : threads) thread.Stop();
+                for (auto& thread : ParallelThreads) thread.Stop();
             }
         );
 
