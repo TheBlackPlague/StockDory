@@ -8,8 +8,8 @@
 
 #include "../Backend/Board.h"
 #include "../Backend/Misc.h"
-#include "../Backend/Type/Move.h"
 #include "../Backend/ThreadPool.h"
+#include "../Backend/Type/Move.h"
 
 #include "Common.h"
 #include "TranspositionTable.h"
@@ -164,8 +164,8 @@ namespace StockDory
 
         TP Origin = std::chrono::steady_clock::now();
 
-        std::conditional_t<Timed, MS, std::monostate> ActualTime  {};
-        std::conditional_t<Timed, MS, std::monostate> OptimalTime {};
+        MS ActualTime  {};
+        MS OptimalTime {};
 
         void Start() { Origin = std::chrono::steady_clock::now(); }
 
