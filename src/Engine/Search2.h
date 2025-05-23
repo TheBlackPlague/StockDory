@@ -155,12 +155,13 @@ namespace StockDory
 
     };
 
-    template<bool Timed>
     struct Limit
     {
 
         uint64_t Nodes = std::numeric_limits<uint64_t>::max();
         uint8_t  Depth = MaxDepth / 2;
+
+        bool Timed = false;
 
         TP Origin = std::chrono::steady_clock::now();
 
@@ -174,35 +175,29 @@ namespace StockDory
             return std::chrono::duration_cast<MS>(std::chrono::steady_clock::now() - Origin);
         }
 
-        [[clang::always_inline]]
-        bool Crossed(const uint64_t nodes, const uint8_t depth) const requires (!Timed)
+        bool Crossed(const uint64_t nodes, const uint8_t depth) const
         {
-            return nodes > Nodes || depth > Depth;
-        }
-
-        template<bool Hard = false>
-        [[clang::always_inline]]
-        bool Crossed(const uint64_t nodes, const uint8_t depth) const requires (Timed)
-        {
-            if (Hard) return Elapsed() > ActualTime;
+            if (!Timed) return nodes > Nodes || depth > Depth;
 
             return Elapsed() > OptimalTime || nodes > Nodes || depth > Depth;
         }
 
+        bool Crossed() const
+        {
+            if (!Timed) return false;
+
+            return Elapsed() > ActualTime;
+        }
+
     };
 
-    template<SearchThreadType ThreadType = Main, bool Timed = false, class EventHandler = DefaultSearchEventHandler>
+    template<SearchThreadType ThreadType = Main, class EventHandler = DefaultSearchEventHandler>
     class SearchThread
     {
 
         static_assert(
             ThreadType != Parallel || std::is_same_v<EventHandler, DefaultSearchEventHandler>,
             "Events are only called in the main thread, this must be a mistake"
-        );
-
-        static_assert(
-            ThreadType != Parallel || !Timed,
-            "Timing search is only appropriate on the main thread, this must be a mistake"
         );
 
         static_assert(
@@ -223,7 +218,7 @@ namespace StockDory
 
         SearchThreadStatus Status = Stopped;
 
-        Limit<Timed> Limit {};
+        Limit Limit {};
 
         uint8_t SelectiveDepth = 0;
 
@@ -236,11 +231,11 @@ namespace StockDory
         Move BestMove {};
 
         public:
-        SearchThread() = default;
+        SearchThread() = delete;
 
         // ReSharper disable CppPassValueParameterByConstReference
         SearchThread(
-            const Limit<Timed>          limit,
+            const StockDory::Limit      limit,
             const StockDory::Board      board,
             const RepetitionStack  repetition,
             const uint8_t                 hmc)
@@ -288,29 +283,29 @@ namespace StockDory
 
     inline std::vector<SearchThread<Parallel>> ParallelThreads;
 
-    template<class EventHandler = DefaultSearchEventHandler, bool Timed = false>
-    std::unique_ptr<SearchThread<Main, Timed, EventHandler>> Search(
-        const Limit<Timed>   &      limit,
-        const Board          &      board,
-        const RepetitionStack& repetition,
+    template<class EventHandler = DefaultSearchEventHandler>
+    std::unique_ptr<SearchThread<Main, EventHandler>> Search(
+              Limit          &      limit,
+              Board          &      board,
+              RepetitionStack& repetition,
         const uint8_t                 hmc)
     {
         limit.Start();
 
         // Allocate the parallel threads
-        ParallelThreads = std::vector<SearchThread<Parallel>>(ThreadPool.Size() - 1);
+        ParallelThreads.reserve(ThreadPool.Size() - 1);
+
+        for (size_t i = 0; i < ThreadPool.Size() - 1; i++) ParallelThreads.emplace_back(
+            limit, board, repetition, hmc
+        );
 
         // Start the parallel threads
         for (size_t i = 0; i < ThreadPool.Size() - 1; i++) ThreadPool.Execute(
-            [i, &limit, &board, &repetition, hmc] -> void
-            {
-                ParallelThreads[i] = std::move(SearchThread<Parallel>(limit, board, repetition, hmc));
-                ParallelThreads[i].IterativeDeepening();
-            }
+            [i] -> void { ParallelThreads[i].IterativeDeepening(); }
         );
 
         // Allocate the main thread
-        auto main = std::make_unique<SearchThread<Main, Timed, EventHandler>>(limit, board, repetition, hmc);
+        auto main = std::make_unique<SearchThread<Main, EventHandler>>(limit, board, repetition, hmc);
 
         // Start the main thread
         ThreadPool.Execute(
@@ -320,6 +315,7 @@ namespace StockDory
 
                 // Once the main thread is done, stop all parallel threads
                 for (auto& thread : ParallelThreads) thread.Stop();
+                ParallelThreads.clear();
             }
         );
 
