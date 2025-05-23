@@ -316,7 +316,7 @@ namespace StockDory
         ThreadPool.Execute(
             [&main] -> void
             {
-                main.IterativeDeepening();
+                main->IterativeDeepening();
 
                 // Once the main thread is done, stop all parallel threads
                 for (auto& thread : ParallelThreads) thread.Stop();
