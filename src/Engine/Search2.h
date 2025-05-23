@@ -295,13 +295,21 @@ namespace StockDory
     {
         limit.Start();
 
-        // Allocate the main thread
-        auto main = std::make_unique<SearchThread<Main, Timed, EventHandler>>(limit, board, repetition, hmc);
-
         // Allocate the parallel threads
         std::vector<SearchThread<Parallel>> threads;
         threads.reserve(ThreadPool.Size() - 1);
-        std::ranges::fill(threads, SearchThread<Parallel>());
+
+        // Start the parallel threads
+        for (size_t i = 0; i < ThreadPool.Size() - 1; i++) ThreadPool.Execute(
+            [i, &threads, &limit, &board, &repetition, hmc] -> void
+            {
+                threads[i] = SearchThread<Parallel>(limit, board, repetition, hmc);
+                threads[i].IterativeDeepening();
+            }
+        );
+
+        // Allocate the main thread
+        auto main = std::make_unique<SearchThread<Main, Timed, EventHandler>>(limit, board, repetition, hmc);
 
         // Start the main thread
         ThreadPool.Execute(
@@ -313,9 +321,6 @@ namespace StockDory
                 for (auto& thread : threads) thread.Stop();
             }
         );
-
-        // Start the parallel threads
-        for (auto& thread : threads) ThreadPool.Execute([&thread] -> void { thread.IterativeDeepening(); });
 
         // Return a reference to the main thread
         // This is so that the main thread can be used to stop the search
