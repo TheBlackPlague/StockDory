@@ -259,7 +259,7 @@ namespace StockDory
                      Evaluation = Aspiration<White>(IDepth);
                 else Evaluation = Aspiration<Black>(IDepth);
 
-                if (Status == Stopped) break;
+                if (Status == SearchThreadStatus::Stopped) break;
 
                 if (ThreadType == Main) {
                     BestMove = PVTable[0].PV[0];
@@ -276,6 +276,8 @@ namespace StockDory
 
                 IDepth++;
             }
+
+            Status = SearchThreadStatus::Stopped;
 
             if (ThreadType == Main) EventHandler::HandleBestMove(BestMove);
         }
@@ -308,17 +310,17 @@ namespace StockDory
             while (true) {
                 if (ThreadType == Main) {
                     // The main thread is also responsible for checking if we've crossed any time limits.
-                    // If we have, we need to stop searching:
+                    // If we have, we need to stop searching
                     if (Limit.Crossed()) [[unlikely]] { Status = SearchThreadStatus::Stopped; return Draw; }
                 }
 
                 // If the search was stopped, we need to stop searching.
-                // This search is incomplete, and its results may not be valid to use:
+                // This search is incomplete, and its results may not be valid to use
                 if (Status == SearchThreadStatus::Stopped) return Draw;
 
                 // If the previous searches weren't successful, and even incrementally
                 // widening the window slightly didn't help, we need to widen the window to
-                // a full window and avoid wasting any more time:
+                // a full window and avoid wasting any more time
                 if (alpha < -AspirationWindowFallbackBound) alpha = -Infinity;
                 if (beta  >  AspirationWindowFallbackBound) beta  =  Infinity;
 
@@ -326,13 +328,13 @@ namespace StockDory
 
                 if        (bestEvaluation <= alpha) {
                     // If the evaluation from this search is far below the lower bound, it means that the
-                    // previous searches were too optimistic. We need to widen the window a bit and try again:
+                    // previous searches were too optimistic. We need to widen the window a bit and try again
 
                     research++;
                     alpha = std::max<Score>(alpha - research * research * AspirationWindowSizeDelta, -Infinity);
                 } else if (bestEvaluation >= beta) {
                     // If the evaluation from this search is far above the upper bound, it means that the
-                    // previous searches were too pessimistic. We need to widen the window a bit and try again:
+                    // previous searches were too pessimistic. We need to widen the window a bit and try again
 
                     research++;
                     beta  = std::min<Score>(beta  + research * research * AspirationWindowSizeDelta,  Infinity);
@@ -341,7 +343,7 @@ namespace StockDory
                     BestMove = PVTable[0].PV[0];
                 } else {
                     // If the evaluation from this search falls within the window, we can assume that the
-                    // search was successful and we can return the evaluation:
+                    // search was successful
 
                     return bestEvaluation;
                 }
@@ -356,11 +358,13 @@ namespace StockDory
 
     };
 
-    inline std::vector<SearchThread<Parallel>> ParallelThreads;
+    inline std::vector<std::shared_ptr<SearchThread<Parallel>>> ParallelThreads;
 
+    // It's important to call this and check to make sure that all threads are stopped
+    // before starting a new search
     bool SafeToSearch()
     {
-        for (const auto& thread : ParallelThreads) if (!thread.Stopped()) return false;
+        for (const auto& thread : ParallelThreads) if (!thread->Stopped()) return false;
 
         return true;
     }
@@ -374,16 +378,20 @@ namespace StockDory
     {
         limit.Start();
 
-        // Allocate the parallel threads
-        ParallelThreads.reserve(ThreadPool.Size() - 1);
+        const size_t parallelThreadCount = ThreadPool.Size() - 1;
 
-        for (size_t i = 0; i < ThreadPool.Size() - 1; i++) ParallelThreads.emplace_back(
-            limit, board, repetition, hmc
-        );
+        // We don't need to clear since the previous search will have cleared the previous threads
+        ParallelThreads.resize(parallelThreadCount);
 
-        // Start the parallel threads
-        for (size_t i = 0; i < ThreadPool.Size() - 1; i++) ThreadPool.Execute(
-            [i] -> void { ParallelThreads[i].IterativeDeepening(); }
+        // Allocate and start the parallel threads
+        for (size_t i = 0; i < parallelThreadCount; i++) ThreadPool.Execute(
+            [i, &limit, &board, &repetition, hmc] -> void
+            {
+                const auto thread = std::make_shared<SearchThread<Parallel>>(limit, board, repetition, hmc);
+                ParallelThreads[i] = thread;
+
+                thread->IterativeDeepening();
+            }
         );
 
         // Allocate the main thread
@@ -391,20 +399,21 @@ namespace StockDory
 
         // Start the main thread
         ThreadPool.Execute(
-            [&main] -> void
+            [&main, parallelThreadCount] -> void
             {
                 main->IterativeDeepening();
 
                 // Once the main thread is done, stop all parallel threads
-                for (auto& thread : ParallelThreads) thread.Stop();
+                for (const auto& thread : ParallelThreads) thread->Stop();
 
                 // Wait for all parallel threads to finish
-                for (size_t i = 0; i < ParallelThreads.size(); i++) {
+                for (size_t i = 0; i < parallelThreadCount; i++) {
                     const auto& thread = ParallelThreads[i];
 
-                    while (!thread.Stopped()) { Sleep(2); }
+                    while (!thread->Stopped()) { Sleep(5); }
                 }
 
+                // Clear the parallel threads so that we can safely start a new search
                 ParallelThreads.clear();
             }
         );
