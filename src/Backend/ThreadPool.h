@@ -6,6 +6,8 @@
 #ifndef STOCKDORY_THREADPOOL_H
 #define STOCKDORY_THREADPOOL_H
 
+#include <thread>
+
 #include <nanothread/nanothread.h>
 
 class ThreadPool
@@ -54,6 +56,11 @@ class ThreadPool
 
 namespace StockDory
 {
+
+    void Sleep(const uint64_t ms)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+    }
 
     inline ThreadPool ThreadPool (1);
 

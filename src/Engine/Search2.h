@@ -12,7 +12,9 @@
 #include "../Backend/Type/Move.h"
 
 #include "Common.h"
+#include "EngineParameter.h"
 #include "TranspositionTable.h"
+#include "TunableParameter.h"
 
 namespace StockDory
 {
@@ -254,7 +256,9 @@ namespace StockDory
             while (!Limit.Crossed(Nodes, IDepth)) {
                 const Move lastBestMove = BestMove;
 
-                // TODO: Start Aspiration Search
+                if (Board.ColorToMove() ==   White)
+                     Evaluation = Aspiration<White>(IDepth);
+                else Evaluation = Aspiration<Black>(IDepth);
 
                 if (Status == Stopped) break;
 
@@ -279,9 +283,88 @@ namespace StockDory
 
         void Stop() { Status = Stopped; }
 
+        bool Stopped() const { return Status == Stopped; }
+
+        private:
+        template<Color Color>
+        Score Aspiration(const int16_t depth)
+        {
+            // Set the aspiration window size
+
+            Score alpha = -Infinity;
+            Score beta  =  Infinity;
+
+            if (depth > AspirationWindowRequiredDepth) {
+                // If we're past the required aspiration depth, it means previous searches
+                // gave us a good ballpark for the evaluation. All future searches can start
+                // with a much smaller window:
+                //
+                // [evaluation - AspirationWindowSize, evaluation + AspirationWindowSize]
+
+                alpha = Evaluation - AspirationWindowSize;
+                beta  = Evaluation + AspirationWindowSize;
+            }
+
+            uint8_t research = 0;
+            while (true) {
+                if (ThreadType == Main) {
+                    // The main thread is also responsible for checking if we've crossed any time limits.
+                    // If we have, we need to stop searching:
+                    if (Limit.Crossed()) [[unlikely]] { Status = SearchThreadStatus::Stopped; return Draw; }
+                }
+
+                // If the search was stopped, we need to stop searching.
+                // This search is incomplete, and its results may not be valid to use:
+                if (Status == SearchThreadStatus::Stopped) return Draw;
+
+                // If the previous searches weren't successful, and even incrementally
+                // widening the window slightly didn't help, we need to widen the window to
+                // a full window and avoid wasting any more time:
+                if (alpha < -AspirationBound) alpha = -Infinity;
+                if (beta  >  AspirationBound) beta  =  Infinity;
+
+                const Score bestEvaluation = AlphaBeta<Color, true, true>(0, depth, alpha, beta);
+
+                if        (bestEvaluation <= alpha) {
+                    // If the evaluation from this search is far below the lower bound, it means that the
+                    // previous searches were too optimistic. We need to widen the window a bit and try again:
+
+                    research++;
+                    alpha = std::max<Score>(alpha - research * research * AspirationDelta, -Infinity);
+                } else if (bestEvaluation >= beta) {
+                    // If the evaluation from this search is far above the upper bound, it means that the
+                    // previous searches were too pessimistic. We need to widen the window a bit and try again:
+
+                    research++;
+                    beta  = std::min<Score>(beta  + research * research * AspirationDelta,  Infinity);
+
+                    // We should also assume that this is the best move so far
+                    BestMove = PVTable[0].PV[0];
+                } else {
+                    // If the evaluation from this search falls within the window, we can assume that the
+                    // search was successful and we can return the evaluation:
+
+                    return bestEvaluation;
+                }
+            }
+        }
+
+        template<Color Color, bool PV, bool Root>
+        Score AlphaBeta(const uint8_t ply, const int16_t depth, const Score alpha, const Score beta)
+        {
+
+        }
+
     };
 
     inline std::vector<SearchThread<Parallel>> ParallelThreads;
+
+    bool SafeToSearch()
+    {
+        for (const auto& thread : ParallelThreads) if (!thread.Stopped()) return false;
+
+        return true;
+    }
 
     template<class EventHandler = DefaultSearchEventHandler>
     std::unique_ptr<SearchThread<Main, EventHandler>> Search(
@@ -315,6 +398,14 @@ namespace StockDory
 
                 // Once the main thread is done, stop all parallel threads
                 for (auto& thread : ParallelThreads) thread.Stop();
+
+                // Wait for all parallel threads to finish
+                for (size_t i = 0; i < ParallelThreads.size(); i++) {
+                    const auto& thread = ParallelThreads[i];
+
+                    while (!thread.Stopped()) { Sleep(2); }
+                }
+
                 ParallelThreads.clear();
             }
         );
