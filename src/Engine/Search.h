@@ -96,8 +96,8 @@ namespace StockDory
 
         uint8_t SelectiveDepth = 0;
 
-        uint64_t   Nodes = 0;
-        uint64_t TTNodes = 0;
+        std::shared_ptr<std::atomic_uint64_t>  Nodes = nullptr;
+                                    uint64_t TTNodes = 0;
 
         Score Evaluation = -Infinity;
         Move  BestMove   = NoMove;
@@ -112,7 +112,8 @@ namespace StockDory
         // ReSharper disable CppPassValueParameterByConstReference
         Search(const StockDory::Board       board, const TimeControl tc,
                const RepetitionHistory repetition, const uint8_t     hm)
-            : Board(board), TC(tc), Repetition(repetition)
+            : Board(board), TC(tc), Repetition(repetition),
+              Nodes(std::make_shared<std::atomic_uint64_t>(0))
         {
             Stack[0].HalfMoveCounter = hm;
         }
@@ -125,7 +126,7 @@ namespace StockDory
             TC.Start();
 
             int16_t currentDepth = 1;
-            while (!limit.BeyondLimit(Nodes, currentDepth) && !TC.Finished<false>()) {
+            while (!limit.BeyondLimit(*Nodes.get(), currentDepth) && !TC.Finished<false>()) {
                 const Move lastBestMove = BestMove;
 
                 if (Board.ColorToMove() ==   White)
@@ -142,7 +143,7 @@ namespace StockDory
                     currentDepth,
                     SelectiveDepth,
                     Evaluation,
-                    Nodes,
+                    *Nodes.get(),
                     TTNodes,
                     TC.Elapsed(),
                     PVTable[0]
@@ -156,7 +157,7 @@ namespace StockDory
         [[nodiscard]]
         uint64_t NodesSearched() const
         {
-            return Nodes;
+            return *Nodes.get();
         }
 
         void ForceStop()
@@ -220,7 +221,7 @@ namespace StockDory
         Score AlphaBeta(const uint8_t ply, int16_t depth, Score alpha, Score beta)
         {
             //region Out of Time & Force Stop
-            if (Stop || ((Nodes & 4095) == 0 && TC.Finished<true>())) [[unlikely]] { Stop = true; return Draw; }
+            if (Stop || ((*Nodes.get() & 4095) == 0 && TC.Finished<true>())) [[unlikely]] { Stop = true; return Draw; }
             //endregion
 
             constexpr auto OColor = Opposite(Color);
@@ -554,7 +555,7 @@ namespace StockDory
             else Stack[ply + 1].HalfMoveCounter = Stack[ply].HalfMoveCounter + 1;
 
             const PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion());
-            Nodes++;
+            Nodes->fetch_add(1, std::memory_order_relaxed);
 
             const ZobristHash hash = Board.Zobrist();
 
