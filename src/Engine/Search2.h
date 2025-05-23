@@ -196,12 +196,12 @@ namespace StockDory
     {
 
         static_assert(
-            ThreadType != Main && std::is_same_v<EventHandler, DefaultSearchEventHandler>,
+            ThreadType != Parallel || std::is_same_v<EventHandler, DefaultSearchEventHandler>,
             "Events are only called in the main thread, this must be a mistake"
         );
 
         static_assert(
-            ThreadType != Main && Timed,
+            ThreadType != Parallel || !Timed,
             "Timing search is only appropriate on the main thread, this must be a mistake"
         );
 
@@ -289,7 +289,7 @@ namespace StockDory
     inline std::vector<SearchThread<Parallel>> ParallelThreads;
 
     template<class EventHandler = DefaultSearchEventHandler, bool Timed = false>
-    std::unique_ptr<SearchThread<Main, Timed, EventHandler>>& Search(
+    std::unique_ptr<SearchThread<Main, Timed, EventHandler>> Search(
         const Limit<Timed>   &      limit,
         const Board          &      board,
         const RepetitionStack& repetition,
@@ -298,13 +298,13 @@ namespace StockDory
         limit.Start();
 
         // Allocate the parallel threads
-        ParallelThreads.reserve(ThreadPool.Size() - 1);
+        ParallelThreads = std::vector<SearchThread<Parallel>>(ThreadPool.Size() - 1);
 
         // Start the parallel threads
         for (size_t i = 0; i < ThreadPool.Size() - 1; i++) ThreadPool.Execute(
             [i, &limit, &board, &repetition, hmc] -> void
             {
-                ParallelThreads[i] = SearchThread<Parallel>(limit, board, repetition, hmc);
+                ParallelThreads[i] = std::move(SearchThread<Parallel>(limit, board, repetition, hmc));
                 ParallelThreads[i].IterativeDeepening();
             }
         );
@@ -325,7 +325,7 @@ namespace StockDory
 
         // Return a reference to the main thread
         // This is so that the main thread can be used to stop the search
-        return main;
+        return std::move(main);
     }
 
 } // StockDory
