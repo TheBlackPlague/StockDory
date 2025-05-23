@@ -6,6 +6,8 @@
 #ifndef STOCKDORY_SEARCH2_H
 #define STOCKDORY_SEARCH2_H
 
+#include <atomic>
+
 #include "../Backend/Board.h"
 #include "../Backend/Misc.h"
 #include "../Backend/ThreadPool.h"
@@ -140,22 +142,6 @@ namespace StockDory
 
     };
 
-    struct DefaultSearchEventHandler
-    {
-
-        static void HandleDepthIteration(
-            [[maybe_unused]] const uint8_t           depth,
-            [[maybe_unused]] const uint8_t  selectiveDepth,
-            [[maybe_unused]] const Score        evaluation,
-            [[maybe_unused]] const uint64_t          nodes,
-            [[maybe_unused]] const uint64_t        ttNodes,
-            [[maybe_unused]] const MS                 time,
-            [[maybe_unused]] const PVEntry&             pv) {}
-
-        static void HandleBestMove([[maybe_unused]] const Move move) {}
-
-    };
-
     struct Limit
     {
 
@@ -192,18 +178,46 @@ namespace StockDory
 
     };
 
+    struct IterativeDeepeningIterationCompletionEvent
+    {
+
+        int16_t           Depth {};
+        uint8_t  SelectiveDepth {};
+        Score        Evaluation {};
+        uint64_t          Nodes {};
+        MS                 Time {};
+
+    };
+
+    struct IterativeDeepeningCompletionEvent
+    {
+
+        Move Move {};
+
+    };
+
+    struct DefaultSearchEventHandler
+    {
+
+        // ReSharper disable once CppMemberFunctionMayBeStatic
+        void HandleIterativeDeepeningIterationCompletion(
+            [[maybe_unused]] const IterativeDeepeningIterationCompletionEvent& event
+        ) {}
+
+        // ReSharper disable once CppMemberFunctionMayBeStatic
+        void HandleIterativeDeepeningCompletion(
+            [[maybe_unused]] const IterativeDeepeningCompletionEvent& event
+        ) {}
+
+    };
+
     template<SearchThreadType ThreadType = Main, class EventHandler = DefaultSearchEventHandler>
-    class SearchThread
+    class SearchTask
     {
 
         static_assert(
-            ThreadType != Parallel || std::is_same_v<EventHandler, DefaultSearchEventHandler>,
-            "Events are only called in the main thread, this must be a mistake"
-        );
-
-        static_assert(
             std::is_base_of_v<DefaultSearchEventHandler, EventHandler>,
-            "EventHandler must be derived from DefaultSearchEventHandler"
+            "Handler must be derived from DefaultSearchEventHandler"
         );
 
         Board Board {};
@@ -217,34 +231,39 @@ namespace StockDory
 
         PVTable PVTable {};
 
-        SearchThreadStatus Status = Stopped;
+        SearchThreadStatus Status = SearchThreadStatus::Stopped;
 
         Limit Limit {};
 
         uint8_t SelectiveDepth = 0;
 
-         int16_t  IDepth = 0;
-        uint64_t   Nodes = 0;
-        uint64_t TTNodes = 0;
+        int16_t IDepth = 0;
+
+        std::atomic_uint64_t Nodes = 0;
 
         Score Evaluation = -Infinity;
 
         Move BestMove {};
 
+        EventHandler Handler {};
+
         public:
-        SearchThread() = delete;
+        SearchTask() = default;
 
         // ReSharper disable CppPassValueParameterByConstReference
-        SearchThread(
+        SearchTask(
             const StockDory::Limit      limit,
             const StockDory::Board      board,
             const RepetitionStack  repetition,
-            const uint8_t                 hmc)
-        : Board(board), Repetition(repetition), Limit(limit)
+            const uint8_t                 hmc,
+                  EventHandler&       handler)
+        : Board(board), Repetition(repetition), Limit(limit), Handler(handler)
         {
             Stack[0].HalfMoveCounter = hmc;
         }
         // ReSharper restore CppPassValueParameterByConstReference
+
+        uint64_t GetNodes() const { return Nodes; }
 
         void IterativeDeepening()
         {
@@ -264,14 +283,16 @@ namespace StockDory
                 if (ThreadType == Main) {
                     BestMove = PVTable[0].PV[0];
 
-                    EventHandler::HandleDepthIteration(
-                        IDepth,
-                        SelectiveDepth,
-                        Evaluation,
-                        Nodes,
-                        TTNodes,
-                        Limit.Elapsed()
-                    );
+                    IterativeDeepeningIterationCompletionEvent event
+                    {
+                        .Depth          = IDepth,
+                        .SelectiveDepth = SelectiveDepth,
+                        .Evaluation     = Evaluation,
+                        .Nodes          = Nodes,
+                        .Time           = Limit.Elapsed()
+                    };
+
+                    Handler.HandleIterativeDeepeningIterationCompletion(event);
                 }
 
                 IDepth++;
@@ -279,7 +300,14 @@ namespace StockDory
 
             Status = SearchThreadStatus::Stopped;
 
-            if (ThreadType == Main) EventHandler::HandleBestMove(BestMove);
+            if (ThreadType == Main) {
+                IterativeDeepeningCompletionEvent event
+                {
+                    .Move = BestMove
+                };
+
+                Handler.HandleIterativeDeepeningCompletion(event);
+            }
         }
 
         void Stop() { Status = SearchThreadStatus::Stopped; }
@@ -311,12 +339,12 @@ namespace StockDory
                 if (ThreadType == Main) {
                     // The main thread is also responsible for checking if we've crossed any time limits.
                     // If we have, we need to stop searching
-                    if (Limit.Crossed()) [[unlikely]] { Status = SearchThreadStatus::Stopped; return Draw; }
+                    if (Limit.Crossed()) [[unlikely]] { Status = SearchThreadStatus::Stopped; }
                 }
 
                 // If the search was stopped, we need to stop searching.
                 // This search is incomplete, and its results may not be valid to use
-                if (Status == SearchThreadStatus::Stopped) return Draw;
+                if (Status == SearchThreadStatus::Stopped) [[unlikely]] return Draw;
 
                 // If the previous searches weren't successful, and even incrementally
                 // widening the window slightly didn't help, we need to widen the window to
@@ -351,77 +379,273 @@ namespace StockDory
         }
 
         template<Color Color, bool PV, bool Root>
-        Score AlphaBeta(const uint8_t ply, const int16_t depth, const Score alpha, const Score beta)
+        Score AlphaBeta(const uint8_t ply, int16_t depth, Score alpha, Score beta)
+        {
+            constexpr auto OColor = Opposite(Color);
+
+            if (ThreadType == Main) {
+                // The main thread is responsible for checking if we've crossed any time limits.
+                // If we have, we need to stop searching
+                if (Limit.Crossed()) [[unlikely]] { Status = SearchThreadStatus::Stopped; }
+            }
+
+            // If the search was stopped, we need to stop searching
+            if (Status == SearchThreadStatus::Stopped) [[unlikely]] return Draw;
+
+            if (ThreadType == Main) {
+                // The main thread is responsible for maintaining the correct PV, the parallel threads
+                // need not worry about this
+                PVTable[ply].Ply = ply;
+
+                // Only the main thread ever outputs the selective depth. No reason to worry about it on
+                // the parallel threads
+                if (PV) SelectiveDepth = std::max(SelectiveDepth, ply);
+            }
+
+            // If we've exhausted the search depth, we should evaluate tactical positions a bit deeper
+            // to avoid the horizon effect
+            if (depth <= 0) return Quiescence<Color, PV>(ply, alpha, beta);
+
+            const ZobristHash hash = Board.Zobrist();
+
+            if (!Root) {
+                // If we're not at the root, we need to check for potential draws so we don't
+                // accidentally consider them as wins or losses
+
+                // If the half-move counter is greater than 100, it means at least 50 moves have been
+                // played without a pawn move or capture. This is a draw, according to the 50-move rule,
+                // and while it relies on the opponent to claim the draw, we should still assume the
+                // opponent will do so and consider this position as a draw
+                if (Stack[ply].HalfMoveCounter >= 100) return Draw;
+
+                // If the position has been repeated enough times (3 times), we should also consider this a draw
+                // as per the 3-fold repetition rule
+                if (Repetition.Found(hash, Stack[ply].HalfMoveCounter)) return Draw;
+
+                const uint8_t pieceCount = Count(~Board[NAC]);
+
+                // If there are only two pieces left on the board, that would be our king and the opponent's king,
+                // and that's a draw. We can never checkmate the opponent with only a king left
+                if (pieceCount == 2) return Draw;
+
+                const bool knightLeft = Board.PieceBoard<White>(Knight) | Board.PieceBoard<Black>(Knight),
+                           bishopLeft = Board.PieceBoard<White>(Bishop) | Board.PieceBoard<Black>(Bishop);
+
+                // If there are only 3 pieces left on the board, then two of them must be the kings, and the third
+                // can be any piece. In the case it's a knight or a bishop, we can never checkmate the opponent
+                if (pieceCount == 3 && (knightLeft || bishopLeft)) return Draw;
+
+                // Mate Distance Pruning:
+                // Even if we mate the opponent in the next move, our score would be at best: Mate - ply - 1
+                // but if we have alpha greater than or equal to that, it means a shorter mate was found at
+                // some earlier ply. There is no need to search this branch any further since we can't find
+                // a shallower mate at this depth, so we can return the alpha value
+                alpha = std::max<Score>(alpha, -Mate + ply    );
+                beta  = std::min<Score>(beta ,  Mate - ply - 1);
+                if (alpha >= beta) return alpha;
+            }
+
+            const SearchTranspositionEntry ttEntry = TT[hash];
+                  Move                     ttMove  = {};
+                  bool                     ttHit   = false;
+
+            // Check if the transposition table has an entry for this position and if it does,
+            // check if the entry is valid by comparing the bits of the hash not used to index
+            // the table
+            if (ttEntry.Type != Invalid && ttEntry.Hash == CompressHash(hash)) {
+                ttHit  = true;
+                ttMove = ttEntry.Move;
+
+                // We only return from the transposition table in non-PV nodes. In PV nodes,
+                // returning from the transposition table is too risky since hash collisions
+                // can happen, and we might return a wrong value. In non-PV nodes, we can do
+                // this since while hash collisions can occur, they are rare and at most they
+                // will just influence the search order and not the final evaluation. We should
+                // also check that the entry came from a search that was at least as deep as the
+                // current planned search
+                if (!PV && ttEntry.Depth >= depth) {
+                    if (ttEntry.Type == Exact                               ) return ttEntry.Evaluation;
+                    if (ttEntry.Type == Beta  && ttEntry.Evaluation >= beta ) return ttEntry.Evaluation;
+                    if (ttEntry.Type == Alpha && ttEntry.Evaluation <= alpha) return ttEntry.Evaluation;
+                }
+            }
+
+            Score staticEvaluation = None ;
+            bool  improving               ;
+
+            const bool checked = Board.Checked<Color>();
+
+            if (checked) {
+                // If we're in check, we can't trust the static evaluation of this node
+                // and should use the static evaluation of our previous node since it
+                // will be more reasonable
+
+                staticEvaluation = Stack[ply - 2].StaticEvaluation;
+
+                // Getting into check typically means we're not improving - this is not
+                // ground truth, but it's a good estimate for heuristics
+                improving = false;
+
+                // We should search this branch a bit deeper since we need to find a good
+                // out of check
+                depth += CheckExtension;
+
+                // We should also skip all the risky pruning since we need to be careful
+                // not to prune the only good move that gets us out of check
+                goto SkipRiskyPruning;
+            }
+
+            // Check if we have a valid transposition table entry. If we do, we can
+            // use it instead of the neural network evaluation since it will most
+            // likely be more accurate
+            if (ttHit) {
+                staticEvaluation = ttEntry.Evaluation;
+
+                // If the entry is not an exact evaluation (it came from a non-PV node),
+                // it is likely that the evaluation is not accurate enough
+                if (ttEntry.Type != Exact) {
+                    const Score nnEvaluation = Evaluation::Evaluate(Color);
+
+                    // If the neural network evaluation further exceeds the estimate from the
+                    // transposition table, we can use it instead. This is a good estimat
+                    if ((nnEvaluation > ttEntry.Evaluation && ttEntry.Type == Beta )  ||
+                        (nnEvaluation < ttEntry.Evaluation && ttEntry.Type == Alpha)) staticEvaluation = nnEvaluation;
+                }
+            }
+
+            Stack[ply].StaticEvaluation = staticEvaluation;
+
+            // We are improving our position if the static evaluation is increasing - this is
+            // not ground truth, but it's a good estimate for heuristics
+            improving = Stack[ply].StaticEvaluation > Stack[ply - 2].StaticEvaluation;
+
+            // Reverse Futility Pruning
+            if (depth < ReverseFutilityDisablingDepth && abs(beta) < Mate) {
+                const Score margin = depth * ReverseFutilityDepthFactor + improving * ReverseFutilityImprovingFactor;
+
+                if (staticEvaluation - margin >= beta) return beta;
+            }
+
+            SkipRiskyPruning:
+        }
+
+        template<Color Color, bool PV>
+        Score Quiescence(const uint8_t ply, Score alpha, Score beta)
         {
 
         }
 
     };
 
-    inline std::vector<std::shared_ptr<SearchThread<Parallel>>> ParallelThreads;
-
-    // It's important to call this and check to make sure that all threads are stopped
-    // before starting a new search
-    bool SafeToSearch()
-    {
-        for (const auto& thread : ParallelThreads) if (!thread->Stopped()) return false;
-
-        return true;
-    }
-
     template<class EventHandler = DefaultSearchEventHandler>
-    std::unique_ptr<SearchThread<Main, EventHandler>> Search(
-              Limit          &      limit,
-              Board          &      board,
-              RepetitionStack& repetition,
-        const uint8_t                 hmc)
+    class Search
     {
-        limit.Start();
 
-        const size_t parallelThreadCount = ThreadPool.Size() - 1;
+        using ParallelSearchTask = SearchTask<Parallel>;
 
-        // We don't need to clear since the previous search will have cleared the previous threads
-        ParallelThreads.resize(parallelThreadCount);
+        struct MainSearchTaskEventHandler : DefaultSearchEventHandler
+        {
 
-        // Allocate and start the parallel threads
-        for (size_t i = 0; i < parallelThreadCount; i++) ThreadPool.Execute(
-            [i, &limit, &board, &repetition, hmc] -> void
+            EventHandler MainHandler;
+
+            std::vector<std::unique_ptr<ParallelSearchTask>> ParallelTasks;
+
+            void HandleIterativeDeepeningIterationCompletion(
+                [[maybe_unused]] const IterativeDeepeningIterationCompletionEvent& event
+            )
             {
-                const auto thread = std::make_shared<SearchThread<Parallel>>(limit, board, repetition, hmc);
-                ParallelThreads[i] = thread;
+                IterativeDeepeningIterationCompletionEvent mainEvent
+                {
+                    .Depth          = event.Depth,
+                    .SelectiveDepth = event.SelectiveDepth,
+                    .Evaluation     = event.Evaluation,
+                    .Nodes          = event.Nodes,
+                    .Time           = event.Time
+                };
 
-                thread->IterativeDeepening();
+                for (const auto& task : ParallelTasks) mainEvent.Nodes += task->GetNodes();
+
+                MainHandler.HandleIterativeDeepeningIterationCompletion(mainEvent);
             }
-        );
 
-        // Allocate the main thread
-        auto main = std::make_unique<SearchThread<Main, EventHandler>>(limit, board, repetition, hmc);
+            void HandleIterativeDeepeningCompletion(
+                [[maybe_unused]] const IterativeDeepeningCompletionEvent& event
+            )
+            { MainHandler.HandleIterativeDeepeningCompletion(event); }
 
-        // Start the main thread
-        ThreadPool.Execute(
-            [&main, parallelThreadCount] -> void
-            {
-                main->IterativeDeepening();
+        };
 
-                // Once the main thread is done, stop all parallel threads
-                for (const auto& thread : ParallelThreads) thread->Stop();
+        std::atomic_bool Searching = false;
 
-                // Wait for all parallel threads to finish
-                for (size_t i = 0; i < parallelThreadCount; i++) {
-                    const auto& thread = ParallelThreads[i];
+        using MainSearchTask = SearchTask<Main, MainSearchTaskEventHandler>;
 
-                    while (!thread->Stopped()) { Sleep(5); }
+        MainSearchTask              MainTask       ;
+        MainSearchTaskEventHandler  MainTaskHandler;
+
+        public:
+        Search(EventHandler& handler)
+        {
+            MainTaskHandler.MainHandler = handler;
+        }
+
+        void Run(
+                  Limit          &      limit,
+                  Board          &      board,
+                  RepetitionStack& repetition,
+            const uint8_t                 hmc)
+        {
+
+            Searching = true;
+
+            limit.Start();
+
+            const size_t freeThreadCount = ThreadPool.Size() - 1;
+
+            // Allocate and start the parallel tasks
+            MainTaskHandler.ParallelTasks.resize(freeThreadCount);
+
+            for (size_t i = 0; i < freeThreadCount; i++) ThreadPool.Execute(
+                [this, i, &limit, &board, &repetition, hmc] -> void
+                {
+                    DefaultSearchEventHandler handler;
+                    auto task = std::make_unique<ParallelSearchTask>(limit, board, repetition, hmc, handler);
+
+                    MainTaskHandler.ParallelTasks[i] = std::move(task);
+
+                    task->IterativeDeepening();
                 }
+            );
 
-                // Clear the parallel threads so that we can safely start a new search
-                ParallelThreads.clear();
-            }
-        );
+            // Allocate the main task
+            MainTask = MainSearchTask(limit, board, repetition, hmc, MainTaskHandler);
 
-        // Return a reference to the main thread
-        // This is so that the main thread can be used to stop the search
-        return main;
-    }
+            // Start the main task
+            ThreadPool.Execute(
+                [this, freeThreadCount] -> void
+                {
+                    MainTask->IterativeDeepening();
+
+                    // Once the main task is done, stop all parallel tasks
+                    for (const auto& task : MainTaskHandler.ParallelTasks) task->Stop();
+
+                    // Wait for all parallel tasks to finish
+                    for (size_t i = 0; i < freeThreadCount; i++) {
+                        const auto& task = MainTaskHandler.ParallelTasks[i];
+
+                        while (!task->Stopped()) { Sleep(1); }
+                    }
+
+                    Searching = false;
+                }
+            );
+        }
+
+        void Stop()
+        {
+            MainTask.Stop();
+        }
+
+    };
 
 } // StockDory
 

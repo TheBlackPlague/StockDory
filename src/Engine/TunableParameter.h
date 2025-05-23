@@ -16,6 +16,12 @@ namespace StockDory
     constexpr  uint8_t AspirationWindowSizeDelta     =   23;
     constexpr  uint8_t AspirationWindowRequiredDepth =    4;
 
+    constexpr  uint8_t CheckExtension = 1;
+
+    constexpr  uint8_t ReverseFutilityDisablingDepth   =  7;
+    constexpr  uint8_t ReverseFutilityDepthFactor      = 67;
+    constexpr  uint8_t ReverseFutilityImprovingFactor  = 76;
+
 } // StockDory
 
 #endif //STOCKDORY_TUNABLEPARAMETER_H

@@ -18,6 +18,8 @@ namespace StockDory
     constexpr Score Mate     = Infinity - 1;
     constexpr Score Draw     = 0           ;
 
+    constexpr Score None     = Infinity + 1;
+
     constexpr uint8_t MaxDepth = 128;
     constexpr uint8_t MaxMove  = 218;
 
