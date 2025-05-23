@@ -319,8 +319,8 @@ namespace StockDory
                 // If the previous searches weren't successful, and even incrementally
                 // widening the window slightly didn't help, we need to widen the window to
                 // a full window and avoid wasting any more time:
-                if (alpha < -AspirationBound) alpha = -Infinity;
-                if (beta  >  AspirationBound) beta  =  Infinity;
+                if (alpha < -AspirationWindowFallbackBound) alpha = -Infinity;
+                if (beta  >  AspirationWindowFallbackBound) beta  =  Infinity;
 
                 const Score bestEvaluation = AlphaBeta<Color, true, true>(0, depth, alpha, beta);
 
@@ -329,13 +329,13 @@ namespace StockDory
                     // previous searches were too optimistic. We need to widen the window a bit and try again:
 
                     research++;
-                    alpha = std::max<Score>(alpha - research * research * AspirationDelta, -Infinity);
+                    alpha = std::max<Score>(alpha - research * research * AspirationWindowSizeDelta, -Infinity);
                 } else if (bestEvaluation >= beta) {
                     // If the evaluation from this search is far above the upper bound, it means that the
                     // previous searches were too pessimistic. We need to widen the window a bit and try again:
 
                     research++;
-                    beta  = std::min<Score>(beta  + research * research * AspirationDelta,  Infinity);
+                    beta  = std::min<Score>(beta  + research * research * AspirationWindowSizeDelta,  Infinity);
 
                     // We should also assume that this is the best move so far
                     BestMove = PVTable[0].PV[0];
