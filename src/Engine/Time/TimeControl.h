@@ -8,7 +8,7 @@
 
 #include <chrono>
 
-#include "Common.h"
+#include "../Common.h"
 
 namespace StockDory
 {

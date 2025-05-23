@@ -9,6 +9,7 @@
 #include "../Backend/Board.h"
 #include "../Backend/Misc.h"
 #include "../Backend/Type/Move.h"
+#include "../Backend/ThreadPool.h"
 
 #include "Common.h"
 #include "TranspositionTable.h"
@@ -191,8 +192,23 @@ namespace StockDory
     };
 
     template<SearchThreadType ThreadType = Main, bool Timed = false, class EventHandler = DefaultSearchEventHandler>
-    class SearchThreadImplementation
+    class SearchThread
     {
+
+        static_assert(
+            ThreadType != Main && std::is_same_v<EventHandler, DefaultSearchEventHandler>,
+            "Events are only called in the main thread, this must be a mistake"
+        );
+
+        static_assert(
+            ThreadType != Main && Timed,
+            "Timing search is only appropriate on the main thread, this must be a mistake"
+        );
+
+        static_assert(
+            std::is_base_of_v<DefaultSearchEventHandler, EventHandler>,
+            "EventHandler must be derived from DefaultSearchEventHandler"
+        );
 
         Board Board {};
 
@@ -220,15 +236,15 @@ namespace StockDory
         Move BestMove {};
 
         public:
-        SearchThreadImplementation() = default;
+        SearchThread() = default;
 
         // ReSharper disable CppPassValueParameterByConstReference
-        SearchThreadImplementation(
+        SearchThread(
             const Limit<Timed>          limit,
             const StockDory::Board      board,
             const RepetitionStack  repetition,
-            const uint8_t                 hmc
-        ) : Board(board), Repetition(repetition), Limit(limit)
+            const uint8_t                 hmc)
+        : Board(board), Repetition(repetition), Limit(limit)
         {
             Stack[0].HalfMoveCounter = hmc;
         }
@@ -238,8 +254,6 @@ namespace StockDory
         {
             // TODO: Handle Evaluation Parallelism
             Board.LoadForEvaluation();
-
-            if (ThreadType == Main) Limit.Start();
 
             IDepth = 1;
             while (!Limit.Crossed(Nodes, IDepth)) {
@@ -271,6 +285,42 @@ namespace StockDory
         void Stop() { Status = Stopped; }
 
     };
+
+    template<bool Timed = false, class EventHandler = DefaultSearchEventHandler>
+    SearchThread<Main, Timed, EventHandler>& Search(
+        const Limit<Timed>   &      limit,
+        const Board          &      board,
+        const RepetitionStack& repetition,
+        const uint8_t                 hmc)
+    {
+        limit.Start();
+
+        // Allocate the main thread
+        auto main = std::make_unique<SearchThread<Main, Timed, EventHandler>>(limit, board, repetition, hmc);
+
+        // Allocate the parallel threads
+        std::vector<SearchThread<Parallel>> threads;
+        threads.reserve(ThreadPool.Size() - 1);
+        std::ranges::fill(threads, SearchThread<Parallel>());
+
+        // Start the main thread
+        ThreadPool.Execute(
+            [&main, &threads] -> void
+            {
+                main.IterativeDeepening();
+
+                // Once the main thread is done, stop all parallel threads
+                for (auto& thread : threads) thread.Stop();
+            }
+        );
+
+        // Start the parallel threads
+        for (auto& thread : threads) ThreadPool.Execute([&thread] -> void { thread.IterativeDeepening(); });
+
+        // Return a reference to the main thread
+        // This is so that the main thread can be used to stop the search
+        return main;
+    }
 
 } // StockDory
 

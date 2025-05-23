@@ -45,7 +45,7 @@ class ThreadPool
     {
         drjit::parallel_for(
             range,
-            std::move(code),
+            std::forward<F>(code),
             Internal
         );
     }
