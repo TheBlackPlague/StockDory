@@ -12,7 +12,6 @@
 #include "../Backend/Type/Move.h"
 
 #include "Common.h"
-#include "EngineParameter.h"
 #include "TranspositionTable.h"
 #include "TunableParameter.h"
 
@@ -281,9 +280,9 @@ namespace StockDory
             if (ThreadType == Main) EventHandler::HandleBestMove(BestMove);
         }
 
-        void Stop() { Status = Stopped; }
+        void Stop() { Status = SearchThreadStatus::Stopped; }
 
-        bool Stopped() const { return Status == Stopped; }
+        bool Stopped() const { return Status == SearchThreadStatus::Stopped; }
 
         private:
         template<Color Color>
@@ -412,7 +411,7 @@ namespace StockDory
 
         // Return a reference to the main thread
         // This is so that the main thread can be used to stop the search
-        return std::move(main);
+        return main;
     }
 
 } // StockDory
