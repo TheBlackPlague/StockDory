@@ -334,7 +334,6 @@ namespace StockDory
         Score Aspiration(const int16_t depth)
         {
             // Set the aspiration window size
-
             Score alpha = -Infinity;
             Score beta  =  Infinity;
 
@@ -343,8 +342,7 @@ namespace StockDory
                 // gave us a good ballpark for the evaluation. All future searches can start
                 // with a much smaller window:
                 //
-                // [evaluation - AspirationWindowSize, evaluation + AspirationWindowSize]
-
+                // [alpha, beta] = [evaluation - AspirationWindowSize, evaluation + AspirationWindowSize]
                 alpha = Evaluation - AspirationWindowSize;
                 beta  = Evaluation + AspirationWindowSize;
             }
@@ -372,13 +370,11 @@ namespace StockDory
                 if        (bestEvaluation <= alpha) {
                     // If the evaluation from this search is far below the lower bound, it means that the
                     // previous searches were too optimistic. We need to widen the window a bit and try again
-
                     research++;
                     alpha = std::max<Score>(alpha - research * research * AspirationWindowSizeDelta, -Infinity);
                 } else if (bestEvaluation >= beta) {
                     // If the evaluation from this search is far above the upper bound, it means that the
                     // previous searches were too pessimistic. We need to widen the window a bit and try again
-
                     research++;
                     beta  = std::min<Score>(beta  + research * research * AspirationWindowSizeDelta,  Infinity);
 
@@ -387,7 +383,6 @@ namespace StockDory
                 } else {
                     // If the evaluation from this search falls within the window, we can assume that the
                     // search was successful
-
                     return bestEvaluation;
                 }
             }
