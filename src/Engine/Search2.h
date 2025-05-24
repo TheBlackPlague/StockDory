@@ -522,6 +522,9 @@ namespace StockDory
                     if      (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, nnEvaluation);
                     else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, nnEvaluation);
                 }
+            } else {
+                // If we don't have a transposition table entry, we need to evaluate using the neural network
+                staticEvaluation = Evaluation::Evaluate(Color);
             }
 
             Stack[ply].StaticEvaluation = staticEvaluation;
@@ -820,13 +823,26 @@ namespace StockDory
         }
 
         template<Color Color, bool PV>
-        Score Quiescence(const uint8_t ply, Score alpha, Score beta)
+        Score Quiescence(const uint8_t ply, Score alpha, const Score beta)
         {
             constexpr auto OColor = Opposite(Color);
 
+            // Only the main thread ever outputs the selective depth. No reason to worry about it on
+            // the parallel threads
             if (ThreadType == Main && PV) SelectiveDepth = std::max(SelectiveDepth, ply);
 
             if (!PV) {
+                // We only return from the transposition table in non-PV nodes. In PV nodes,
+                // returning from the transposition table is too risky since hash collisions
+                // can happen, and we might return a wrong value. In non-PV nodes, we can do
+                // this since while hash collisions can occur, they are rare and at most they
+                // will just influence the search order and not the final evaluation.
+                //
+                // In Quiescence Search, we also don't care about the depth from which the
+                // transposition table entry came from; we are only in the Quiescence
+                // Search because we exhausted the search depth, so all entries in the
+                // transposition table must've come from a search that was deeper than our
+                // current search depth, which is 0.
                 const ZobristHash hash = Board.Zobrist();
 
                 const SearchTranspositionEntry& ttEntry = TT[hash];
@@ -840,12 +856,50 @@ namespace StockDory
 
             const Score staticEvaluation = Evaluation::Evaluate(Color);
 
+            // In the case that the static evaluation exceeds the upper bound, it means that we have a beta cut-off,
+            // so we can short-circuit this branch and return the upper bound
             if (staticEvaluation >= beta) return beta;
+
+            // In the case that the static evaluation is better than the lower bound, we can adjust our lower bound
+            // so we only look through tactical branches deeper in the Quiescence Search that improve upon this
+            // evaluation
             if (staticEvaluation > alpha) alpha = staticEvaluation;
 
+            // In Quiescence Search, we need to check for only tactical moves
             using MoveList = OrderedMoveList<Color, true>;
 
+            MoveList moves (Board, ply, Killer, History);
 
+            Score bestEvaluation = staticEvaluation;
+            for (uint8_t i = 0; i < moves.Count(); i++) {
+                const Move move = moves[i];
+
+                // SEE (Static Exchange Evaluation) Pruning:
+                //
+                // If the SEE evaluation is negative, it means that this exchange from a high-level
+                // doesn't end up well for us and we should avoid it entirely
+                if (!SEE::Accurate(Board, move, 0)) continue;
+
+                const PreviousState state = DoMove<false>(move, ply);
+
+                const Score evaluation = -Quiescence<OColor, PV>(ply + 1, -beta, -alpha);
+
+                UndoMove<false>(state, move);
+
+                // If the evaluation is worse than an evaluation we previously had, then this is not the best move
+                if (evaluation <= bestEvaluation) continue;
+
+                bestEvaluation = evaluation;
+
+                if (evaluation <= alpha) continue;
+
+                alpha = evaluation;
+
+                // Beta cut-off occurred so we can short-circuit this branch
+                if (evaluation >= beta) break;
+            }
+
+            return bestEvaluation;
         }
 
         template<bool UpdateRepetitionHistory>
@@ -894,10 +948,13 @@ namespace StockDory
         template<Color Color, bool Increase>
         void UpdateHistory(const Move move, const int16_t depth)
         {
+            // Make sure our bonus is within the limits of the history table
             const int16_t bonus = std::min<int16_t>(300 * depth - 250, HistoryLimit);
 
             int16_t& history = History[Color][Board[move.From()].Piece()][move.To()];
 
+            // Apply the history bonus smoothly converged (not clamped) so that it doesn't exceed
+            // the limits of the history table
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
         }
 

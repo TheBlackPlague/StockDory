@@ -45,7 +45,7 @@ namespace StockDory
         public:
         explicit OrderedMoveList(const Board & board , const uint8_t ply   ,
                                  const KTable& kTable, const HTable& hTable,
-                                 const Move    ttMove)
+                                 const Move    ttMove = {})
         {
             const Move kOne = kTable[0][ply];
             const Move kTwo = kTable[1][ply];
