@@ -13,6 +13,8 @@
 #include "../Backend/ThreadPool.h"
 #include "../Backend/Type/Move.h"
 
+#include "Move/OrderedMoveList2.h"
+
 #include "Common.h"
 #include "TranspositionTable.h"
 #include "TunableParameter.h"
@@ -57,8 +59,21 @@ namespace StockDory
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
 
-    using KTable = Array<Move, 2, MaxDepth>;
-    using HTable = Array<int16_t, 2, 6, 64>;
+    auto LMRReductionTable =
+    [] -> Array<int16_t, MaxDepth, MaxMove>
+    {
+        const auto formula = [](const uint8_t depth, const uint8_t move) -> int16_t
+        {
+            return static_cast<int16_t>(std::log(depth) * std::log(move) / 2 - 0.2);
+        };
+
+        Array<int16_t, MaxDepth, MaxMove> temp {};
+
+        for (uint8_t depth = 1; depth < MaxDepth; depth++)
+        for (uint8_t move  = 1; move  < MaxMove ;  move++) temp[depth][move] = formula(depth, move);
+
+        return temp;
+    }();
 
     class SearchStack
     {
@@ -323,7 +338,7 @@ namespace StockDory
             Score alpha = -Infinity;
             Score beta  =  Infinity;
 
-            if (depth > AspirationWindowRequiredDepth) {
+            if (depth >= AspirationWindowMinimumDepth) {
                 // If we're past the required aspiration depth, it means previous searches
                 // gave us a good ballpark for the evaluation. All future searches can start
                 // with a much smaller window:
@@ -445,9 +460,9 @@ namespace StockDory
                 if (alpha >= beta) return alpha;
             }
 
-            const SearchTranspositionEntry ttEntry = TT[hash];
-                  Move                     ttMove  = {};
-                  bool                     ttHit   = false;
+            SearchTranspositionEntry& ttEntry = TT[hash];
+            Move                      ttMove  = {};
+            bool                      ttHit   = false;
 
             // Check if the transposition table has an entry for this position and if it does,
             // check if the entry is valid by comparing the bits of the hash not used to index
@@ -477,9 +492,9 @@ namespace StockDory
 
             if (checked) {
                 // If we're in check, we can't trust the static evaluation of this node
-                // and should use the static evaluation of our previous node since it
-                // will be more reasonable
-
+                // and should use our last recorded static evaluation from when we were
+                // not in check. The static evaluation of a node in check may be wildly
+                // misleading and incorrectly influence pruning
                 staticEvaluation = Stack[ply - 2].StaticEvaluation;
 
                 // Getting into check typically means we're not improving - this is not
@@ -507,32 +522,402 @@ namespace StockDory
                     const Score nnEvaluation = Evaluation::Evaluate(Color);
 
                     // If the neural network evaluation further exceeds the estimate from the
-                    // transposition table, we can use it instead. This is a good estimat
-                    if ((nnEvaluation > ttEntry.Evaluation && ttEntry.Type == Beta )  ||
-                        (nnEvaluation < ttEntry.Evaluation && ttEntry.Type == Alpha)) staticEvaluation = nnEvaluation;
+                    // transposition table, we can use it instead since it is likely more
+                    // generally representative throughout the search
+                    if      (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, nnEvaluation);
+                    else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, nnEvaluation);
                 }
             }
 
             Stack[ply].StaticEvaluation = staticEvaluation;
 
-            // We are improving our position if the static evaluation is increasing - this is
-            // not ground truth, but it's a good estimate for heuristics
+            // Improving is calculated on the difference between the current static evaluation
+            // and our last recorded static evaluation from when we were not in check.
+            // Our last recorded static evaluation would in normal conditions be the one from two
+            // plies ago. However, if two plies ago we were in check, then the static evaluation
+            // from two plies ago will be the one from four plies ago. This is recursive, so if
+            // we were in check four plies ago, then the static evaluation from six plies ago will
+            // be used, and so on. This happens implicitly because earlier if we're in check, we
+            // set the static evaluation to the one from two plies ago.
+            //
+            // Stack[ply - 2].StaticEvaluation will always be our last recorded static evaluation
+            // from when we were not in check
             improving = Stack[ply].StaticEvaluation > Stack[ply - 2].StaticEvaluation;
 
-            // Reverse Futility Pruning
-            if (depth < ReverseFutilityDisablingDepth && abs(beta) < Mate) {
-                const Score margin = depth * ReverseFutilityDepthFactor + improving * ReverseFutilityImprovingFactor;
+            if (!PV) {
+                // We want to avoid potentially risky pruning in PV branches, since they are
+                // the most important branches to search. In non-PV branches, we can prune
+                // more aggressively since we can afford to miss some good moves - albeit,
+                // the goal is to not miss any good moves
 
-                if (staticEvaluation - margin >= beta) return beta;
+                // Reverse Futility Pruning:
+                //
+                // If the static evaluation is significantly better than what we expect,
+                // it's almost certain that this branch is good enough and not worth searching
+                // deeper - there's likely little the opponent can do to improve their position,
+                // and we'll only waste time searching deeper
+                if (depth < ReverseFutilityMaximumDepth && abs(beta) < Mate) {
+                    // The lower the depth, the lesser the margin we can use. However, to prevent
+                    // overestimation of the difference, we consider if we've been improving our
+                    // static evaluation or not. If that's the case, we need to use a bigger margin
+                    // since the static evaluation may be inflated
+                    const Score margin = depth * ReverseFutilityDepthFactor +
+                                     improving * ReverseFutilityImprovingFactor;
+
+                    // This currently returns beta, but it might be better to return the static evaluation
+                    // instead, since it would be more accurate. This is essentially the difference between
+                    // fail-hard and fail-soft: fail-hard returns beta, while fail-soft returns the static
+                    // evaluation
+                    if (staticEvaluation - margin >= beta) return beta;
+                }
+
+                // Razoring:
+                //
+                // If we're near the end of the branch, and it's very unlikely that we will get better
+                // than the lower bound, then doing a full search is usually not worth it since only
+                // tactical moves can significantly improve the position. Thus, we jump into Quiescence
+                // Search to look for good tactical sequences (should there exist)
+                if (depth == RazoringDepth && staticEvaluation + RazoringEvaluationMargin < alpha)
+                    return Quiescence<Color, false>(ply, alpha, beta);
+
+                // Null Move Pruning:
+                //
+                // In chess, principally doing something is likely always better than doing nothing; if
+                // even after doing nothing, we are better than our upper bound, then, if we were to do
+                // something, we would definitely be better than our upper bound. Thus, it doesn't make
+                // sense to evaluate such branches further, since we know they will always be good for us
+                if (!Root && depth >= NullMoveMinimumDepth && staticEvaluation >= beta) {
+                    // The reduced depth is calculated as follows:
+                    //   depth
+                    // - ( MinimumReduction
+                    //   + ScalingDepthReduction
+                    //   + ScalingEvaluationReduction
+                    //   )
+                    //
+                    // where:
+                    // MinimumReduction           = NullMoveMinimumReduction
+                    // ScalingDepthReduction      = depth / NullMoveDepthFactor
+                    // ScalingEvaluationReduction = (staticEvaluation - beta) / NullMoveEvaluationFactor
+
+                    const int16_t reducedDepth = depth
+                        - (  NullMoveMinimumReduction
+                           + static_cast<int16_t>(depth / NullMoveDepthFactor)
+                           + static_cast<int16_t>((staticEvaluation - beta) / NullMoveEvaluationFactor)
+                          );
+
+                    const PreviousStateNull state = Board.Move();
+
+                    const auto evaluation = -AlphaBeta<OColor, false, false>(
+                        ply + 1,
+                        reducedDepth,
+                        -beta,
+                        -beta + 1
+                    );
+
+                    Board.UndoMove(state);
+
+                    if (evaluation >= beta) return beta;
+                }
             }
 
             SkipRiskyPruning:
+
+            // Internal Iterative Reduction:
+            //
+            // Given this node was on the PV branch but still did not have a transposition table entry,
+            // it can be assumed that the position is likely not very promising, and thus we can reduce
+            // the search depth a bit to save time
+            if (depth >= IIRMinimumDepth && !ttHit) depth -= IIRDepthReduction;
+
+            using MoveList = OrderedMoveList<Color>;
+
+            MoveList moves (Board, ply, Killer, History, ttMove);
+
+            // If we have no moves to search, it means we're either in a checkmate or stalemate node.
+            if (moves.Count() == 0) return checked ? -Mate + ply : 0;
+
+            SearchTranspositionEntry ttEntryNew
+            {
+                .Hash       = CompressHash(hash),
+                .Evaluation = -CompressedInfinity,
+                .Move       = ttMove,
+                .Depth      = static_cast<uint8_t>(depth),
+                .Type       = Alpha
+            };
+
+            const uint8_t lmpLastQuiet = LMPLastQuietBase +   depth * depth;
+            const bool    doLMP        = !Root && !checked && depth <= LMPMaximumDepth;
+            const bool    doLMR        =          !checked && depth >= LMRMinimumDepth;
+
+            Score bestEvaluation = -Infinity;
+
+            // Keep track of the number of quiet moves we've seen so far - useful to enable
+            // certain pruning and reductions
+            uint8_t quietMoves = 0;
+            for (uint8_t i = 0; i < moves.Count(); i++) {
+                const Move move  = moves[i];
+                const bool quiet = Board[move.To()].Piece() == NAP;
+
+                quietMoves += quiet;
+
+                // Futility Pruning:
+                //
+                // If we're starting to search quiet moves, it's likely that we've already searched through
+                // all the tactical moves. If the static evaluation is considerably worse than our lower bound,
+                // then we can assume that the quiet moves will likely not improve our position enough to
+                // matter, and it's better to stop searching this branch
+                if (i > 0 && quiet) {
+                    const Score margin = depth * FutilityDepthFactor;
+
+                    if (staticEvaluation + margin <= alpha) break;
+                }
+
+                if (!PV) {
+                    // These pruning techniques are too risky to use in PV nodes, since they can
+                    // potentially prune the only good move that leads to a win, but in non-PV nodes
+                    // we can afford to miss some good moves
+
+                    // Late Move Pruning:
+                    //
+                    // If we've already seen enough quiet moves, then it's likely that future quiet
+                    // moves will improve our position any more than the previous ones did - so let's
+                    // avoid searching further
+                    if (doLMP && quietMoves > lmpLastQuiet && bestEvaluation > -Infinity) break;
+                }
+
+                const PreviousState state = DoMove<true>(move, ply, quiet);
+
+                Score evaluation = 0;
+
+                // Principle Variation Search:
+                //
+                // This is an enhancement over the traditional Alpha-Beta Search algorithm and relies on the accuracy
+                // of the move policy. It assumes that the best move is likely the first move in the move list, so we
+                // search it without any reductions and with a full window [alpha, beta].
+                //
+                // All future moves are most likely not the best move, wso we can search them with varying reductions
+                // and use a null window [alpha, alpha + 1] to see if they have any potential. In the case that they
+                // do, it's likely that they are part of a Principle Variation branch, so we can do a full window
+                // search on them as well
+                if (i == 0) evaluation = -AlphaBeta<OColor, PV, false>(ply + 1, depth - 1, -beta, -alpha);
+                else {
+                    // All other moves can be searched with varying reductions
+
+                    // Late Move Reduction:
+                    //
+                    // We can reduce the search depth for moves that appear later in the move list, since
+                    // they are less likely to be the best move according to the move policy where the
+                    // best moves appear earlier in the move list
+                    if (doLMR && i >= LMRMinimumMoves) {
+                        // Base reduction: floor(ln(depth) * ln(move) / 2 - 0.2)
+                        int16_t r = LMRReductionTable[depth][i];
+
+                        // If we're not in a PV node, reduce further since we can afford a shallower search
+                        if (!PV) r++;
+
+                        // If we aren't improving our position, it's unlikely that the branch we're in will
+                        // yield any further improvements, so we can reduce further
+                        if (!improving) r++;
+
+                        // If the move we did gave the opponent a check, it's likely that this move may be
+                        // a part of a tactical sequence, so we should reduce less (potentially even extending)
+                        if (Board.Checked<OColor>()) r--;
+
+                        // We do a null window search, so if LMR fails and does find a somewhat promising move,
+                        // we can do a regular Principle Variation Search on it
+                        evaluation = -AlphaBeta<OColor, false, false>(
+                            ply + 1,
+                            std::max<int16_t>(depth - r, 1),
+                            -alpha - 1,
+                            -alpha
+                        );
+                    } else {
+                        // Set the evaluation to alpha + 1, which suggests that LMR failed, and we should do
+                        // a regular Principle Variation Search on this move
+                        evaluation = alpha + 1;
+                    }
+
+                    if (evaluation > alpha) {
+                        // This means that the either LMR failed - found a promising move - or that it was
+                        // not appropriate to do LMR in the first place. Regardless, we should perform a
+                        // regular Principle Variation Search on this move
+
+                        // First, try to do a null window search with no reductions
+                        evaluation = -AlphaBeta<OColor, false, false>(ply + 1, depth - 1, -alpha - 1, -alpha);
+
+                        if (evaluation > alpha && evaluation < beta) {
+                            // If the null window search found a promising move, we should do a full
+                            // Principle Variation Search on it
+
+                            evaluation = -AlphaBeta<OColor, true, false>(ply + 1, depth - 1, -beta, -alpha);
+                        }
+                    }
+                }
+
+                UndoMove<true>(state, move);
+
+                // If the evaluation is worse than an evaluation we previously had, then this is not the best move
+                if (evaluation <= bestEvaluation) continue;
+
+                bestEvaluation = evaluation;
+
+                if (evaluation <= alpha) continue;
+
+                // Update our lower bound with the best evaluation we found so far, since this will be useful for
+                // determining whether we are to continue searching this branch further or not
+                alpha = evaluation;
+
+                ttEntryNew.Type = Exact;
+                ttEntryNew.Move =  move;
+
+                if (ThreadType == Main && PV && Status != SearchThreadStatus::Stopped) {
+                    // We only update the PV table in the main thread since it is responsible for maintaining
+                    // the correct Principal Variation. The parallel threads do not need to worry about this -
+                    // later if we support MultiPV, we can update the PV table in parallel threads. Furthermore,
+                    // the PV table is only updated in PV branches, and only if the search wasn't stopped, since
+                    // otherwise we may corrupt the PV table with incomplete data
+
+                    PVTable[ply].PV[ply] = move;
+
+                    for (uint8_t nthPly = ply + 1; nthPly < PVTable[ply + 1].Ply; nthPly++)
+                        PVTable[ply].PV[nthPly] = PVTable[ply + 1].PV[nthPly];
+
+                    PVTable[ply].Ply = PVTable[ply + 1].Ply;
+                }
+
+                if (evaluation < beta) continue;
+
+                // We've just found a move that is better than our upper bound, so we can cause a beta cut-off,
+                // but before we need to update our killers and history tables
+                if (Status != SearchThreadStatus::Stopped && quiet) {
+                    // Update the killers
+                    if (Killer[0][ply] != move) {
+                        Killer[1][ply] = Killer[0][ply];
+                        Killer[0][ply] = move;
+                    }
+
+                    // Give a history bonus to the beta cut-off move
+                    UpdateHistory<Color, true>(move, depth);
+
+                    // Take away a history bonus from all the other moves to simulate gravity
+                    for (uint8_t q = 1; q < quietMoves; q++) {
+                        // Loop backwards, since this is better for cache
+                        UpdateHistory<Color, false>(moves.UnsortedAccess(i - q), depth);
+                    }
+                }
+
+                ttEntryNew.Type = Beta;
+
+                // Beta cut-off occurred so we can short-circuit this branch
+                break;
+            }
+
+            // Set the score in the transposition table entry
+            ttEntryNew.Evaluation = CompressScore(bestEvaluation);
+
+            // Try replacing the transposition table entry with the new one - we don't do this if the search
+            // was stopped, since we don't want to replace the entry with an incomplete one and corrupt the
+            // transposition table
+            if (Status != SearchThreadStatus::Stopped) TryReplaceTTEntry(ttEntry, ttEntryNew);
+
+            return bestEvaluation;
         }
 
         template<Color Color, bool PV>
         Score Quiescence(const uint8_t ply, Score alpha, Score beta)
         {
+            constexpr auto OColor = Opposite(Color);
 
+            if (ThreadType == Main && PV) SelectiveDepth = std::max(SelectiveDepth, ply);
+
+            if (!PV) {
+                const ZobristHash hash = Board.Zobrist();
+
+                const SearchTranspositionEntry& ttEntry = TT[hash];
+
+                if (ttEntry.Hash == CompressHash(hash)) {
+                    if (ttEntry.Type == Exact                               ) return ttEntry.Evaluation;
+                    if (ttEntry.Type == Beta  && ttEntry.Evaluation >= beta ) return ttEntry.Evaluation;
+                    if (ttEntry.Type == Alpha && ttEntry.Evaluation <= alpha) return ttEntry.Evaluation;
+                }
+            }
+
+            const Score staticEvaluation = Evaluation::Evaluate(Color);
+
+            if (staticEvaluation >= beta) return beta;
+            if (staticEvaluation > alpha) alpha = staticEvaluation;
+
+            using MoveList = OrderedMoveList<Color, true>;
+
+
+        }
+
+        template<bool UpdateRepetitionHistory>
+        PreviousState DoMove(const Move move, const uint8_t ply, const bool quiet = false)
+        {
+            constexpr MoveType MT = NNUE | ZOBRIST;
+
+            if (!quiet || Board[move.From()].Piece() == Pawn) {
+                // The move was a capture or pawn move, so we must reset the half-move counter
+                Stack[ply + 1].HalfMoveCounter = 0;
+            } else
+                // Otherwise, we increment the half-move counter
+                Stack[ply + 1].HalfMoveCounter = Stack[ply].HalfMoveCounter + 1;
+
+            const PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion());
+
+            // Atomically increment the number of nodes searched - we use memory_order_relaxed to avoid
+            // unnecessary synchronization overhead, since we don't care about the order of increments
+            // and only care about the final count
+            Nodes.fetch_add(1, std::memory_order_relaxed);
+
+            const ZobristHash hash = Board.Zobrist();
+
+            // We can prefetch the transposition table entry for this position since we will likely need it
+            // for the next search frame
+            TT.Prefetch(hash);
+
+            // If repetitions can happen, we should push the hash to the repetition stack so we can check for
+            // it later to ensure we don't evaluate a position as a win or loss when it is actually a draw
+            if (UpdateRepetitionHistory) Repetition.Push(hash);
+
+            return state;
+        }
+
+        template<bool UpdateRepetitionHistory>
+        void UndoMove(const PreviousState state, const Move move)
+        {
+            constexpr MoveType MT = NNUE | ZOBRIST;
+
+            Board.UndoMove<MT>(state, move.From(), move.To());
+
+            // If we previously pushed the hash to the repetition stack, we should pop it now
+            if (UpdateRepetitionHistory) Repetition.Pop();
+        }
+
+        template<Color Color, bool Increase>
+        void UpdateHistory(const Move move, const int16_t depth)
+        {
+            const int16_t bonus = std::min<int16_t>(300 * depth - 250, HistoryLimit);
+
+            int16_t& history = History[Color][Board[move.From()].Piece()][move.To()];
+
+            history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
+        }
+
+        static void TryReplaceTTEntry(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
+        {
+            // Replacement Strategy - Replace if:
+            // - The new entry is an exact entry
+            // - The new entry has a different hash than the previous entry
+            // - The new entry is a beta entry and the previous entry is an alpha entry
+            // - The new entry came from a search that less than 2 plies shallower than the previous entry
+
+            if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
+               (pEntry.Type == Alpha &&
+                nEntry.Type == Beta) ||
+                nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
+                pEntry = nEntry;
         }
 
     };

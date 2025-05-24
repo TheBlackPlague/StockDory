@@ -14,13 +14,34 @@ namespace StockDory
     constexpr uint16_t AspirationWindowFallbackBound = 3500;
     constexpr  uint8_t AspirationWindowSize          =   16;
     constexpr  uint8_t AspirationWindowSizeDelta     =   23;
-    constexpr  uint8_t AspirationWindowRequiredDepth =    4;
+    constexpr  uint8_t AspirationWindowMinimumDepth  =    5;
 
     constexpr  uint8_t CheckExtension = 1;
 
-    constexpr  uint8_t ReverseFutilityDisablingDepth   =  7;
+    constexpr  uint8_t ReverseFutilityMaximumDepth     =  7;
     constexpr  uint8_t ReverseFutilityDepthFactor      = 67;
     constexpr  uint8_t ReverseFutilityImprovingFactor  = 76;
+
+    constexpr  uint8_t RazoringDepth            =   1;
+    constexpr  uint8_t RazoringEvaluationMargin = 150;
+
+    constexpr  uint8_t NullMoveMinimumDepth     =   3;
+    constexpr  uint8_t NullMoveMinimumReduction =   3;
+    constexpr  uint8_t NullMoveDepthFactor      =   3;
+    constexpr  uint8_t NullMoveEvaluationFactor = 180;
+
+    constexpr  uint8_t IIRMinimumDepth   = 4;
+    constexpr  uint8_t IIRDepthReduction = 1;
+
+    constexpr  uint8_t LMPMaximumDepth  = 3;
+    constexpr  uint8_t LMPLastQuietBase = 3;
+
+    constexpr  uint8_t LMRMinimumDepth = 3;
+    constexpr  uint8_t LMRMinimumMoves = 3;
+
+    constexpr  uint8_t FutilityDepthFactor = 150;
+
+    constexpr  uint8_t TTReplacementDepthMargin = 3;
 
 } // StockDory
 
