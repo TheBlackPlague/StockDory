@@ -591,13 +591,14 @@ namespace StockDory
                     //
                     // where:
                     // MinimumReduction           = NullMoveMinimumReduction
-                    // ScalingDepthReduction      = depth / NullMoveDepthFactor
-                    // ScalingEvaluationReduction = (staticEvaluation - beta) / NullMoveEvaluationFactor
+                    // ScalingDepthReduction      = floor(depth / NullMoveDepthFactor)
+                    // ScalingEvaluationReduction = floor((staticEvaluation - beta) / NullMoveEvaluationFactor)
 
-                    const int16_t reducedDepth = depth
+                    const int16_t reducedDepth =
+                          depth
                         - (  NullMoveMinimumReduction
-                           + static_cast<int16_t>(depth / NullMoveDepthFactor)
-                           + static_cast<int16_t>((staticEvaluation - beta) / NullMoveEvaluationFactor)
+                          +  static_cast<int16_t>(depth / NullMoveDepthFactor)
+                          +  static_cast<int16_t>((staticEvaluation - beta) / NullMoveEvaluationFactor)
                           );
 
                     const PreviousStateNull state = Board.Move();
