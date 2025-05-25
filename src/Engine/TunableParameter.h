@@ -11,6 +11,10 @@
 namespace StockDory
 {
 
+    constexpr Array<uint16_t, 5> BestMoveStabilityOptimizationFactor {
+        250, 180, 120, 99, 97
+    };
+
     constexpr uint16_t AspirationWindowFallbackBound = 3500;
     constexpr  uint8_t AspirationWindowSize          =   16;
     constexpr  uint8_t AspirationWindowSizeDelta     =   23;

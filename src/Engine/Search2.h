@@ -164,6 +164,7 @@ namespace StockDory
         uint8_t  Depth = MaxDepth / 2;
 
         bool Timed = false;
+        bool Fixed = false;
 
         TP Origin = std::chrono::steady_clock::now();
 
@@ -260,9 +261,11 @@ namespace StockDory
 
         Move BestMove {};
 
-        EventHandler Handler {};
+        uint8_t BestMoveStability = 0;
 
         size_t ThreadId = 0;
+
+        EventHandler Handler {};
 
         public:
         SearchTask() = default;
@@ -300,6 +303,8 @@ namespace StockDory
                 if (ThreadType == Main) {
                     BestMove = PVTable[0].PV[0];
 
+                    BestMoveStabilityOptimization(lastBestMove);
+
                     IterativeDeepeningIterationCompletionEvent event
                     {
                         .Depth          = IDepth,
@@ -332,6 +337,22 @@ namespace StockDory
         bool Stopped() const { return Status == SearchThreadStatus::Stopped; }
 
         private:
+        void BestMoveStabilityOptimization(const Move lastBestMove) requires (ThreadType == Main)
+        {
+            if (!Limit.Timed && !Limit.Fixed) return;
+
+            // If the last best move is the same as the current best move, we can assume that the search
+            // is stable and the best move is unlikely to change. Thus, if we are timed and not having a
+            // fixed time, we can change the optimal time to be a bit lower. If the search later becomes
+            // unstable, we can increase the optimal time by far more than we decreased it
+            if (lastBestMove == BestMove) BestMoveStability = std::min<uint8_t>(BestMoveStability + 1, 4);
+            else                          BestMoveStability = 0;
+
+            const auto factor = BestMoveStabilityOptimizationFactor[BestMoveStability];
+
+            Limit.OptimalTime = Limit.OptimalTime * factor / 100;
+        }
+
         template<Color Color>
         Score Aspiration(const int16_t depth)
         {
