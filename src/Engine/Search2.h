@@ -759,7 +759,7 @@ namespace StockDory
                         // we can do a regular Principle Variation Search on it
                         evaluation = -AlphaBeta<OColor, false, false>(
                             ply + 1,
-                            std::clamp(depth - r, 1, depth - 1),
+                            std::max<int16_t>(depth - r, 1),
                             -alpha - 1,
                             -alpha
                         );
