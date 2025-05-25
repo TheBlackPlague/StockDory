@@ -18,7 +18,7 @@ namespace StockDory
     class Evaluation
     {
 
-        static inline Aurora NN = [] -> Aurora
+        static thread_local inline Aurora NN = [] -> Aurora
         {
             MantaRay::BinaryMemoryStream stream (_NeuralNetworkBinaryData, sizeof _NeuralNetworkBinaryData);
             return Aurora(stream);
