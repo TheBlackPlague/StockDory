@@ -62,6 +62,12 @@ namespace StockDory
         std::this_thread::sleep_for(std::chrono::milliseconds(ms));
     }
 
+    [[clang::always_inline]]
+    size_t CurrentThreadID()
+    {
+        return pool_thread_id();
+    }
+
     inline ThreadPool ThreadPool (1);
 
 } // StockDory

@@ -21,6 +21,8 @@ void DisplayTitle()
 
 int main(const int argc, const char* argv[])
 {
+    StockDory::Evaluation::Initialize();
+
     DisplayTitle();
 
     if (argc > 1) {

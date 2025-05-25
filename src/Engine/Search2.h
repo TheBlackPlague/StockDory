@@ -262,6 +262,8 @@ namespace StockDory
 
         EventHandler Handler {};
 
+        size_t ThreadId = 0;
+
         public:
         SearchTask() = default;
 
@@ -271,8 +273,9 @@ namespace StockDory
             const StockDory::Board      board,
             const RepetitionStack  repetition,
             const uint8_t                 hmc,
-                  EventHandler&       handler)
-        : Board(board), Repetition(repetition), Limit(limit), Handler(handler)
+                  EventHandler&       handler,
+            const size_t             threadId = Main ? 0 : 1)
+        : Board(board), Repetition(repetition), Limit(limit), Handler(handler), ThreadId(threadId)
         {
             Stack[0].HalfMoveCounter = hmc;
         }
@@ -282,8 +285,7 @@ namespace StockDory
 
         void IterativeDeepening()
         {
-            // TODO: Handle Evaluation Parallelism
-            Board.LoadForEvaluation();
+            Board.LoadForEvaluation(ThreadId);
 
             IDepth = 1;
             while (!Limit.Crossed(Nodes, IDepth)) {
@@ -854,7 +856,7 @@ namespace StockDory
                 }
             }
 
-            const Score staticEvaluation = Evaluation::Evaluate(Color);
+            const Score staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
 
             // In the case that the static evaluation exceeds the upper bound, it means that we have a beta cut-off,
             // so we can short-circuit this branch and return the upper bound
@@ -914,7 +916,7 @@ namespace StockDory
                 // Otherwise, we increment the half-move counter
                 Stack[ply + 1].HalfMoveCounter = Stack[ply].HalfMoveCounter + 1;
 
-            const PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion());
+            const PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion(), ThreadId);
 
             // Atomically increment the number of nodes searched - we use memory_order_relaxed to avoid
             // unnecessary synchronization overhead, since we don't care about the order of increments
@@ -939,7 +941,7 @@ namespace StockDory
         {
             constexpr MoveType MT = NNUE | ZOBRIST;
 
-            Board.UndoMove<MT>(state, move.From(), move.To());
+            Board.UndoMove<MT>(state, move.From(), move.To(), ThreadId);
 
             // If we previously pushed the hash to the repetition stack, we should pop it now
             if (UpdateRepetitionHistory) Repetition.Pop();
@@ -1066,7 +1068,9 @@ namespace StockDory
                     [this, i, &limit, &board, &repetition, hmc] -> void
                     {
                         DefaultSearchEventHandler handler;
-                        auto task = std::make_unique<ParallelSearchTask>(limit, board, repetition, hmc, handler);
+                        auto task = std::make_unique<ParallelSearchTask>(
+                            limit, board, repetition, hmc, handler, i + 1
+                        );
 
                         MainTaskHandler.ParallelTasks[i] = std::move(task);
 
@@ -1076,7 +1080,7 @@ namespace StockDory
             }
 
             // Allocate the main task
-            MainTask = MainSearchTask(limit, board, repetition, hmc, MainTaskHandler);
+            MainTask = MainSearchTask(limit, board, repetition, hmc, MainTaskHandler, 0);
 
             // Start the main task
             ThreadPool.Execute(

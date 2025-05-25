@@ -168,15 +168,15 @@ namespace StockDory
             ColorBB[NAC] = ~(ColorBB[White] | ColorBB[Black]);
         }
 
-        void LoadForEvaluation() const
+        void LoadForEvaluation(const size_t threadId = 0) const
         {
-            Evaluation::ResetNetworkState();
+            Evaluation::ResetNetworkState(threadId);
 
             for (Square sq = A1; sq < NASQ; sq = Next(sq)) {
                 PieceColor pc = PieceAndColor[sq];
                 if (pc.Piece() == NAP || pc.Color() == NAC) continue;
 
-                Evaluation::Activate(pc.Piece(), pc.Color(), sq);
+                Evaluation::Activate(pc.Piece(), pc.Color(), sq, threadId);
             }
         }
 
@@ -501,9 +501,9 @@ namespace StockDory
         }
 
         template<MoveType T>
-        PreviousState Move(const Square from, const Square to, const Piece promotion = NAP)
+        PreviousState Move(const Square from, const Square to, const Piece promotion = NAP, const size_t threadId = 0)
         {
-            if (T & NNUE) Evaluation::PreMove();
+            if (T & NNUE) Evaluation::PreMove(threadId);
 
             auto state = PreviousState(PieceAndColor[from], PieceAndColor[to],
                                        EnPassantSquare(), CastlingRightAndColorToMove,
@@ -557,7 +557,7 @@ namespace StockDory
                     EmptyNative(Pawn, opposite, epPawnSq);
                     Hash = Zobrist::HashPiece<T>(Hash, Pawn, opposite, epPawnSq);
 
-                    if (T & NNUE) Evaluation::Deactivate(Pawn, opposite, epPawnSq);
+                    if (T & NNUE) Evaluation::Deactivate(Pawn, opposite, epPawnSq, threadId);
 
                     state.EnPassantCapture = true;
                 } else if (static_cast<Square>(from ^ 16) == to) {
@@ -579,10 +579,10 @@ namespace StockDory
                     InsertNative(promotion, colorF,   to);
 
                     if (T & NNUE) {
-                        Evaluation::Deactivate(Pawn, colorF, from);
-                        Evaluation::Activate(promotion, colorF, to);
+                        Evaluation::Deactivate(Pawn, colorF, from, threadId);
+                        Evaluation::Activate(promotion, colorF, to, threadId);
 
-                        if (pieceT != NAP) Evaluation::Deactivate(pieceT, colorT, to);
+                        if (pieceT != NAP) Evaluation::Deactivate(pieceT, colorT, to, threadId);
                     }
 
                     Hash = Zobrist::HashPiece<T>(Hash, Pawn, colorF, from);
@@ -634,9 +634,9 @@ namespace StockDory
             MoveNative(pieceF, colorF, from, pieceT, colorT, to);
 
             if (T & NNUE) {
-                Evaluation::Transition(pieceF, colorF, from, to);
+                Evaluation::Transition(pieceF, colorF, from, to, threadId);
 
-                if (pieceT != NAP) Evaluation::Deactivate(pieceT, colorT, to);
+                if (pieceT != NAP) Evaluation::Deactivate(pieceT, colorT, to, threadId);
             }
 
             Hash = Zobrist::HashPiece<T>(Hash, pieceF, colorF, from);
@@ -649,9 +649,9 @@ namespace StockDory
         }
 
         template<MoveType T>
-        void UndoMove(const PreviousState& state, const Square from, const Square to)
+        void UndoMove(const PreviousState& state, const Square from, const Square to, const size_t threadId = 0)
         {
-            if (T & NNUE) Evaluation::PreUndoMove();
+            if (T & NNUE) Evaluation::PreUndoMove(threadId);
 
             CastlingRightAndColorToMove = state.CastlingRightAndColorToMove;
             if (T & ZOBRIST) Hash = state.Hash;
