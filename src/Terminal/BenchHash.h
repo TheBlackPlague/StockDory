@@ -52,7 +52,7 @@ namespace StockDory
                 times[i] = std::chrono::duration_cast<MS>(t1 - t0);
 
                 const Score evaluation = search.GetEvaluation();
-                std::cout << " -> " << evaluation << " cp" << std::endl;
+                std::cout << " -> " << evaluation << " cp " << nodes[i] << " nodes" <<  std::endl;
             }
 
             const auto nodeC = std::accumulate(nodes.begin(), nodes.end(),    0ULL);

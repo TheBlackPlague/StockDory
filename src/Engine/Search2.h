@@ -94,8 +94,8 @@ namespace StockDory
         Array<Frame, Padding + MaxDepth> Internal {};
 
         public:
-              Frame& operator[](const size_t index)       { return Internal[index + Padding - 1]; }
-        const Frame& operator[](const size_t index) const { return Internal[index + Padding - 1]; }
+              Frame& operator[](const size_t index)       { return Internal[index + Padding]; }
+        const Frame& operator[](const size_t index) const { return Internal[index + Padding]; }
 
     };
 
@@ -514,29 +514,9 @@ namespace StockDory
             }
 
             Score staticEvaluation;
-            bool  improving       ;
+            bool  improving        = false;
 
             const bool checked = Board.Checked<Color>();
-
-            if (checked) {
-                // If we're in check, we can't trust the static evaluation of this node
-                // and should use our last recorded static evaluation from when we were
-                // not in check. The static evaluation of a node in check may be wildly
-                // misleading and incorrectly influence pruning
-                staticEvaluation = Stack[ply - 2].StaticEvaluation;
-
-                // Getting into check typically means we're not improving - this is not
-                // ground truth, but it's a good estimate for heuristics
-                improving = false;
-
-                // We should search this branch a bit deeper since we need to find a good
-                // out of check
-                depth += CheckExtension;
-
-                // We should also skip all the risky pruning since we need to be careful
-                // not to prune the only good move that gets us out of check
-                goto SkipRiskyPruning;
-            }
 
             // Check if we have a valid transposition table entry. If we do, we can
             // use it instead of the neural network evaluation since it will most
@@ -562,20 +542,23 @@ namespace StockDory
 
             Stack[ply].StaticEvaluation = staticEvaluation;
 
-            // Improving is calculated on the difference between the current static evaluation
-            // and our last recorded static evaluation from when we were not in check.
-            // Our last recorded static evaluation would in normal conditions be the one from two
-            // plies ago. However, if two plies ago we were in check, then the static evaluation
-            // from two plies ago will be the one from four plies ago. This is recursive, so if
-            // we were in check four plies ago, then the static evaluation from six plies ago will
-            // be used, and so on. This happens implicitly because earlier if we're in check, we
-            // set the static evaluation to the one from two plies ago.
-            //
-            // Stack[ply - 2].StaticEvaluation will always be our last recorded static evaluation
-            // from when we were not in check
-            improving = Stack[ply].StaticEvaluation > Stack[ply - 2].StaticEvaluation;
+            if (checked) {
+                // Getting into check typically means we're not improving - this is not
+                // ground truth, but it's a good estimate for heuristics
+                improving = false;
+
+                // We should search this branch a bit deeper since we need to find a good
+                // out of check
+                depth += CheckExtension;
+
+                // We should also skip all the risky pruning since we need to be careful
+                // not to prune the only good move that gets us out of check
+                goto SkipRiskyPruning;
+            }
 
             if (!PV) {
+                improving = ply >= 2 && staticEvaluation >= Stack[ply - 2].StaticEvaluation;
+
                 // We want to avoid potentially risky pruning in PV branches, since they are
                 // the most important branches to search. In non-PV branches, we can prune
                 // more aggressively since we can afford to miss some good moves - albeit,
@@ -590,16 +573,16 @@ namespace StockDory
                 if (depth < ReverseFutilityMaximumDepth && abs(beta) < Mate) {
                     // The lower the depth, the lesser the margin we can use. However, to prevent
                     // overestimation of the difference, we consider if we've been improving our
-                    // static evaluation or not. If that's the case, we need to use a bigger margin
-                    // since the static evaluation may be inflated
-                    const Score margin = depth * ReverseFutilityDepthFactor +
-                                     improving * ReverseFutilityImprovingFactor;
+                    // static evaluation or not. If that's the case, we need to use a greater margin
+                    // since static evaluation is likely to be inflated
+                    const Score     depthMargin = depth     * ReverseFutilityDepthFactor;
+                    const Score improvingMargin = improving * ReverseFutilityImprovingFactor;
 
                     // This currently returns beta, but it might be better to return the static evaluation
                     // instead, since it would be more accurate. This is essentially the difference between
                     // fail-hard and fail-soft: fail-hard returns beta, while fail-soft returns the static
                     // evaluation
-                    if (staticEvaluation - margin >= beta) return beta;
+                    if (staticEvaluation - depthMargin + improvingMargin >= beta) return beta;
                 }
 
                 // Razoring:
@@ -628,13 +611,22 @@ namespace StockDory
                     // where:
                     // MinimumReduction           = NullMoveMinimumReduction
                     // ScalingDepthReduction      = floor(depth / NullMoveDepthFactor)
-                    // ScalingEvaluationReduction = floor((staticEvaluation - beta) / NullMoveEvaluationFactor)
+                    // ScalingEvaluationReduction = min(
+                    //                                  floor((staticEvaluation - beta) / NullMoveEvaluationFactor),
+                    //                                  NullMoveMinimumReduction
+                    //                              )
+
+                    const auto ScalingDepthReduction      = depth / NullMoveDepthFactor;
+                    const auto ScalingEvaluationReduction = std::min<int16_t>(
+                        (staticEvaluation - beta) / NullMoveEvaluationFactor,
+                        NullMoveMinimumReduction
+                    );
 
                     const int16_t reducedDepth =
                           depth
                         - (  NullMoveMinimumReduction
-                          +  static_cast<int16_t>(depth / NullMoveDepthFactor)
-                          +  static_cast<int16_t>((staticEvaluation - beta) / NullMoveEvaluationFactor)
+                          +  ScalingDepthReduction
+                          +  ScalingEvaluationReduction
                           );
 
                     const PreviousStateNull state = Board.Move();
@@ -740,7 +732,7 @@ namespace StockDory
                     // We can reduce the search depth for moves that appear later in the move list, since
                     // they are less likely to be the best move according to the move policy where the
                     // best moves appear earlier in the move list
-                    if (doLMR && i >= LMRMinimumMoves) {
+                    if (doLMR && i > LMRMinimumMoves) {
                         // Base reduction: floor(ln(depth) * ln(move) / 2 - 0.2)
                         int16_t r = LMRReductionTable[depth][i];
 
