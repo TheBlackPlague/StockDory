@@ -1042,22 +1042,21 @@ namespace StockDory
             const size_t freeThreadCount = ThreadPool.Size() - 1;
 
             if (freeThreadCount) {
-                // If we have some free threads, we can allocate parallel tasks that will provide search
-                // constructively and destructively interfere with the main task through the shared
-                // transposition table.
+                // If we have some free threads, we can allocate parallel tasks that will constructively and
+                // destructively interfere with the main task through the shared transposition table.
                 //
                 // Destructive interference happens when a parallel task overrides the transposition table
                 // entry that the main task will use soon. This prevents the main task from using the entry
-                // and forces it to search the position again. Recursively, this can lead to the search tree
-                // being expanded depending on where the transposition was found. This also means that the
-                // search is more expensive and should take longer.
+                // and forces it to search the transposition again. Recursively, this can lead to the search
+                // tree being expanded depending on where the transposition was found. This also means that
+                // the search is more expensive and should take longer.
                 //
-                // Constructive interference, on the other hand happens when a parallel task provides a
+                // Constructive interference, on the other hand, happens when a parallel task provides a
                 // transposition table entry that the main task will use soon, allowing it to benefit from
                 // the parallel task's search. This can lead to a much faster search, potentially allowing
                 // a far deeper search than the main task would be able to do on its own.
                 //
-                // Combined, these two types of interference expand the search tree but also speedup the
+                // Combined, these two types of interference expand the search tree but also speed up the
                 // traversal through it, allowing the search to see more positions in the same amount of
                 // time, increasing the quality of the search
 
