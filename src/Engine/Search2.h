@@ -94,8 +94,8 @@ namespace StockDory
         Array<Frame, Padding + MaxDepth> Internal {};
 
         public:
-              Frame& operator[](const size_t index)       { return Internal[index + Padding]; }
-        const Frame& operator[](const size_t index) const { return Internal[index + Padding]; }
+              Frame& operator[](const size_t index)       { return Internal[index + Padding - 1]; }
+        const Frame& operator[](const size_t index) const { return Internal[index + Padding - 1]; }
 
     };
 
@@ -279,7 +279,7 @@ namespace StockDory
             const RepetitionStack  repetition,
             const uint8_t                 hmc,
                   EventHandler&       handler,
-            const size_t             threadId = Main ? 0 : 1)
+            const size_t             threadId = 0)
         : Board(board), Repetition(repetition), Limit(limit), ThreadId(threadId), Handler(handler)
         {
             Stack[0].HalfMoveCounter = hmc;
@@ -427,9 +427,9 @@ namespace StockDory
             constexpr auto OColor = Opposite(Color);
 
             if (ThreadType == Main) {
-                // The main thread is responsible for checking if we've crossed any time limits.
-                // If we have, we need to stop searching
-                if (Limit.Crossed()) [[unlikely]] { Status = SearchThreadStatus::Stopped; }
+                // The main thread is responsible for checking if we've crossed any time limits (we check this
+                // every 4096 nodes for performance) - If we have, we need to stop searching
+                if ((Nodes & 4095) == 0 && Limit.Crossed()) [[unlikely]] { Status = SearchThreadStatus::Stopped; }
             }
 
             // If the search was stopped, we need to stop searching
@@ -547,7 +547,7 @@ namespace StockDory
                 // If the entry is not an exact evaluation (it came from a non-PV node),
                 // it is likely that the evaluation is not accurate enough
                 if (ttEntry.Type != Exact) {
-                    const Score nnEvaluation = Evaluation::Evaluate(Color);
+                    const Score nnEvaluation = Evaluation::Evaluate(Color, ThreadId);
 
                     // If the neural network evaluation further exceeds the estimate from the
                     // transposition table, we can use it instead since it is likely more
@@ -557,7 +557,7 @@ namespace StockDory
                 }
             } else {
                 // If we don't have a transposition table entry, we need to evaluate using the neural network
-                staticEvaluation = Evaluation::Evaluate(Color);
+                staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
             }
 
             Stack[ply].StaticEvaluation = staticEvaluation;
