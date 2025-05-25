@@ -35,7 +35,7 @@ namespace StockDory
             for (size_t i = 0; i < BenchLength; i++) {
                 std::cout << "Position (" << std::setw(2) << std::setfill('0')
                           << static_cast<uint16_t>(i + 1) << "/" << static_cast<uint16_t>(BenchLength) << "): ";
-                std::cout << Positions[i] << std::endl;
+                std::cout << Positions[i];
 
                 Board           board(Positions[i]);
                 RepetitionStack repetition;
@@ -50,6 +50,9 @@ namespace StockDory
 
                 nodes[i] = search.GetNodes();
                 times[i] = std::chrono::duration_cast<MS>(t1 - t0);
+
+                const Score evaluation = search.GetEvaluation();
+                std::cout << " ... Evaluation: " << evaluation << std::endl;
             }
 
             const auto nodeC = std::accumulate(nodes.begin(), nodes.end(),    0ULL);

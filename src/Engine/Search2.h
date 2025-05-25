@@ -341,6 +341,11 @@ namespace StockDory
 
         bool Stopped() const { return Status == SearchThreadStatus::Stopped; }
 
+        Score GetEvaluation() const
+        {
+            return Evaluation;
+        }
+
         private:
         void BestMoveStabilityOptimization(const Move lastBestMove)
         {
