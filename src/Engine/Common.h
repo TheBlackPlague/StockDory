@@ -7,7 +7,6 @@
 #define STOCKDORY_COMMON_H
 
 #include <chrono>
-#include <cstdint>
 
 #include "../Backend/Misc.h"
 #include "../Backend/Type/Move.h"

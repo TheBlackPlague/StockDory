@@ -1039,20 +1039,41 @@ namespace StockDory
 
             const size_t freeThreadCount = ThreadPool.Size() - 1;
 
-            // Allocate and start the parallel tasks
-            MainTaskHandler.ParallelTasks.resize(freeThreadCount);
+            if (freeThreadCount) {
+                // If we have some free threads, we can allocate parallel tasks that will provide search
+                // constructively and destructively interfere with the main task through the shared
+                // transposition table.
+                //
+                // Destructive interference happens when a parallel task overrides the transposition table
+                // entry that the main task will use soon. This prevents the main task from using the entry
+                // and forces it to search the position again. Recursively, this can lead to the search tree
+                // being expanded depending on where the transposition was found. This also means that the
+                // search is more expensive and should take longer.
+                //
+                // Constructive interference, on the other hand happens when a parallel task provides a
+                // transposition table entry that the main task will use soon, allowing it to benefit from
+                // the parallel task's search. This can lead to a much faster search, potentially allowing
+                // a far deeper search than the main task would be able to do on its own.
+                //
+                // Combined, these two types of interference expand the search tree but also speedup the
+                // traversal through it, allowing the search to see more positions in the same amount of
+                // time, increasing the quality of the search
 
-            for (size_t i = 0; i < freeThreadCount; i++) ThreadPool.Execute(
-                [this, i, &limit, &board, &repetition, hmc] -> void
-                {
-                    DefaultSearchEventHandler handler;
-                    auto task = std::make_unique<ParallelSearchTask>(limit, board, repetition, hmc, handler);
+                // Allocate and start the parallel tasks
+                MainTaskHandler.ParallelTasks.resize(freeThreadCount);
 
-                    MainTaskHandler.ParallelTasks[i] = std::move(task);
+                for (size_t i = 0; i < freeThreadCount; i++) ThreadPool.Execute(
+                    [this, i, &limit, &board, &repetition, hmc] -> void
+                    {
+                        DefaultSearchEventHandler handler;
+                        auto task = std::make_unique<ParallelSearchTask>(limit, board, repetition, hmc, handler);
 
-                    task->IterativeDeepening();
-                }
-            );
+                        MainTaskHandler.ParallelTasks[i] = std::move(task);
+
+                        task->IterativeDeepening();
+                    }
+                );
+            }
 
             // Allocate the main task
             MainTask = MainSearchTask(limit, board, repetition, hmc, MainTaskHandler);
