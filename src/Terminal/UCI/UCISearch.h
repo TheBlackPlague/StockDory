@@ -75,7 +75,7 @@ namespace StockDory
     class UCISearch
     {
 
-        using Search = Search<UCIHandler>;
+        using Search = ThreadedSearch<UCIHandler>;
 
         Search EngineSearch;
 

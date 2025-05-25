@@ -239,7 +239,7 @@ class PySearchHandler
 
 };
 
-using PySearch = StockDory::Search<PySearchHandler>;
+using PySearch = StockDory::ThreadedSearch<PySearchHandler>;
 
 auto SEARCH         = PySearch();
 auto SEARCH_RUNNING = false     ;

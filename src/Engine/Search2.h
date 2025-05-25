@@ -7,6 +7,7 @@
 #define STOCKDORY_SEARCH2_H
 
 #include <atomic>
+#include <cmath>
 
 #include "../Backend/Board.h"
 #include "../Backend/Misc.h"
@@ -93,8 +94,8 @@ namespace StockDory
         Array<Frame, Padding + MaxDepth> Internal {};
 
         public:
-              Frame& operator[](const size_t index)       { return Internal[index - Padding]; }
-        const Frame& operator[](const size_t index) const { return Internal[index - Padding]; }
+              Frame& operator[](const size_t index)       { return Internal[index + Padding]; }
+        const Frame& operator[](const size_t index) const { return Internal[index + Padding]; }
 
     };
 
@@ -202,6 +203,7 @@ namespace StockDory
         Score        Evaluation {};
         uint64_t          Nodes {};
         MS                 Time {};
+        PVEntry         PVEntry {};
 
     };
 
@@ -255,7 +257,7 @@ namespace StockDory
 
         int16_t IDepth = 0;
 
-        std::atomic_uint64_t Nodes = 0;
+        uint64_t Nodes = 0;
 
         Score Evaluation = -Infinity;
 
@@ -278,7 +280,7 @@ namespace StockDory
             const uint8_t                 hmc,
                   EventHandler&       handler,
             const size_t             threadId = Main ? 0 : 1)
-        : Board(board), Repetition(repetition), Limit(limit), Handler(handler), ThreadId(threadId)
+        : Board(board), Repetition(repetition), Limit(limit), ThreadId(threadId), Handler(handler)
         {
             Stack[0].HalfMoveCounter = hmc;
         }
@@ -288,6 +290,8 @@ namespace StockDory
 
         void IterativeDeepening()
         {
+            Status = Running;
+
             Board.LoadForEvaluation(ThreadId);
 
             IDepth = 1;
@@ -311,7 +315,8 @@ namespace StockDory
                         .SelectiveDepth = SelectiveDepth,
                         .Evaluation     = Evaluation,
                         .Nodes          = Nodes,
-                        .Time           = Limit.Elapsed()
+                        .Time           = Limit.Elapsed(),
+                        .PVEntry        = PVTable[0]
                     };
 
                     Handler.HandleIterativeDeepeningIterationCompletion(event);
@@ -337,7 +342,7 @@ namespace StockDory
         bool Stopped() const { return Status == SearchThreadStatus::Stopped; }
 
         private:
-        void BestMoveStabilityOptimization(const Move lastBestMove) requires (ThreadType == Main)
+        void BestMoveStabilityOptimization(const Move lastBestMove)
         {
             if (!Limit.Timed && !Limit.Fixed) return;
 
@@ -503,8 +508,8 @@ namespace StockDory
                 }
             }
 
-            Score staticEvaluation = None ;
-            bool  improving               ;
+            Score staticEvaluation;
+            bool  improving       ;
 
             const bool checked = Board.Checked<Color>();
 
@@ -749,7 +754,7 @@ namespace StockDory
                         // we can do a regular Principle Variation Search on it
                         evaluation = -AlphaBeta<OColor, false, false>(
                             ply + 1,
-                            std::max<int16_t>(depth - r, 1),
+                            std::clamp(depth - r, 1, depth - 1),
                             -alpha - 1,
                             -alpha
                         );
@@ -932,7 +937,7 @@ namespace StockDory
 
             if (!quiet || Board[move.From()].Piece() == Pawn) {
                 // The move was a capture or pawn move, so we must reset the half-move counter
-                Stack[ply + 1].HalfMoveCounter = 0;
+                Stack[ply + 1].HalfMoveCounter = 1;
             } else
                 // Otherwise, we increment the half-move counter
                 Stack[ply + 1].HalfMoveCounter = Stack[ply].HalfMoveCounter + 1;
@@ -942,7 +947,8 @@ namespace StockDory
             // Atomically increment the number of nodes searched - we use memory_order_relaxed to avoid
             // unnecessary synchronization overhead, since we don't care about the order of increments
             // and only care about the final count
-            Nodes.fetch_add(1, std::memory_order_relaxed);
+            // Nodes.fetch_add(1, std::memory_order_relaxed);
+            Nodes++;
 
             const ZobristHash hash = Board.Zobrist();
 
@@ -999,7 +1005,7 @@ namespace StockDory
     };
 
     template<class EventHandler = DefaultSearchEventHandler>
-    class Search
+    class ThreadedSearch
     {
 
         using ParallelSearchTask = SearchTask<Parallel>;
@@ -1007,9 +1013,11 @@ namespace StockDory
         struct MainSearchTaskEventHandler : DefaultSearchEventHandler
         {
 
-            EventHandler MainHandler;
+            using ParallelTaskContainer = std::vector<ParallelSearchTask>;
 
-            std::vector<std::unique_ptr<ParallelSearchTask>> ParallelTasks;
+            EventHandler MainHandler {};
+
+            ParallelTaskContainer ParallelTasks = ParallelTaskContainer(0);
 
             void HandleIterativeDeepeningIterationCompletion(
                 [[maybe_unused]] const IterativeDeepeningIterationCompletionEvent& event
@@ -1021,10 +1029,11 @@ namespace StockDory
                     .SelectiveDepth = event.SelectiveDepth,
                     .Evaluation     = event.Evaluation,
                     .Nodes          = event.Nodes,
-                    .Time           = event.Time
+                    .Time           = event.Time,
+                    .PVEntry        = event.PVEntry
                 };
 
-                for (const auto& task : ParallelTasks) mainEvent.Nodes += task->GetNodes();
+                for (const auto& task : ParallelTasks) mainEvent.Nodes += task.GetNodes();
 
                 MainHandler.HandleIterativeDeepeningIterationCompletion(mainEvent);
             }
@@ -1040,20 +1049,30 @@ namespace StockDory
 
         using MainSearchTask = SearchTask<Main, MainSearchTaskEventHandler>;
 
-        MainSearchTask              MainTask       ;
-        MainSearchTaskEventHandler  MainTaskHandler;
+        MainSearchTask             MainTask        {};
+        MainSearchTaskEventHandler MainTaskHandler {};
 
         public:
-        Search(EventHandler& handler)
+        ThreadedSearch(EventHandler& handler)
         {
             MainTaskHandler.MainHandler = handler;
         }
 
+        bool Running() const
+        {
+            return Searching;
+        }
+
+        void Stop()
+        {
+            if (Searching) MainTask.Stop();
+        }
+
         void Run(
-                  Limit          &      limit,
-                  Board          &      board,
-                  RepetitionStack& repetition,
-            const uint8_t                 hmc)
+                  Limit                  limit,
+                  Board          &       board,
+                  RepetitionStack&  repetition,
+            const uint8_t                  hmc)
         {
 
             Searching = true;
@@ -1088,44 +1107,43 @@ namespace StockDory
                     [this, i, &limit, &board, &repetition, hmc] -> void
                     {
                         DefaultSearchEventHandler handler;
-                        auto task = std::make_unique<ParallelSearchTask>(
+
+                        MainTaskHandler.ParallelTasks[i] = ParallelSearchTask(
                             limit, board, repetition, hmc, handler, i + 1
                         );
 
-                        MainTaskHandler.ParallelTasks[i] = std::move(task);
+                        std::atomic_thread_fence(std::memory_order_seq_cst);
 
-                        task->IterativeDeepening();
+                        MainTaskHandler.ParallelTasks[i].IterativeDeepening();
                     }
                 );
             }
 
-            // Allocate the main task
-            MainTask = MainSearchTask(limit, board, repetition, hmc, MainTaskHandler, 0);
+            std::atomic_thread_fence(std::memory_order_seq_cst);
+
+            MainTask = MainSearchTask {
+                limit, board, repetition, hmc, MainTaskHandler, 0
+            };
 
             // Start the main task
             ThreadPool.Execute(
                 [this, freeThreadCount] -> void
                 {
-                    MainTask->IterativeDeepening();
+                    MainTask.IterativeDeepening();
 
                     // Once the main task is done, stop all parallel tasks
-                    for (const auto& task : MainTaskHandler.ParallelTasks) task->Stop();
+                    for (auto& task : MainTaskHandler.ParallelTasks) task.Stop();
 
                     // Wait for all parallel tasks to finish
                     for (size_t i = 0; i < freeThreadCount; i++) {
                         const auto& task = MainTaskHandler.ParallelTasks[i];
 
-                        while (!task->Stopped()) { Sleep(1); }
+                        while (!task.Stopped()) { Sleep(1); }
                     }
 
                     Searching = false;
                 }
             );
-        }
-
-        void Stop()
-        {
-            MainTask.Stop();
         }
 
     };

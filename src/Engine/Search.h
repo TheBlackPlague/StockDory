@@ -70,7 +70,7 @@ namespace StockDory
     };
 
     template<class EventHandler = DefaultHandler>
-    class Search
+    class ThreadedSearch
     {
 
         class SearchStopException final : public std::exception {};
@@ -107,10 +107,10 @@ namespace StockDory
         bool Stop = false;
 
         public:
-        Search() = default;
+        ThreadedSearch() = default;
 
         // ReSharper disable CppPassValueParameterByConstReference
-        Search(const StockDory::Board       board, const TimeControl tc,
+        ThreadedSearch(const StockDory::Board       board, const TimeControl tc,
                const RepetitionHistory repetition, const uint8_t     hm)
             : Board(board), TC(tc), Repetition(repetition)
         {

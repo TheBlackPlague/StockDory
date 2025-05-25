@@ -10,8 +10,7 @@
 #include <array>
 #include <string>
 
-#include "../Engine/Search.h"
-#include "../Engine/Time/TimeManager.h"
+#include "../Engine/Search2.h"
 
 namespace StockDory
 {
@@ -19,41 +18,42 @@ namespace StockDory
     class BenchHash
     {
 
-        constexpr static uint8_t BenchLength = 50;
-        constexpr static auto    BenchLimit  = Limit(static_cast<uint8_t>(13));
+        constexpr static        uint8_t BenchLength =                  50  ;
+                  static inline auto    BenchLimit  = Limit { .Depth = 13 };
 
         static std::array<std::string, BenchLength> Positions;
 
         public:
+
         static void Run()
         {
-            using BTP = std::chrono::time_point<std::chrono::high_resolution_clock>;
+            Array<uint64_t, BenchLength> nodes;
+            Array<   MS   , BenchLength> times;
 
-            std::array<uint64_t, BenchLength> nodes;
-            std::array<   MS   , BenchLength> times;
+            DefaultSearchEventHandler handler;
 
             for (size_t i = 0; i < BenchLength; i++) {
                 std::cout << "Position (" << std::setw(2) << std::setfill('0')
                           << static_cast<uint16_t>(i + 1) << "/" << static_cast<uint16_t>(BenchLength) << "): ";
                 std::cout << Positions[i] << std::endl;
 
-                const Board             board   (Positions[i]);
-                const RepetitionHistory history (board.Zobrist());
+                Board           board(Positions[i]);
+                RepetitionStack repetition;
 
-                const TimeControl infinite = TimeManager::Default();
+                repetition.Push(board.Zobrist());
 
-                Search search (board, infinite, history, 0);
+                SearchTask<> search (BenchLimit, board, repetition, 0, handler);
 
-                const BTP t0 = std::chrono::high_resolution_clock::now();
-                search.IterativeDeepening(BenchLimit);
-                const BTP t1 = std::chrono::high_resolution_clock::now();
+                const auto t0 = std::chrono::high_resolution_clock::now();
+                search.IterativeDeepening();
+                const auto t1 = std::chrono::high_resolution_clock::now();
 
-                nodes[i] = search.NodesSearched();
+                nodes[i] = search.GetNodes();
                 times[i] = std::chrono::duration_cast<MS>(t1 - t0);
             }
 
-            const uint64_t nodeC = std::accumulate(nodes.begin(), nodes.end(),  0ULL);
-            const    MS    timeC = std::accumulate(times.begin(), times.end(), MS(0));
+            const auto nodeC = std::accumulate(nodes.begin(), nodes.end(),    0ULL);
+            const auto timeC = std::accumulate(times.begin(), times.end(), MS(0)  );
 
             const auto nps = static_cast<uint64_t>(
                 static_cast<double>(nodeC) / (static_cast<double>(timeC.count()) / 1000.0)
