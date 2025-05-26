@@ -173,7 +173,7 @@ namespace StockDory
 
             Board           = {};
             Repetition      = {};
-            HalfMoveCounter =  0;
+            HalfMoveCounter =  1;
 
             Repetition.Push(Board.Zobrist());
 
@@ -235,16 +235,12 @@ namespace StockDory
                 const std::string fen      = strutil::join(fenToken, " ");
 
                 Board           = StockDory::Board(fen);
+                Repetition      = {};
                 HalfMoveCounter = std::stoi(fenToken[4]);
 
-                if (HalfMoveCounter == 1) {
-                    Repetition = {};
-                    Repetition.Push(Board.Zobrist());
-                } else {
-                    Repetition.Push(Board.Zobrist());
-                }
+                Repetition.Push(Board.Zobrist());
 
-                moveStrIndex               = 8;
+                moveStrIndex = 8;
             } else if (strutil::compare_ignore_case(args[0], "startpos")) {
                 Board      = {};
                 Repetition = {};
