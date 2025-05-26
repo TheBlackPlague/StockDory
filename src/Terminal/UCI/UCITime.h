@@ -6,7 +6,7 @@
 #ifndef STOCKDORY_UCITIME_H
 #define STOCKDORY_UCITIME_H
 
-#include "../../Engine/Search2.h"
+#include "../../Engine/Search.h"
 
 namespace StockDory
 {

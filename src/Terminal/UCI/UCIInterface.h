@@ -19,7 +19,7 @@
 #include "../../Backend/Board.h"
 #include "../../Backend/Misc.h"
 
-#include "../../Engine/Search2.h"
+#include "../../Engine/Search.h"
 
 #include "../Perft/PerftRunner.h"
 
@@ -278,7 +278,12 @@ namespace StockDory
 
         static void HandleGo(const Arguments& args)
         {
-            if (!UCIPrompted || Search.Running()) return;
+            if (!UCIPrompted) return;
+
+            if (Search.Running()) {
+                std::cerr << "ERROR: The engine is already searching" << std::endl;
+                return;
+            }
 
             if (args.size() > 1 && strutil::compare_ignore_case(args[0], "perft")) {
                 const auto depth = static_cast<uint8_t>(std::stoull(args[1]));

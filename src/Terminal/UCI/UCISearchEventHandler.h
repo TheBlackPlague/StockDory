@@ -6,7 +6,7 @@
 #ifndef STOCKDORY_UCISEARCHEVENTHANDLER_H
 #define STOCKDORY_UCISEARCHEVENTHANDLER_H
 
-#include "../../Engine/Search2.h"
+#include "../../Engine/Search.h"
 
 namespace StockDory
 {

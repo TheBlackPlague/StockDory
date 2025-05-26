@@ -9,12 +9,12 @@
 #include <array>
 #include <cassert>
 
-#include "../../Backend/Move/MoveList.h"
-#include "../../Backend/Type/Move.h"
+#include "../Backend/Move/MoveList.h"
+#include "../Backend/Type/Move.h"
 
-#include "../Common.h"
+#include "Common.h"
 
-#include "Policy2.h"
+#include "Policy.h"
 
 namespace StockDory
 {

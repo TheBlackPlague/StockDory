@@ -10,7 +10,7 @@
 #include <array>
 #include <string>
 
-#include "../Engine/Search2.h"
+#include "../Engine/Search.h"
 
 namespace StockDory
 {
