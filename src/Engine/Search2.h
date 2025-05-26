@@ -115,14 +115,14 @@ namespace StockDory
 
         bool Found(const ZobristHash hash, const uint8_t halfMoveCounter) const
         {
-            const uint16_t limit = CurrentIndex > halfMoveCounter ? CurrentIndex - halfMoveCounter : 0;
+            uint8_t checked = 0, found = 0;
+            for (uint16_t i = CurrentIndex - 1; i != 0xFFFF; i--) {
+                if (checked > halfMoveCounter) break;
 
-            uint8_t count = 0;
-            for (int16_t i = CurrentIndex - 1; i >= limit; i--) {
-                if (Internal[i] == hash) {
-                    count++;
-                    if (count > RepetitionLimit - 1) return true;
-                }
+                if (found == 2 && Internal[i] == hash) return true;
+
+                found += Internal[i] == hash;
+                checked++;
             }
 
             return false;
