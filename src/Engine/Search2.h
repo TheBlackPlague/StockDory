@@ -115,8 +115,8 @@ namespace StockDory
 
         bool Found(const ZobristHash hash, const uint8_t halfMoveCounter) const
         {
-            size_t count = 0;
-            for (size_t i = CurrentIndex - 1; i != std::numeric_limits<size_t>::max(); i--) {
+            uint16_t count = 0;
+            for (uint16_t i = CurrentIndex - 1; i != 0xFFFF; i--) {
                 if (i < CurrentIndex - 1 - halfMoveCounter) return false;
 
                 if (Internal[i] == hash) {
