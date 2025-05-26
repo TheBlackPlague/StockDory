@@ -115,10 +115,10 @@ namespace StockDory
 
         bool Found(const ZobristHash hash, const uint8_t halfMoveCounter) const
         {
-            uint16_t count = 0;
-            for (uint16_t i = CurrentIndex - 1; i != 0xFFFF; i--) {
-                if (i < CurrentIndex - 1 - halfMoveCounter) return false;
+            const uint16_t limit = CurrentIndex > halfMoveCounter ? CurrentIndex - halfMoveCounter : 0;
 
+            uint8_t count = 0;
+            for (int16_t i = CurrentIndex - 1; i >= limit; i--) {
                 if (Internal[i] == hash) {
                     count++;
                     if (count > RepetitionLimit - 1) return true;
@@ -267,6 +267,8 @@ namespace StockDory
 
         size_t ThreadId = 0;
 
+        bool Log = false;
+
         EventHandler Handler {};
 
         public:
@@ -283,6 +285,8 @@ namespace StockDory
         : Board(board), Repetition(repetition), Limit(limit), ThreadId(threadId), Handler(handler)
         {
             Stack[0].HalfMoveCounter = hmc;
+
+            // std::cout << static_cast<uint64_t>(Stack[0].HalfMoveCounter) << std::endl;
         }
         // ReSharper restore CppPassValueParameterByConstReference
 
@@ -380,6 +384,8 @@ namespace StockDory
                 beta  = Evaluation + AspirationWindowSize;
             }
 
+            // if (depth == 11) Log = true;
+
             uint8_t research = 0;
             while (true) {
                 if (ThreadType == Main) {
@@ -391,6 +397,13 @@ namespace StockDory
                 // If the search was stopped, we need to stop searching.
                 // This search is incomplete, and its results may not be valid to use
                 if (Status == SearchThreadStatus::Stopped) [[unlikely]] return Draw;
+
+                if (Log) {
+                    std::cout << Nodes << std::endl;
+                }
+                if (research > 0) {
+                    Log = false;
+                }
 
                 // If the previous searches weren't successful, and even incrementally
                 // widening the window slightly didn't help, we need to widen the window to
@@ -709,6 +722,18 @@ namespace StockDory
                     if (doLMP && quietMoves > lmpLastQuiet && bestEvaluation > -Infinity) break;
                 }
 
+                // uint64_t recordedNodes = Nodes;
+                //
+                // if (Log) {
+                //     std::stringstream ss;
+                //
+                //     for (uint8_t n = 0; n < ply; n++) ss << "  ";
+                //
+                //     ss << "(" << move.ToString() << ") [\n";
+                //
+                //     std::cout << ss.str();
+                // }
+
                 const PreviousState state = DoMove<true>(move, ply, quiet);
 
                 Score evaluation = 0;
@@ -777,6 +802,15 @@ namespace StockDory
                         }
                     }
                 }
+
+                // if (Log) {
+                //     std::stringstream ss;
+                //     for (uint8_t n = 0; n < ply; n++) ss << "  ";
+                //
+                //     ss << "] " << Nodes - recordedNodes << " nodes\n";
+                //
+                //     std::cout << ss.str();
+                // }
 
                 UndoMove<true>(state, move);
 

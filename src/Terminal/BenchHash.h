@@ -40,6 +40,8 @@ namespace StockDory
                 Board           board(Positions[i]);
                 RepetitionStack repetition;
 
+                const uint8_t hmc = static_cast<uint8_t>(std::stoi(strutil::split(Positions[i], ' ').back()));
+
                 repetition.Push(board.Zobrist());
 
                 SearchTask<> search (BenchLimit, board, repetition, 0, handler);
