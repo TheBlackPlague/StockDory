@@ -265,7 +265,6 @@ namespace StockDory
         }
 
         template<typename T>
-        [[nodiscard]]
         // ReSharper disable once CppDFAConstantParameter
         static T TokenToValue(const Arguments& args, const std::string& token, const T defaultValue)
         {
