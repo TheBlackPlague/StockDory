@@ -8,9 +8,6 @@
 
 #include <array>
 #include <cmath>
-#include <cstdint>
-
-#include "EngineParameter.h"
 
 namespace StockDory
 {
