@@ -287,28 +287,6 @@ namespace StockDory
                 return;
             }
 
-            // TimeControl timeControl = TimeManager::Default();
-            // auto        limit       = Limit();
-            //
-            // if (args.size() == 2) {
-            //     if (     strutil::compare_ignore_case(args[0], "movetime"))
-            //         timeControl = TimeManager::Fixed(std::stoull(args[1]));
-            //     else if (strutil::compare_ignore_case(args[0], "depth"))
-            //         limit = Limit(static_cast<uint8_t >(std::stoull(args[1])));
-            //     else if (strutil::compare_ignore_case(args[0], "nodes"))
-            //         limit = Limit(static_cast<uint64_t>(std::stoull(args[1])));
-            // } else if (args.size() > 2) {
-            //     const TimeData timeData{
-            //         .WhiteTime      = TokenToValue<uint64_t>(args, "wtime"    , 0),
-            //         .BlackTime      = TokenToValue<uint64_t>(args, "btime"    , 0),
-            //         .WhiteIncrement = TokenToValue<uint64_t>(args, "winc"     , 0),
-            //         .BlackIncrement = TokenToValue<uint64_t>(args, "binc"     , 0),
-            //         .MovesToGo      = TokenToValue<uint16_t>(args, "movestogo", 0)
-            //     };
-            //
-            //     timeControl = TimeManager::Optimal(MainBoard, timeData);
-            // }
-
             Limit limit;
 
             if (args.size() == 2) {
