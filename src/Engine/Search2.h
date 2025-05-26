@@ -934,7 +934,7 @@ namespace StockDory
 
             if (!quiet || Board[move.From()].Piece() == Pawn) {
                 // The move was a capture or pawn move, so we must reset the half-move counter
-                Stack[ply + 1].HalfMoveCounter = 1;
+                Stack[ply + 1].HalfMoveCounter = 0;
             } else
                 // Otherwise, we increment the half-move counter
                 Stack[ply + 1].HalfMoveCounter = Stack[ply].HalfMoveCounter + 1;
