@@ -117,6 +117,7 @@ namespace StockDory
                         ThreadPool.Resize(value);
 
                         Evaluation::Initialize();
+                        Search.Resize();
                     }
                 );
 

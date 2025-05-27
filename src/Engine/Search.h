@@ -1007,16 +1007,13 @@ namespace StockDory
     class ThreadedSearch
     {
 
-        using ParallelSearchTask = SearchTask<Parallel>;
+        using ParallelSearchTask          = SearchTask<Parallel>;
+        using ParallelSearchTaskContainer = std::vector<ParallelSearchTask>;
 
-        struct MainSearchTaskEventHandler : DefaultSearchEventHandler
+        struct  MainSearchTaskEventHandler : DefaultSearchEventHandler
         {
 
-            using ParallelTaskContainer = std::vector<ParallelSearchTask>;
-
-            EventHandler MainHandler {};
-
-            ParallelTaskContainer ParallelTasks = ParallelTaskContainer(0);
+            EventHandler                  MainHandler;
 
             void HandleIterativeDeepeningIterationCompletion(
                 [[maybe_unused]] const IterativeDeepeningIterationCompletionEvent& event
@@ -1032,8 +1029,6 @@ namespace StockDory
                     .PVEntry        = event.PVEntry
                 };
 
-                for (const auto& task : ParallelTasks) mainEvent.Nodes += task.GetNodes();
-
                 MainHandler.HandleIterativeDeepeningIterationCompletion(mainEvent);
             }
 
@@ -1048,14 +1043,17 @@ namespace StockDory
 
         using MainSearchTask = SearchTask<Main, MainSearchTaskEventHandler>;
 
-        MainSearchTask             MainTask        {};
-        MainSearchTaskEventHandler MainTaskHandler {};
+        MainSearchTask              MainTask       ;
+        MainSearchTaskEventHandler  MainTaskHandler;
 
         public:
         ThreadedSearch(EventHandler& handler)
         {
             MainTaskHandler.MainHandler = handler;
+            Resize();
         }
+
+        void Resize() {}
 
         bool Running() const
         {
@@ -1078,9 +1076,9 @@ namespace StockDory
 
             limit.Start();
 
-            const size_t freeThreadCount = ThreadPool.Size() - 1;
+            // const size_t freeThreadCount = ThreadPool.Size() - 1;
 
-            if (freeThreadCount) {
+            // if (freeThreadCount) {
                 // If we have some free threads, we can allocate parallel tasks that will constructively and
                 // destructively interfere with the main task through the shared transposition table.
                 //
@@ -1099,26 +1097,20 @@ namespace StockDory
                 // traversal through it, allowing the search to see more positions in the same amount of
                 // time, increasing the quality of the search
 
-                // Allocate and start the parallel tasks
-                MainTaskHandler.ParallelTasks.resize(freeThreadCount);
-
-                for (size_t i = 0; i < freeThreadCount; i++) ThreadPool.Execute(
-                    [this, i, &limit, &board, &repetition, hmc] -> void
-                    {
-                        DefaultSearchEventHandler handler;
-
-                        MainTaskHandler.ParallelTasks[i] = ParallelSearchTask(
-                            limit, board, repetition, hmc, handler, i + 1
-                        );
-
-                        std::atomic_thread_fence(std::memory_order_seq_cst);
-
-                        MainTaskHandler.ParallelTasks[i].IterativeDeepening();
-                    }
-                );
-
-                std::atomic_thread_fence(std::memory_order_seq_cst);
-            }
+                // DefaultSearchEventHandler handler;
+                // for (size_t i = 0; i < freeThreadCount; i++) {
+                //     ParallelTasks[i] = ParallelSearchTask(
+                //         limit, board, repetition, hmc, handler, i + 1
+                //     );
+                // }
+                //
+                // for (size_t i = 0; i < freeThreadCount; i++) ThreadPool.Execute(
+                //     [this, i] -> void
+                //     {
+                //         ParallelTasks[i].IterativeDeepening();
+                //     }
+                // );
+            // }
 
             MainTask = MainSearchTask {
                 limit, board, repetition, hmc, MainTaskHandler, 0
@@ -1126,21 +1118,11 @@ namespace StockDory
 
             // Start the main task
             ThreadPool.Execute(
-                [this, freeThreadCount] -> void
+                [this] -> void
                 {
                     MainTask.IterativeDeepening();
 
-                    if (freeThreadCount) {
-                        // Once the main task is done, stop all parallel tasks
-                        for (auto& task : MainTaskHandler.ParallelTasks) task.Stop();
-
-                        // Wait for all parallel tasks to finish
-                        for (size_t i = 0; i < freeThreadCount; i++) {
-                            const auto& task = MainTaskHandler.ParallelTasks[i];
-
-                            while (!task.Stopped()) { Sleep(1); }
-                        }
-                    }
+                    // if (freeThreadCount) for (size_t i = 0; i < freeThreadCount; i++) ParallelTasks[i].Stop();
 
                     Searching = false;
                 }
