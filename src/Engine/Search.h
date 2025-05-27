@@ -296,6 +296,8 @@ namespace StockDory
 
             Board.LoadForEvaluation(ThreadId);
 
+            Limit.Start();
+
             IDepth = 1;
             while (!Limit.Crossed(Nodes, IDepth)) {
                 const Move lastBestMove = BestMove;
@@ -1073,8 +1075,6 @@ namespace StockDory
         {
 
             Searching = true;
-
-            limit.Start();
 
             // const size_t freeThreadCount = ThreadPool.Size() - 1;
 
