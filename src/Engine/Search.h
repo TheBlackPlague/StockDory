@@ -181,17 +181,12 @@ namespace StockDory
 
         bool Crossed(const uint64_t nodes, const uint8_t depth) const
         {
-            if (!Timed) return nodes > Nodes || depth > Depth;
+            const auto result = nodes > Nodes || depth > Depth;
 
-            return Elapsed() > OptimalTime || nodes > Nodes || depth > Depth;
+            return Timed ? Elapsed() > OptimalTime || result : result;
         }
 
-        bool Crossed() const
-        {
-            if (!Timed) return false;
-
-            return Elapsed() > ActualTime;
-        }
+        bool Crossed() const { return Timed ? Elapsed() > OptimalTime : false; }
 
     };
 
