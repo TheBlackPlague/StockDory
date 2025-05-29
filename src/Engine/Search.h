@@ -349,7 +349,9 @@ namespace StockDory
 
             const auto factor = SearchStabilityTimeOptimizationFactor[SearchStability];
 
-            Limit.OptimalTime = std::min(Limit.OptimalTime * factor / 100, Limit.ActualTime);
+            const uint64_t time = Limit.OptimalTime.count();
+
+            Limit.OptimalTime = MS(std::min<uint64_t>(time * factor / 100, Limit.ActualTime.count()));
         }
 
         template<Color Color>
