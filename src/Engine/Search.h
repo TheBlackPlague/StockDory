@@ -6,7 +6,6 @@
 #ifndef STOCKDORY_SEARCH_H
 #define STOCKDORY_SEARCH_H
 
-#include <atomic>
 #include <cmath>
 
 #include "../Backend/Board.h"
@@ -800,7 +799,7 @@ namespace StockDory
 
         static inline MainSearchTask MainTask;
 
-        static inline std::atomic_bool Searching = false;
+        static inline bool Searching = false;
 
         static void Run(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc)
         {
