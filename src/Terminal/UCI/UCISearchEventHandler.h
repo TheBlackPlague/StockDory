@@ -28,7 +28,6 @@ namespace StockDory
         }
 
         public:
-        // ReSharper disable once CppMemberFunctionMayBeStatic
         static void HandleIterativeDeepeningIterationCompletion(const IterativeDeepeningIterationCompletionEvent& event)
         {
             std::stringstream output;
