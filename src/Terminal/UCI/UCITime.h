@@ -68,8 +68,8 @@ namespace StockDory
 
             actualTime -= TimeProcessingOverhead;
 
-            limit.ActualTime  =    MS(actualTime);
-            limit.OptimalTime = limit.ActualTime ;
+            limit.ActualTime  = MS(actualTime);
+            limit.OptimalTime = MS(actualTime);
         }
 
     };

@@ -186,7 +186,7 @@ namespace StockDory
             return Timed ? Elapsed() > OptimalTime || result : result;
         }
 
-        bool Crossed() const { return Timed ? Elapsed() > OptimalTime : false; }
+        bool Crossed() const { return Timed ? Elapsed() > ActualTime : false; }
 
     };
 
