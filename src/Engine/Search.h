@@ -250,7 +250,7 @@ namespace StockDory
 
         size_t ThreadId = 0;
 
-        SearchThreadStatus Status = SearchThreadStatus::Stopped;
+        SearchThreadStatus Status = Running;
 
         public:
         SearchTask() {}
@@ -272,7 +272,8 @@ namespace StockDory
 
         void IterativeDeepening()
         {
-            Status = Running;
+            SearchSingleMoveTimeOptimization();
+
             Limit.Start();
 
             Board.LoadForEvaluation(ThreadId);
@@ -326,10 +327,31 @@ namespace StockDory
         }
 
         private:
+        void SearchSingleMoveTimeOptimization()
+        {
+            if (!Limit.Timed) return;
+            if ( Limit.Fixed) return;
+
+            uint8_t moveCount;
+
+            if (Board.ColorToMove() == White) {
+                const OrderedMoveList<White> moves (Board, 0, Killer, History);
+                moveCount = moves.Count();
+            } else {
+                const OrderedMoveList<Black> moves (Board, 0, Killer, History);
+                moveCount = moves.Count();
+            }
+
+            if (moveCount > 1) return;
+
+            const uint64_t time = Limit.OptimalTime.count();
+
+            Limit.OptimalTime = MS(time * TimeBasePartitionNumerator / TimeBasePartitionDenominator);
+        }
+
         void SearchStabilityTimeOptimization(const Move lastBestMove)
         {
             if (!Limit.Timed) return;
-
             if ( Limit.Fixed) return;
 
             if (lastBestMove == BestMove) SearchStability = std::min<uint8_t>(SearchStability + 1, 4);
