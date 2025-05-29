@@ -288,21 +288,20 @@ namespace StockDory
                 if (Status == SearchThreadStatus::Stopped) break;
 
                 if (ThreadType == Main) {
+                    const auto time = Limit.Elapsed();
+
                     BestMove = PVTable[0].PV[0];
 
                     SearchStabilityTimeOptimization(lastBestMove);
 
-                    IterativeDeepeningIterationCompletionEvent event
-                    {
+                    EventHandler::HandleIterativeDeepeningIterationCompletion({
                         .Depth          = IDepth,
                         .SelectiveDepth = SelectiveDepth,
                         .Evaluation     = Evaluation,
                         .Nodes          = Nodes,
-                        .Time           = Limit.Elapsed(),
+                        .Time           = time,
                         .PVEntry        = PVTable[0]
-                    };
-
-                    EventHandler::HandleIterativeDeepeningIterationCompletion(event);
+                    });
                 }
 
                 IDepth++;
@@ -311,12 +310,9 @@ namespace StockDory
             Status = SearchThreadStatus::Stopped;
 
             if (ThreadType == Main) {
-                IterativeDeepeningCompletionEvent event
-                {
+                EventHandler::HandleIterativeDeepeningCompletion({
                     .Move = BestMove
-                };
-
-                EventHandler::HandleIterativeDeepeningCompletion(event);
+                });
             }
         }
 
@@ -754,8 +750,6 @@ namespace StockDory
 
         void Resize()
         {
-            // We resize the pool to the number of threads available in the pool minus one, since the main thread
-            // is not used for parallel tasks
             TaskCount = ThreadPool.Size() - 1;
 
             Internal.reserve(TaskCount);
