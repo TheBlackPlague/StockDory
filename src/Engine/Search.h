@@ -217,26 +217,17 @@ namespace StockDory
     struct DefaultSearchEventHandler
     {
 
-        // ReSharper disable once CppMemberFunctionMayBeStatic
-        void HandleIterativeDeepeningIterationCompletion(
-            [[maybe_unused]] const IterativeDeepeningIterationCompletionEvent& event
-        ) {}
+        static void HandleIterativeDeepeningIterationCompletion(const IterativeDeepeningIterationCompletionEvent& event)
+        {}
 
-        // ReSharper disable once CppMemberFunctionMayBeStatic
-        void HandleIterativeDeepeningCompletion(
-            [[maybe_unused]] const IterativeDeepeningCompletionEvent& event
-        ) {}
+        static void HandleIterativeDeepeningCompletion(const IterativeDeepeningCompletionEvent& event)
+        {}
 
     };
 
     template<SearchThreadType ThreadType = Main, class EventHandler = DefaultSearchEventHandler>
     class SearchTask
     {
-
-        static_assert(
-            std::is_base_of_v<DefaultSearchEventHandler, EventHandler>,
-            "Handler must be derived from DefaultSearchEventHandler"
-        );
 
         Board Board {};
 
@@ -248,8 +239,6 @@ namespace StockDory
         RepetitionStack Repetition {};
 
         PVTable PVTable {};
-
-        SearchThreadStatus Status = SearchThreadStatus::Stopped;
 
         Limit Limit {};
 
@@ -267,7 +256,7 @@ namespace StockDory
 
         size_t ThreadId = 0;
 
-        EventHandler Handler {};
+        SearchThreadStatus Status = SearchThreadStatus::Stopped;
 
         public:
         SearchTask() {}
@@ -278,9 +267,8 @@ namespace StockDory
             const StockDory::Board      board,
             const RepetitionStack  repetition,
             const uint8_t                 hmc,
-                  EventHandler&       handler,
             const size_t             threadId = 0)
-        : Board(board), Repetition(repetition), Limit(limit), ThreadId(threadId), Handler(handler)
+        : Board(board), Repetition(repetition), Limit(limit), ThreadId(threadId)
         {
             Stack[0].HalfMoveCounter = hmc;
         }
@@ -291,10 +279,9 @@ namespace StockDory
         void IterativeDeepening()
         {
             Status = Running;
+            Limit.Start();
 
             Board.LoadForEvaluation(ThreadId);
-
-            Limit.Start();
 
             IDepth = 1;
             while (!Limit.Crossed(Nodes, IDepth)) {
@@ -321,7 +308,7 @@ namespace StockDory
                         .PVEntry        = PVTable[0]
                     };
 
-                    Handler.HandleIterativeDeepeningIterationCompletion(event);
+                    EventHandler::HandleIterativeDeepeningIterationCompletion(event);
                 }
 
                 IDepth++;
@@ -335,7 +322,7 @@ namespace StockDory
                     .Move = BestMove
                 };
 
-                Handler.HandleIterativeDeepeningCompletion(event);
+                EventHandler::HandleIterativeDeepeningCompletion(event);
             }
         }
 
@@ -1003,80 +990,78 @@ namespace StockDory
 
     };
 
-    template<class EventHandler = DefaultSearchEventHandler>
-    class ThreadedSearch
+    class ParallelTaskPool
     {
 
-        using ParallelSearchTask          = SearchTask<Parallel>;
-        using ParallelSearchTaskContainer = std::vector<ParallelSearchTask>;
+        using ParallelTask = SearchTask<Parallel>;
 
-        struct  MainSearchTaskEventHandler : DefaultSearchEventHandler
-        {
+        std::vector<ParallelTask> Internal;
 
-            EventHandler                  MainHandler;
-
-            void HandleIterativeDeepeningIterationCompletion(
-                [[maybe_unused]] const IterativeDeepeningIterationCompletionEvent& event
-            )
-            {
-                IterativeDeepeningIterationCompletionEvent mainEvent
-                {
-                    .Depth          = event.Depth,
-                    .SelectiveDepth = event.SelectiveDepth,
-                    .Evaluation     = event.Evaluation,
-                    .Nodes          = event.Nodes,
-                    .Time           = event.Time,
-                    .PVEntry        = event.PVEntry
-                };
-
-                MainHandler.HandleIterativeDeepeningIterationCompletion(mainEvent);
-            }
-
-            void HandleIterativeDeepeningCompletion(
-                [[maybe_unused]] const IterativeDeepeningCompletionEvent& event
-            )
-            { MainHandler.HandleIterativeDeepeningCompletion(event); }
-
-        };
-
-        std::atomic_bool Searching = false;
-
-        using MainSearchTask = SearchTask<Main, MainSearchTaskEventHandler>;
-
-        MainSearchTask              MainTask       ;
-        MainSearchTaskEventHandler  MainTaskHandler;
+        size_t TaskCount = 0;
 
         public:
-        ThreadedSearch(EventHandler& handler)
+        ParallelTaskPool()
         {
-            MainTaskHandler.MainHandler = handler;
+            Clear ();
             Resize();
         }
 
-        void Resize() {}
-
-        bool Running() const
+        void Resize()
         {
-            return Searching;
+            // We resize the pool to the number of threads available in the pool minus one, since the main thread
+            // is not used for parallel tasks
+            TaskCount = ThreadPool.Size() - 1;
+
+            Internal.reserve(TaskCount);
         }
 
-        void Stop()
-        {
-            if (Searching) MainTask.Stop();
-        }
+        void Clear() { Internal.clear(); }
 
-        void Run(
-                  Limit                  limit,
-                  Board          &       board,
-                  RepetitionStack&  repetition,
-            const uint8_t                  hmc)
+        size_t Size() const { return TaskCount; }
+
+        void Fill(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc)
+        { for (size_t i = 0; i < TaskCount; i++) Internal.emplace_back(l, b, r, hmc, i + 1); }
+
+        constexpr std::vector<ParallelTask>& operator &(){ return Internal; }
+
+    };
+
+    template<typename MainEventHandler = DefaultSearchEventHandler>
+    struct ThreadedSearch
+    {
+
+        static inline ParallelTaskPool ParallelTaskPool;
+
+        struct ThreadedSearchTaskPassthroughHandler : DefaultSearchEventHandler
         {
+
+            static void HandleIterativeDeepeningIterationCompletion(const IterativeDeepeningIterationCompletionEvent& event)
+            {
+                IterativeDeepeningIterationCompletionEvent mainEvent = event;
+
+                for (const auto& task : &ParallelTaskPool) mainEvent.Nodes += task.GetNodes();
+
+                return MainEventHandler::HandleIterativeDeepeningIterationCompletion(event);
+            }
+
+            static void HandleIterativeDeepeningCompletion(const IterativeDeepeningCompletionEvent& event)
+            { MainEventHandler::HandleIterativeDeepeningCompletion(event); }
+
+        };
+
+        using MainSearchTask = SearchTask<Main, ThreadedSearchTaskPassthroughHandler>;
+
+        static inline MainSearchTask MainTask;
+
+        static inline std::atomic_bool Searching = false;
+
+        static void Run(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc)
+        {
+            if (Searching) return;
 
             Searching = true;
 
-            // const size_t freeThreadCount = ThreadPool.Size() - 1;
-
-            // if (freeThreadCount) {
+            if (ParallelTaskPool.Size()) {
                 // If we have some free threads, we can allocate parallel tasks that will constructively and
                 // destructively interfere with the main task through the shared transposition table.
                 //
@@ -1095,33 +1080,30 @@ namespace StockDory
                 // traversal through it, allowing the search to see more positions in the same amount of
                 // time, increasing the quality of the search
 
-                // DefaultSearchEventHandler handler;
-                // for (size_t i = 0; i < freeThreadCount; i++) {
-                //     ParallelTasks[i] = ParallelSearchTask(
-                //         limit, board, repetition, hmc, handler, i + 1
-                //     );
-                // }
-                //
-                // for (size_t i = 0; i < freeThreadCount; i++) ThreadPool.Execute(
-                //     [this, i] -> void
-                //     {
-                //         ParallelTasks[i].IterativeDeepening();
-                //     }
-                // );
-            // }
+                ParallelTaskPool.Fill(l, b, r, hmc);
 
-            MainTask = MainSearchTask {
-                limit, board, repetition, hmc, MainTaskHandler, 0
-            };
+                for (auto& task : &ParallelTaskPool) ThreadPool.Execute(
+                    [&task] -> void
+                    {
+                        task.IterativeDeepening();
+                    }
+                );
+            }
 
-            // Start the main task
+            MainTask = MainSearchTask(l, b, r, hmc, 0);
+
             ThreadPool.Execute(
-                [this] -> void
+                [] -> void
                 {
                     MainTask.IterativeDeepening();
 
-                    // if (freeThreadCount) for (size_t i = 0; i < freeThreadCount; i++) ParallelTasks[i].Stop();
+                    if (ParallelTaskPool.Size()) {
+                        for (auto& task : &ParallelTaskPool) task.Stop();
 
+                        for (auto& task : &ParallelTaskPool) if (!task.Stopped()) Sleep(1);
+                    }
+
+                    ParallelTaskPool.Clear();
                     Searching = false;
                 }
             );

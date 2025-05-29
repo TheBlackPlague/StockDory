@@ -52,8 +52,6 @@ namespace StockDory
 
         static inline UCISearchEventHandler SearchEventHandler;
 
-        static UCISearch Search;
-
         public:
         static void Launch()
         {
@@ -117,7 +115,7 @@ namespace StockDory
                         ThreadPool.Resize(value);
 
                         Evaluation::Initialize();
-                        Search.Resize();
+                        UCISearch::ParallelTaskPool.Resize();
                     }
                 );
 
@@ -170,7 +168,8 @@ namespace StockDory
         {
             if (!UCIPrompted) return;
 
-            if (Search.Running()) Search.Stop();
+            if (UCISearch::Searching) UCISearch::MainTask.Stop();
+            while (UCISearch::Searching) Sleep(1);
 
             Board           = {};
             Repetition      = {};
@@ -190,16 +189,15 @@ namespace StockDory
 
         static void Quit()
         {
-            if (Search.Running()) Search.Stop();
-
-            while (Search.Running()) Sleep(1);
+            if (UCISearch::Searching) UCISearch::MainTask.Stop();
+            while (UCISearch::Searching) Sleep(1);
 
             Running = false;
         }
 
         static void Info(const Arguments& args)
         {
-            if (!UCIPrompted || Search.Running()) return;
+            if (!UCIPrompted || UCISearch::Searching) return;
 
             Board.LoadForEvaluation();
 
@@ -280,7 +278,7 @@ namespace StockDory
         {
             if (!UCIPrompted) return;
 
-            if (Search.Running()) {
+            if (UCISearch::Searching) {
                 std::cerr << "ERROR: The engine is already searching" << std::endl;
                 return;
             }
@@ -315,20 +313,18 @@ namespace StockDory
                 time.AsLimit(limit);
             }
 
-            Search.Run(limit, Board, Repetition, HalfMoveCounter);
+            UCISearch::Run(limit, Board, Repetition, HalfMoveCounter);
         }
 
         static void HandleStop()
         {
             if (!UCIPrompted) return;
 
-            Search.Stop();
+            UCISearch::MainTask.Stop();
         }
 
     };
 
 } // StockDory
-
-StockDory::UCIInterface::UCISearch StockDory::UCIInterface::Search = UCISearch(SearchEventHandler);
 
 #endif //STOCKDORY_UCIINTERFACE_H

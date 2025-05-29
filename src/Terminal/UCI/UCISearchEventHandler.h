@@ -29,9 +29,7 @@ namespace StockDory
 
         public:
         // ReSharper disable once CppMemberFunctionMayBeStatic
-        void HandleIterativeDeepeningIterationCompletion(
-            [[maybe_unused]] const IterativeDeepeningIterationCompletionEvent& event
-        )
+        static void HandleIterativeDeepeningIterationCompletion(const IterativeDeepeningIterationCompletionEvent& event)
         {
             std::stringstream output;
 
@@ -63,10 +61,7 @@ namespace StockDory
             std::cout << output.str() << std::endl;
         }
 
-        // ReSharper disable once CppMemberFunctionMayBeStatic
-        void HandleIterativeDeepeningCompletion(
-            [[maybe_unused]] const IterativeDeepeningCompletionEvent& event
-        )
+        static void HandleIterativeDeepeningCompletion(const IterativeDeepeningCompletionEvent& event)
         {
             std::cout << "bestmove " << event.Move.ToString() << std::endl;
         }

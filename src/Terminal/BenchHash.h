@@ -30,8 +30,6 @@ namespace StockDory
             Array<uint64_t, BenchLength> nodes;
             Array<   MS   , BenchLength> times;
 
-            DefaultSearchEventHandler handler;
-
             for (size_t i = 0; i < BenchLength; i++) {
                 std::cout << "Position (" << std::setw(2) << std::setfill('0')
                           << static_cast<uint16_t>(i + 1) << "/" << static_cast<uint16_t>(BenchLength) << "): ";
@@ -44,7 +42,7 @@ namespace StockDory
 
                 repetition.Push(board.Zobrist());
 
-                SearchTask<> search (BenchLimit, board, repetition, 0, handler);
+                SearchTask<> search (BenchLimit, board, repetition, 0);
 
                 const auto t0 = std::chrono::high_resolution_clock::now();
                 search.IterativeDeepening();
