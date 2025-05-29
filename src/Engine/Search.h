@@ -349,7 +349,7 @@ namespace StockDory
 
             const auto factor = SearchStabilityTimeOptimizationFactor[SearchStability];
 
-            Limit.OptimalTime = Limit.OptimalTime * factor / 100;
+            Limit.OptimalTime = std::min(Limit.OptimalTime * factor / 100, Limit.ActualTime);
         }
 
         template<Color Color>
