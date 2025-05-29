@@ -34,7 +34,7 @@ namespace StockDory
             limit.Fixed = true;
 
             limit.ActualTime  = MS(Time);
-            limit.OptimalTime = limit.ActualTime;
+            limit.OptimalTime = MS(Time);
         }
 
     };
