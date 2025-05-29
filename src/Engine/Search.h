@@ -247,7 +247,7 @@ namespace StockDory
 
         Move BestMove {};
 
-        uint8_t BestMoveStability = 0;
+        uint8_t SearchStability = 0;
 
         size_t ThreadId = 0;
 
@@ -291,7 +291,7 @@ namespace StockDory
                 if (ThreadType == Main) {
                     BestMove = PVTable[0].PV[0];
 
-                    BestMoveStabilityOptimization(lastBestMove);
+                    SearchStabilityTimeOptimization(lastBestMove);
 
                     IterativeDeepeningIterationCompletionEvent event
                     {
@@ -331,18 +331,23 @@ namespace StockDory
         }
 
         private:
-        void BestMoveStabilityOptimization(const Move lastBestMove)
+        void SearchStabilityTimeOptimization(const Move lastBestMove)
         {
-            if (!Limit.Timed && !Limit.Fixed) return;
+            // If the search is not timed, then we can't really optimize the time based on the search stability
+            if (!Limit.Timed) return;
+
+            // If the search is timed, but the time is fixed, then we can't optimize since to do so we need to
+            // change the optimal time (which we can't do if it's fixed)
+            if ( Limit.Fixed) return;
 
             // If the last best move is the same as the current best move, we can assume that the search
             // is stable and the best move is unlikely to change. Thus, if we are timed and not having a
             // fixed time, we can change the optimal time to be a bit lower. If the search later becomes
             // unstable, we can increase the optimal time by far more than we decreased it
-            if (lastBestMove == BestMove) BestMoveStability = std::min<uint8_t>(BestMoveStability + 1, 4);
-            else                          BestMoveStability = 0;
+            if (lastBestMove == BestMove) SearchStability = std::min<uint8_t>(SearchStability + 1, 4);
+            else                          SearchStability = 0;
 
-            const auto factor = BestMoveStabilityOptimizationFactor[BestMoveStability];
+            const auto factor = SearchStabilityTimeOptimizationFactor[SearchStability];
 
             Limit.OptimalTime = Limit.OptimalTime * factor / 100;
         }
