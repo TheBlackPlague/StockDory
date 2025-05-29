@@ -785,7 +785,7 @@ namespace StockDory
             {
                 IterativeDeepeningIterationCompletionEvent mainEvent = event;
 
-                for (const auto& task : &ParallelTaskPool) mainEvent.Nodes += task.GetNodes();
+                // for (const auto& task : &ParallelTaskPool) mainEvent.Nodes += task.GetNodes();
 
                 return MainEventHandler::HandleIterativeDeepeningIterationCompletion(event);
             }
@@ -807,16 +807,16 @@ namespace StockDory
 
             Searching = true;
 
-            if (ParallelTaskPool.Size()) {
-                ParallelTaskPool.Fill(l, b, r, hmc);
-
-                for (auto& task : &ParallelTaskPool) ThreadPool.Execute(
-                    [&task] -> void
-                    {
-                        task.IterativeDeepening();
-                    }
-                );
-            }
+            // if (ParallelTaskPool.Size()) {
+            //     ParallelTaskPool.Fill(l, b, r, hmc);
+            //
+            //     for (auto& task : &ParallelTaskPool) ThreadPool.Execute(
+            //         [&task] -> void
+            //         {
+            //             task.IterativeDeepening();
+            //         }
+            //     );
+            // }
 
             MainTask = MainSearchTask(l, b, r, hmc, 0);
 
@@ -825,13 +825,13 @@ namespace StockDory
                 {
                     MainTask.IterativeDeepening();
 
-                    if (ParallelTaskPool.Size()) {
-                        for (auto& task : &ParallelTaskPool) task.Stop();
-
-                        for (auto& task : &ParallelTaskPool) if (!task.Stopped()) Sleep(1);
-                    }
-
-                    ParallelTaskPool.Clear();
+                    // if (ParallelTaskPool.Size()) {
+                    //     for (auto& task : &ParallelTaskPool) task.Stop();
+                    //
+                    //     for (auto& task : &ParallelTaskPool) if (!task.Stopped()) Sleep(1);
+                    // }
+                    //
+                    // ParallelTaskPool.Clear();
                     Searching = false;
                 }
             );
