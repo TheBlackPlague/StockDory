@@ -267,8 +267,6 @@ namespace StockDory
 
         size_t ThreadId = 0;
 
-        bool Log = false;
-
         EventHandler Handler {};
 
         public:
