@@ -211,10 +211,10 @@ namespace StockDory
     struct DefaultSearchEventHandler
     {
 
-        static void HandleIterativeDeepeningIterationCompletion(const IterativeDeepeningIterationCompletionEvent& event)
+        static void HandleIterativeDeepeningIterationCompletion(const IterativeDeepeningIterationCompletionEvent& _)
         {}
 
-        static void HandleIterativeDeepeningCompletion(const IterativeDeepeningCompletionEvent& event)
+        static void HandleIterativeDeepeningCompletion(const IterativeDeepeningCompletionEvent& _)
         {}
 
     };
