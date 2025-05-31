@@ -549,8 +549,6 @@ namespace StockDory
 
             Score bestEvaluation = -Infinity;
 
-            // Keep track of the number of quiet moves we've seen so far - useful to enable
-            // certain pruning and reductions
             uint8_t quietMoves = 0;
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move  = moves[i];
