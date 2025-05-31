@@ -14,6 +14,8 @@ namespace StockDory
     class UCISearchEventHandler : DefaultSearchEventHandler
     {
 
+        static inline bool OutputWDL = false;
+
         static std::string PVLine(const PVEntry& pv)
         {
             std::stringstream line;
@@ -52,6 +54,8 @@ namespace StockDory
                 output << "cp " << event.Evaluation << " ";
             }
 
+            if (OutputWDL) output << "wdl " << event.WDL.W << " " << event.WDL.D << " " << event.WDL.L << " ";
+
             output << "nodes " << event.Nodes << " ";
             output << "nps " << nps << " ";
             output << "time " << displayedTime << " ";
@@ -64,6 +68,8 @@ namespace StockDory
         {
             std::cout << "bestmove " << event.Move.ToString() << std::endl;
         }
+
+        static void SetOutputWDL(const bool value) { OutputWDL = value; }
 
     };
 

@@ -119,8 +119,17 @@ namespace StockDory
                     }
                 );
 
+            auto wdl =
+                std::make_shared<UCIOption<bool>>
+                ("WDL", false, [](const bool& value) -> void
+                    {
+                        UCISearchEventHandler::SetOutputWDL(value);
+                    }
+                );
+
             UCIOptionSwitch.emplace(   hash->GetName(), hash   );
             UCIOptionSwitch.emplace(threads->GetName(), threads);
+            UCIOptionSwitch.emplace(    wdl->GetName(), wdl    );
         }
 
         static void HandleInput(const std::string& input)
