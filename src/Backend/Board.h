@@ -616,8 +616,8 @@ namespace StockDory
                     InsertNative(Rook, colorF, state.CastlingTo  );
 
                     if (T & NNUE) {
-                        Evaluation::Transition(King, colorF,               from,               to);
-                        Evaluation::Transition(Rook, colorF, state.CastlingFrom, state.CastlingTo);
+                        Evaluation::Transition(King, colorF,               from,               to, threadId);
+                        Evaluation::Transition(Rook, colorF, state.CastlingFrom, state.CastlingTo, threadId);
                     }
 
                     Hash = Zobrist::HashPiece<T>(Hash, King, colorF,               from);
