@@ -272,9 +272,11 @@ namespace StockDory
 
         void IterativeDeepening()
         {
-            SearchSingleMoveTimeOptimization();
+            if (ThreadType == Main) {
+                SearchSingleMoveTimeOptimization();
 
-            Limit.Start();
+                Limit.Start();
+            }
 
             Board.LoadForEvaluation(ThreadId);
 
