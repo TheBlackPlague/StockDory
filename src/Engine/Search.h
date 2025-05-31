@@ -293,7 +293,7 @@ namespace StockDory
 
                     BestMove = PVTable[0].PV[0];
 
-                    SearchStabilityTimeOptimization(lastBestMove);
+                    // SearchStabilityTimeOptimization(lastBestMove);
 
                     EventHandler::HandleIterativeDeepeningIterationCompletion({
                         .Depth          = IDepth,
