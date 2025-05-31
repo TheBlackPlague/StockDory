@@ -797,17 +797,17 @@ namespace StockDory
         struct ThreadedSearchTaskPassthroughHandler : DefaultSearchEventHandler
         {
 
-            static void HandleIterativeDeepeningIterationCompletion(const IterativeDeepeningIterationCompletionEvent& event)
+            static void HandleIterativeDeepeningIterationCompletion(const IterativeDeepeningIterationCompletionEvent& e)
             {
-                IterativeDeepeningIterationCompletionEvent mainEvent = event;
+                IterativeDeepeningIterationCompletionEvent event = e;
 
-                // for (const auto& task : &ParallelTaskPool) mainEvent.Nodes += task.GetNodes();
+                for (const auto& task : &ParallelTaskPool) event.Nodes += task.GetNodes();
 
-                return MainEventHandler::HandleIterativeDeepeningIterationCompletion(mainEvent);
+                return MainEventHandler::HandleIterativeDeepeningIterationCompletion(event);
             }
 
-            static void HandleIterativeDeepeningCompletion(const IterativeDeepeningCompletionEvent& event)
-            { MainEventHandler::HandleIterativeDeepeningCompletion(event); }
+            static void HandleIterativeDeepeningCompletion(const IterativeDeepeningCompletionEvent& e)
+            { MainEventHandler::HandleIterativeDeepeningCompletion(e); }
 
         };
 
@@ -823,16 +823,16 @@ namespace StockDory
 
             Searching = true;
 
-            // if (ParallelTaskPool.Size()) {
-            //     ParallelTaskPool.Fill(l, b, r, hmc);
-            //
-            //     for (auto& task : &ParallelTaskPool) ThreadPool.Execute(
-            //         [&task] -> void
-            //         {
-            //             task.IterativeDeepening();
-            //         }
-            //     );
-            // }
+            if (ParallelTaskPool.Size()) {
+                ParallelTaskPool.Fill(l, b, r, hmc);
+
+                for (auto& task : &ParallelTaskPool) ThreadPool.Execute(
+                    [&task] -> void
+                    {
+                        task.IterativeDeepening();
+                    }
+                );
+            }
 
             MainTask = MainSearchTask(l, b, r, hmc, 0);
 
@@ -841,13 +841,13 @@ namespace StockDory
                 {
                     MainTask.IterativeDeepening();
 
-                    // if (ParallelTaskPool.Size()) {
-                    //     for (auto& task : &ParallelTaskPool) task.Stop();
-                    //
-                    //     for (auto& task : &ParallelTaskPool) if (!task.Stopped()) Sleep(1);
-                    // }
-                    //
-                    // ParallelTaskPool.Clear();
+                    if (ParallelTaskPool.Size()) {
+                        for (auto& task : &ParallelTaskPool) task.Stop();
+
+                        for (auto& task : &ParallelTaskPool) if (!task.Stopped()) Sleep(1);
+                    }
+
+                    ParallelTaskPool.Clear();
                     Searching = false;
                 }
             );
