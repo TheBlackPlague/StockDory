@@ -11,19 +11,11 @@
 namespace StockDory
 {
 
-    template<typename Derived>
-    struct UCITimeBase
-    {
-
-        Limit AsLimit() const { Limit limit; return static_cast<const Derived*>(this)->AsLimit(limit); return limit; }
-
-    };
-
     template<bool Fixed>
-    struct UCITime : UCITimeBase<UCITime<Fixed>> {};
+    struct UCITime {};
 
     template<>
-    struct UCITime<true> : UCITimeBase<UCITime<true>>
+    struct UCITime<true>
     {
 
         uint64_t Time = 0;
@@ -40,7 +32,7 @@ namespace StockDory
     };
 
     template<>
-    struct UCITime<false> : UCITimeBase<UCITime<false>>
+    struct UCITime<false>
     {
 
         uint64_t WhiteTime  = 0;
