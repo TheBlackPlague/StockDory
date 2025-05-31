@@ -307,7 +307,9 @@ namespace StockDory
                     .BlackTime = TokenToValue<uint64_t>(args, "btime"    , 0),
                     .WhiteInc  = TokenToValue<uint64_t>(args, "winc"     , 0),
                     .BlackInc  = TokenToValue<uint64_t>(args, "binc"     , 0),
-                    .MovesToGo = TokenToValue<uint16_t>(args, "movestogo", 0)
+                    .MovesToGo = TokenToValue<uint16_t>(args, "movestogo", 0),
+
+                    .ColorToMove = Board.ColorToMove()
                 };
 
                 time.AsLimit(limit);
