@@ -801,7 +801,7 @@ namespace StockDory
 
                 // for (const auto& task : &ParallelTaskPool) mainEvent.Nodes += task.GetNodes();
 
-                return MainEventHandler::HandleIterativeDeepeningIterationCompletion(event);
+                return MainEventHandler::HandleIterativeDeepeningIterationCompletion(mainEvent);
             }
 
             static void HandleIterativeDeepeningCompletion(const IterativeDeepeningCompletionEvent& event)
