@@ -210,7 +210,7 @@ namespace StockDory
 
             Board.LoadForEvaluation();
 
-            const int32_t evaluation = Evaluation::Evaluate(Board.ColorToMove());
+            const Score evaluation = WDLCalculator::S(Board, Evaluation::Evaluate(Board.ColorToMove()));
 
             std::stringstream ss;
             ss << "FEN: " << Board.Fen() << "\n";

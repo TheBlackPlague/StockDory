@@ -87,9 +87,9 @@ namespace StockDory
 
         };
 
+        private:
         constexpr static size_t Padding = 8;
 
-        private:
         Array<Frame, Padding + MaxDepth> Internal {};
 
         public:
