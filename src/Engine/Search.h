@@ -542,9 +542,19 @@ namespace StockDory
             }
 
             Score staticEvaluation;
-            bool  improving        = false;
+            bool  improving       ;
 
             const bool checked = Board.Checked<Color>();
+
+            if (checked) {
+                staticEvaluation = Stack[ply].StaticEvaluation = Stack[ply - 2].StaticEvaluation;
+
+                improving = false;
+
+                depth += CheckExtension;
+
+                goto SkipRiskyPruning;
+            }
 
             if (ttHit) {
                 staticEvaluation = ttEntry.Evaluation;
@@ -555,22 +565,13 @@ namespace StockDory
                     if      (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, nnEvaluation);
                     else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, nnEvaluation);
                 }
-            } else
-                staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
+            } else staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
 
             Stack[ply].StaticEvaluation = staticEvaluation;
 
-            if (checked) {
-                improving = false;
-
-                depth += CheckExtension;
-
-                goto SkipRiskyPruning;
-            }
+            improving = staticEvaluation > Stack[ply - 2].StaticEvaluation;
 
             if (!PV) {
-                improving = ply >= 2 && staticEvaluation >= Stack[ply - 2].StaticEvaluation;
-
                 if (depth < ReverseFutilityMaximumDepth && abs(beta) < Mate) {
                     const Score     depthMargin = depth     * ReverseFutilityDepthFactor;
                     const Score improvingMargin = improving * ReverseFutilityImprovingFactor;
