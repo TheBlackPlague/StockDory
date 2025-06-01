@@ -59,7 +59,7 @@ namespace StockDory
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
 
-    auto LMRReductionTable =
+    inline auto LMRTable =
     [] -> Array<int16_t, MaxDepth, MaxMove>
     {
         const auto formula = [](const uint8_t depth, const uint8_t move) -> int16_t
@@ -660,7 +660,7 @@ namespace StockDory
                 if (i == 0) evaluation = -AlphaBeta<OColor, PV, false>(ply + 1, depth - 1, -beta, -alpha);
                 else {
                     if (doLMR && i > LMRMinimumMoves) {
-                        int16_t r = LMRReductionTable[depth][i];
+                        int16_t r = LMRTable[depth][i];
 
                         if (!PV) r++;
 
