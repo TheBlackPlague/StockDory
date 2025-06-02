@@ -749,7 +749,7 @@ namespace StockDory
                     const Score     depthMargin = depth     * ReverseFutilityDepthFactor;
                     const Score improvingMargin = improving * ReverseFutilityImprovingFactor;
 
-                    if (staticEvaluation - depthMargin + improvingMargin >= beta) return beta;
+                    if (staticEvaluation - depthMargin + improvingMargin >= beta) return (staticEvaluation + beta) / 2;
                 }
 
                 // Razoring:
