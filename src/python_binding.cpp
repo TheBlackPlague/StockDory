@@ -6,19 +6,19 @@
 #include <pybind11/pybind11.h>
 
 #include "Information.h"
+
 #include "Backend/Board.h"
 #include "Backend/Move/MoveList.h"
 #include "Backend/Type/Color.h"
 #include "Backend/Type/Move.h"
 #include "Backend/Type/Piece.h"
 #include "Backend/Type/Square.h"
-#include "Engine/EngineParameter.h"
-#include "Engine/RepetitionHistory.h"
 #include "Engine/Search.h"
-#include "Engine/Move/PrincipleVariationTable.h"
-#include "Engine/Time/TimeManager.h"
+
 #include "External/strutil.h"
+
 #include "Terminal/Perft/PerftRunner.h"
+#include "Terminal/UCI/UCITime.h"
 
 namespace py = pybind11;
 
@@ -27,7 +27,7 @@ constexpr size_t API_VERSION = 0;
 class PyMoveList
 {
 
-    std::array<Move, MaxMove> Internal = {};
+    Array<Move, StockDory::MaxMove> Internal = {};
 
     uint8_t Size = 0;
 
@@ -178,7 +178,7 @@ class PyMoveList
         return ss.str();
     }
 
-    std::array<Move, MaxMove>::iterator Begin()
+    Array<Move, StockDory::MaxMove>::iterator Begin()
     {
         return Internal.begin();
     }
@@ -188,53 +188,50 @@ class PyMoveList
 template<size_t T>
 class PyConstantHolder {};
 
-class PySearchHandler
+class PySearchHandler : StockDory::DefaultSearchEventHandler
 {
 
-    using PV = StockDory::PrincipleVariationEntry;
-
-    using DepthIterationHandler = std::function<void(
-        uint8_t ,
-        uint8_t ,
-         int32_t,
-        uint64_t,
-        uint64_t,
-         int64_t,
-        const PV&
+    using IterativeDeepeningIterationCompletionHandler = std::function<void(
+        StockDory::IterativeDeepeningIterationCompletionEvent
     )>;
 
-    using BestMoveHandler = std::function<void(Move)>;
+    using IterativeDeepeningCompletionHandler = std::function<void(
+        StockDory::IterativeDeepeningCompletionEvent
+    )>;
 
-    static inline DepthIterationHandler DepthIterationMethod = [](const uint8_t ,
-                                                                  const uint8_t ,
-                                                                  const  int32_t,
-                                                                  const uint64_t,
-                                                                  const uint64_t,
-                                                                  const  int64_t,
-                                                                  const PV& ) -> void {};
-    static inline       BestMoveHandler       BestMoveMethod = [](const Move) -> void {};
+    static inline IterativeDeepeningIterationCompletionHandler IterativeDeepeningIterationCompletion =
+        [](const StockDory::IterativeDeepeningIterationCompletionEvent&) -> void {};
+
+    static inline IterativeDeepeningCompletionHandler IterativeDeepeningCompletion =
+        [](const StockDory::IterativeDeepeningCompletionEvent&) -> void {};
 
     public:
-    static void RegisterDepthIterationHandler(const DepthIterationHandler&& handler)
+    static void RegisterIterativeDeepeningIterationCompletionHandler(
+        const IterativeDeepeningIterationCompletionHandler&& handler
+    )
     {
-        DepthIterationMethod = std::move(handler);
+        IterativeDeepeningIterationCompletion = std::move(handler);
     }
 
-    static void       RegisterBestMoveHandler(const       BestMoveHandler&& handler)
+    static void RegisterIterativeDeepeningCompletionHandler(
+        const IterativeDeepeningCompletionHandler&& handler
+    )
     {
-              BestMoveMethod = std::move(handler);
+        IterativeDeepeningCompletion = std::move(handler);
     }
 
-    static void HandleDepthIteration(const uint8_t       a, const uint8_t  b, const int32_t c,
-                                     const uint64_t      d, const uint64_t e,
-                                     const StockDory::MS f, const PV&      g)
+    static void HandleIterativeDeepeningIterationCompletion(
+        const StockDory::IterativeDeepeningIterationCompletionEvent& event
+    )
     {
-        DepthIterationMethod(a, b, c, d, e, f.count(), g);
+        IterativeDeepeningIterationCompletion(event);
     }
 
-    static void HandleBestMove(const Move a)
+    static void HandleIterativeDeepeningCompletion(
+        const StockDory::IterativeDeepeningCompletionEvent& event
+    )
     {
-              BestMoveMethod(a                          );
+        IterativeDeepeningCompletion(event);
     }
 
 };
@@ -242,7 +239,6 @@ class PySearchHandler
 using PySearch = StockDory::ThreadedSearch<PySearchHandler>;
 
 auto SEARCH         = PySearch();
-auto SEARCH_RUNNING = false     ;
 
 PYBIND11_MODULE(StockDory, m)
 {
@@ -273,22 +269,22 @@ PYBIND11_MODULE(StockDory, m)
 
         cc.def_property_readonly_static(
             "INFINITY",
-            [](py::object) -> int32_t { return Infinity; }
+            [](py::object) -> int32_t { return StockDory::Infinity; }
         );
 
         ec.def_property_readonly_static(
             "MATE",
-            [](py::object) -> int32_t { return Mate; }
+            [](py::object) -> int32_t { return StockDory::Mate; }
         );
 
         ec.def_property_readonly_static(
             "DRAW",
-            [](py::object) -> int32_t { return Draw; }
+            [](py::object) -> int32_t { return StockDory::Draw; }
         );
 
         ec.def_property_readonly_static(
             "MAX_DEPTH",
-            [](py::object) -> uint8_t { return MaxDepth; }
+            [](py::object) -> uint8_t { return StockDory::MaxDepth; }
         );
     }
 
@@ -444,14 +440,16 @@ PYBIND11_MODULE(StockDory, m)
             &StockDory::Board::Move<ZOBRIST>,
             py::arg("from"),
             py::arg("to"),
-            py::arg("promotion")
+            py::arg("promotion"),
+            py::arg("thread_id") = 0
         );
         board.def(
             "undo_move",
             &StockDory::Board::UndoMove<ZOBRIST>,
             py::arg("previous_state"),
             py::arg("from"),
-            py::arg("to")
+            py::arg("to"),
+            py::arg("thread_id") = 0
         );
 
         board.def(
@@ -459,14 +457,16 @@ PYBIND11_MODULE(StockDory, m)
             &StockDory::Board::Move<ZOBRIST | NNUE>,
             py::arg("from"),
             py::arg("to"),
-            py::arg("promotion")
+            py::arg("promotion"),
+            py::arg("thread_id") = 0
         );
         board.def(
             "undo_move_nnue",
             &StockDory::Board::UndoMove<ZOBRIST | NNUE>,
             py::arg("previous_state"),
             py::arg("from"),
-            py::arg("to")
+            py::arg("to"),
+            py::arg("thread_id") = 0
         );
 
         board.def(
@@ -474,14 +474,16 @@ PYBIND11_MODULE(StockDory, m)
             &StockDory::Board::Move<STANDARD>,
             py::arg("from"),
             py::arg("to"),
-            py::arg("promotion")
+            py::arg("promotion"),
+            py::arg("thread_id") = 0
         );
         board.def(
             "undo_move_fast",
             &StockDory::Board::UndoMove<STANDARD>,
             py::arg("previous_state"),
             py::arg("from"),
-            py::arg("to")
+            py::arg("to"),
+            py::arg("thread_id") = 0
         );
 
         board.def(
@@ -489,14 +491,16 @@ PYBIND11_MODULE(StockDory, m)
             &StockDory::Board::Move<PERFT | ZOBRIST>,
             py::arg("from"),
             py::arg("to"),
-            py::arg("promotion")
+            py::arg("promotion"),
+            py::arg("thread_id") = 0
         );
         board.def(
             "undo_move_hash",
             &StockDory::Board::UndoMove<PERFT | ZOBRIST>,
             py::arg("previous_state"),
             py::arg("from"),
-            py::arg("to")
+            py::arg("to"),
+            py::arg("thread_id") = 0
         );
     }
 
@@ -689,124 +693,166 @@ PYBIND11_MODULE(StockDory, m)
 
         tt.def(
             "resize",
-            [](const size_t n) -> void { TTable.Resize(n); },
+            [](const size_t n) -> void { StockDory::TT.Resize(n); },
             py::arg("bytes")
         );
 
         tt.def(
             "size",
-            [] -> size_t { return TTable.Size(); }
+            [] -> size_t { return StockDory::TT.Size(); }
         );
 
         tt.def(
             "clear",
-            [] -> void { TTable.Clear(); }
+            [] -> void { StockDory::TT.Clear(); }
         );
     }
 
-    /** -- STRUCT: core.TimeData -- **/
+    /** -- STRUCT: core.VariableUCITime -- **/
     {
-        py::class_<StockDory::TimeData> td (core, "TimeData");
+        py::class_<StockDory::UCITime<false>> varUCITime (core, "VariableUCITime");
 
-        td.def(py::init());
+        varUCITime.def(py::init());
 
-        td.def_property(
+        varUCITime.def_property(
             "white_time",
-            [](const StockDory::TimeData& self) -> uint64_t  { return self.WhiteTime; },
-            [](StockDory::TimeData& self, const uint64_t v) -> void { self.WhiteTime = v; }
+            [](const StockDory::UCITime<false>& self) -> uint64_t  { return self.WhiteTime; },
+            [](StockDory::UCITime<false>& self, const uint64_t v) -> void { self.WhiteTime = v; }
         );
-        td.def_property(
+        varUCITime.def_property(
             "black_time",
-            [](const StockDory::TimeData& self) -> uint64_t  { return self.BlackTime; },
-            [](StockDory::TimeData& self, const uint64_t v) -> void { self.BlackTime = v; }
+            [](const StockDory::UCITime<false>& self) -> uint64_t  { return self.BlackTime; },
+            [](StockDory::UCITime<false>& self, const uint64_t v) -> void { self.BlackTime = v; }
         );
 
-        td.def_property(
+        varUCITime.def_property(
             "white_increment",
-            [](const StockDory::TimeData& self) -> uint64_t  { return self.WhiteIncrement; },
-            [](StockDory::TimeData& self, const uint64_t v) -> void { self.WhiteIncrement = v; }
+            [](const StockDory::UCITime<false>& self) -> uint64_t  { return self.WhiteInc; },
+            [](StockDory::UCITime<false>& self, const uint64_t v) -> void { self.WhiteInc = v; }
         );
-        td.def_property(
+        varUCITime.def_property(
             "black_increment",
-            [](const StockDory::TimeData& self) -> uint64_t  { return self.BlackIncrement; },
-            [](StockDory::TimeData& self, const uint64_t v) -> void { self.BlackIncrement = v; }
+            [](const StockDory::UCITime<false>& self) -> uint64_t  { return self.BlackInc; },
+            [](StockDory::UCITime<false>& self, const uint64_t v) -> void { self.BlackInc = v; }
         );
 
-        td.def_property(
+        varUCITime.def_property(
             "moves_to_go",
-            [](const StockDory::TimeData& self) -> uint16_t  { return self.MovesToGo; },
-            [](StockDory::TimeData& self, const uint16_t v) -> void { self.MovesToGo = v; }
+            [](const StockDory::UCITime<false>& self) -> uint16_t  { return self.MovesToGo; },
+            [](StockDory::UCITime<false>& self, const uint16_t v) -> void { self.MovesToGo = v; }
+        );
+
+        varUCITime.def_property(
+            "color_to_move",
+            [](const StockDory::UCITime<false>& self) -> Color { return self.ColorToMove; },
+            [](StockDory::UCITime<false>& self, const Color v) -> void { self.ColorToMove = v; }
+        );
+
+        varUCITime.def(
+            "as_limit",
+            [](const StockDory::UCITime<false>& self, StockDory::Limit& limit) -> void
+            {
+                self.AsLimit(limit);
+            }
         );
     }
 
-    /** -- CLASS: engine.TimeControl -- **/
+    /** -- STRUCT: core.FixedUCITime -- **/
     {
-        py::class_<StockDory::TimeControl> tc (engine, "TimeControl");
-    }
+        py::class_<StockDory::UCITime<true>> fixedUCITime (core, "FixedUCITime");
 
-    /** -- MODULE: engine.tm -- **/
-    {
-        py::module_ tm = engine.def_submodule("tm", "Python Bindings for StockDory's Engine Time Manager");
+        fixedUCITime.def(py::init());
 
-        tm.def(
-            "default",
-            &StockDory::TimeManager::Default
+        fixedUCITime.def_property(
+            "time",
+            [](const StockDory::UCITime<true>& self) -> uint64_t  { return self.Time; },
+            [](StockDory::UCITime<true>& self, const uint64_t v) -> void { self.Time = v; }
         );
 
-        tm.def(
-            "fixed"  ,
-            &StockDory::TimeManager::Fixed,
+        fixedUCITime.def(
+            "as_limit",
+            [](const StockDory::UCITime<true>& self, StockDory::Limit& limit) -> void
+            {
+                self.AsLimit(limit);
+            }
+        );
+    }
+
+    /** -- STRUCT: engine.MS -- **/
+    {
+        py::class_<StockDory::MS> ms (engine, "MS");
+
+        ms.def(
+            py::init<uint64_t>(),
             py::arg("milliseconds")
         );
 
-        tm.def(
-            "optimal",
-            &StockDory::TimeManager::Optimal,
-            py::arg("board"),
-            py::arg("time_data")
+        ms.def(
+            "__int__",
+            [](const StockDory::MS& self) -> uint64_t { return self.count(); }
+        );
+
+        ms.def(
+            "__str__",
+            [](const StockDory::MS& self) -> std::string { return std::to_string(self.count()) + "ms"; }
         );
     }
 
-    /** -- CLASS: engine.RepetitionHistory -- **/
+    /** -- STRUCT: engine.Limit -- **/
     {
-        py::class_<StockDory::RepetitionHistory> rh (engine, "RepetitionHistory");
+        py::class_<StockDory::Limit> limit (engine, "Limit");
 
-        rh.def(
-            py::init<const ZobristHash>(),
-            py::arg("hash")
+        limit.def(py::init());
+
+        limit.def_property(
+            "nodes",
+            [](const StockDory::Limit& self) -> uint64_t { return self.Nodes; },
+            [](StockDory::Limit& self, const uint64_t v) -> void { self.Nodes = v; }
         );
+        limit.def_property(
+            "depth",
+            [](const StockDory::Limit& self) -> uint8_t { return self.Depth; },
+            [](StockDory::Limit& self, const uint8_t v) -> void { self.Depth = v; }
+        );
+    }
 
-        rh.def(
+    /** -- CLASS: engine.RepetitionStack -- **/
+    {
+        py::class_<StockDory::RepetitionStack> rs (engine, "RepetitionStack");
+
+        rs.def(py::init());
+
+        rs.def(
             "push" ,
-            &StockDory::RepetitionHistory::Push,
+            &StockDory::RepetitionStack::Push,
             py::arg("hash")
         );
 
-        rh.def(
-            "pull" ,
-            &StockDory::RepetitionHistory::Pull
+        rs.def(
+            "pop" ,
+            &StockDory::RepetitionStack::Pop
         );
 
-        rh.def(
+        rs.def(
             "found",
-            &StockDory::RepetitionHistory::Found,
+            &StockDory::RepetitionStack::Found,
             py::arg("hash"),
             py::arg("half_move_count")
         );
     }
 
-    /** -- CLASS: engine.PrincipleVariationTable -- **/
+    /** -- CLASS: engine.PrincipleVariationEntry -- **/
     {
-        py::class_<StockDory::PrincipleVariationEntry> pv (engine, "PrincipleVariationEntry");
+        py::class_<StockDory::PVEntry> pv (engine, "PrincipleVariationEntry");
 
         pv.def(
             "__len__",
-            [](const StockDory::PrincipleVariationEntry& self) -> size_t { return self.Ply; }
+            [](const StockDory::PVEntry& self) -> size_t { return self.Ply; }
         );
 
         pv.def(
             "__getitem__",
-            [](const StockDory::PrincipleVariationEntry& self, const size_t idx) -> Move { return self.PV[idx]; }
+            [](const StockDory::PVEntry& self, const size_t ply) -> Move { return self.PV[ply]; }
         );
     }
 
@@ -817,19 +863,20 @@ PYBIND11_MODULE(StockDory, m)
             "Python Bindings for StockDory's Engine Event System"
         );
 
+        using IDICE = StockDory::IterativeDeepeningIterationCompletionEvent;
+        using IDCE  = StockDory::IterativeDeepeningCompletionEvent;
+
         event.def(
-            "set_depth_iteration_event_handler",
+            "set_iterative_deepening_iteration_completion_event_handler",
             [](py::function& callback) -> void
             {
-                PySearchHandler::RegisterDepthIterationHandler(
-                    [callback = std::move(callback)](const uint8_t       a, const uint8_t  b, const int32_t c,
-                                                     const uint64_t      d, const uint64_t e, const int64_t f,
-                                                     const StockDory::PrincipleVariationEntry& g) -> void
+                PySearchHandler::RegisterIterativeDeepeningIterationCompletionHandler(
+                    [callback = std::move(callback)](const IDICE& e) -> void
                     {
                         py::gil_scoped_acquire _;
 
                         // ReSharper disable once CppExpressionWithoutSideEffects
-                        callback(a, b, c, d, e, f, g);
+                        callback(e);
                     }
                 );
             },
@@ -837,70 +884,46 @@ PYBIND11_MODULE(StockDory, m)
         );
 
         event.def(
-            "set_best_move_event_handler",
+            "set_iterative_deepening_completion_event_handler",
             [](py::function& callback) -> void
             {
-                PySearchHandler::     RegisterBestMoveHandler(
-                    [callback = std::move(callback)](const Move a) -> void
+                PySearchHandler::RegisterIterativeDeepeningCompletionHandler(
+                    [callback = std::move(callback)](const IDCE& e) -> void
                     {
                         py::gil_scoped_acquire _;
 
                         // ReSharper disable once CppExpressionWithoutSideEffects
-                        callback(a                  );
+                        callback(e);
                     }
                 );
             },
             py::arg("handler")
         );
-    }
-
-    /** -- STRUCT: engine.Limit -- **/
-    {
-        py::class_<StockDory::Limit> limit (engine, "Limit");
-
-        limit.def(py::init());
-
-        limit.def(py::init<uint64_t>(), py::arg("nodes"));
-
-        limit.def(py::init<uint8_t >(), py::arg("depth"));
     }
 
     /** -- MODULE: engine.search -- **/
     {
         py::module_ search = engine.def_submodule(
             "search",
-            "Python Bindings for StockDory's Asynchronous Search System"
+            "Python Bindings for StockDory's Threaded Search System"
         );
 
         search.def(
-            "configure",
-            [](const StockDory::Board&             a, const StockDory::TimeControl& b,
-                const StockDory::RepetitionHistory& c, const uint8_t                 d) -> void
+            "run",
+            [](StockDory::Limit& l, StockDory::Board& b, StockDory::RepetitionStack& r, const uint8_t hmc) -> void
             {
-                SEARCH = PySearch(a, b, c, d);
+                if (SEARCH.Searching) { std::cerr << "Search is already running!" << std::endl; return; }
+
+                SEARCH.Run(l, b, r, hmc);
             },
+            py::arg("limit"),
             py::arg("board"),
-            py::arg("time_control"),
-            py::arg("repetition_history"),
-            py::arg("half_move_count")
+            py::arg("repetition_stack"),
+            py::arg("half_move_counter") = 0
         );
 
-        search.def(
-            "start_async",
-            [](const StockDory::Limit& limit = StockDory::Limit()) -> void
-            {
-                StockDory::ThreadPool.Execute([limit] -> void
-                {
-                    SEARCH_RUNNING = true ;
-                    SEARCH.IterativeDeepening(limit);
-                    SEARCH_RUNNING = false;
-                });
-            },
-            py::arg("limit") = StockDory::Limit()
-        );
+        search.def("stop", [] -> void { if (SEARCH.Searching) SEARCH.MainTask.Stop(); });
 
-        search.def("stop_async", [] -> void {        SEARCH.ForceStop(); });
-
-        search.def("is_running", [] -> bool { return SEARCH_RUNNING;     });
+        search.def("is_searching", [] -> bool { return SEARCH.Searching; });
     }
 }
