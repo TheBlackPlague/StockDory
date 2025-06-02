@@ -473,30 +473,60 @@ namespace StockDory
             Score alpha = -Infinity;
             Score beta  =  Infinity;
 
+            // Window Configuration:
+            //
+            // If we have done enough full window search iterations at lower depths to get a relatively accurate
+            // evaluation, then all future search iterations can be done with a smaller window centered around the
+            // evaluation from the previous search iteration: (evaluation - margin, evaluation + margin)
             if (depth >= AspirationWindowMinimumDepth) {
-                alpha = Evaluation - AspirationWindowSize;
-                beta  = Evaluation + AspirationWindowSize;
+                alpha = Evaluation - AspirationWindowMargin;
+                beta  = Evaluation + AspirationWindowMargin;
             }
 
             uint8_t research = 0;
             while (true) {
                 if (ThreadType == Main) {
+                    // If we are in the main thread, we should regularly (every search/research) check if the search's
+                    // limits have been crossed. If they have, we should stop searching/researching
                     if (Limit.Crossed()) [[unlikely]] { Status = SearchThreadStatus::Stopped; }
                 }
 
+                // If the search was stopped, we should return a draw score immediately
                 if (Status == SearchThreadStatus::Stopped) [[unlikely]] return Draw;
 
+                // Window Fallback:
+                //
+                // If previous search and researches have failed to find a move within the window, then our window is
+                // likely not capturing the relevant part of the search space. In this case, we should reset to a full
+                // window and try again for future search iterations with a better understanding of the search space
                 if (alpha < -AspirationWindowFallbackBound) alpha = -Infinity;
                 if (beta  >  AspirationWindowFallbackBound) beta  =  Infinity;
 
                 const Score bestEvaluation = PVS<Color, true, true>(0, depth, alpha, beta);
 
+                // Possible Search Window Extending:
+                //
+                // The search window is centered around the evaluation, but it may not always capture initially capture
+                // the relevant part of the search space. This can happen if the evaluation from the previous search
+                // iterations were not accurate or representative enough or if our initial margin was too small. In this
+                // case, we should extend the search window and research the position to find a more accurate
+                // evaluation. The window is extended at a quadratic rate to ensure that we can avoid researches and
+                // quickly converge to capture the relevant part of the search space:
+                //
+                // - fail-low : lower bound (alpha) is too high, we need to decrease it
+                // - fail-high: upper bound (beta ) is too low , we need to increase it
+                //
+                // If the window is capturing the relevant part of the search space, then we can return the best
+                // evaluation found so far
+
                 if        (bestEvaluation <= alpha) {
                     research++;
-                    alpha = std::max<Score>(alpha - research * research * AspirationWindowSizeDelta, -Infinity);
+
+                    alpha = std::max<Score>(alpha - research * research * AspirationWindowMarginDelta, -Infinity);
                 } else if (bestEvaluation >= beta) {
                     research++;
-                    beta  = std::min<Score>(beta  + research * research * AspirationWindowSizeDelta,  Infinity);
+
+                    beta  = std::min<Score>(beta  + research * research * AspirationWindowMarginDelta,  Infinity);
 
                     BestMove = PVTable[0].PV[0];
                 } else return bestEvaluation;

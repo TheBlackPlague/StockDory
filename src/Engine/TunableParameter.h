@@ -22,8 +22,8 @@ namespace StockDory
     };
 
     constexpr uint16_t AspirationWindowFallbackBound = 3500;
-    constexpr uint8_t  AspirationWindowSize          = 16;
-    constexpr uint8_t  AspirationWindowSizeDelta     = 23;
+    constexpr uint8_t  AspirationWindowMargin        = 16;
+    constexpr uint8_t  AspirationWindowMarginDelta   = 23;
     constexpr uint8_t  AspirationWindowMinimumDepth  = 5;
 
     constexpr uint8_t CheckExtension = 1;
