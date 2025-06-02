@@ -519,7 +519,7 @@ namespace StockDory
             if (Status == SearchThreadStatus::Stopped) [[unlikely]] return Draw;
 
             if (ThreadType == Main) {
-                // The main thread is responsible for ensuring the PV Table is correctly updated with the right moves,
+                // The main thread is responsible for ensuring the PV Table is correctly updated with the right moves
                 // and that the correct selective depth is reported
 
                 PVTable[ply].Ply = ply;
@@ -601,7 +601,8 @@ namespace StockDory
 
                 if (!PV && ttEntry.Depth >= depth) {
                     // If the entry is of sufficient quality, depending on the bounding type of the entry, we can
-                    // directly return the evaluation from the entry.
+                    // directly return the evaluation from the entry. We shouldn't do this in PV branches as even a
+                    // slight inaccuracy due to hash collisions or other factors can cause us to miss a good move.
                     //
                     // An entry's quality is currently determined by:
                     // - entry depth >= current search depth
@@ -996,11 +997,22 @@ namespace StockDory
         template<Color Color, bool PV>
         Score Quiescence(const uint8_t ply, Score alpha, const Score beta)
         {
+            // Opponent's color for recursive calls
             constexpr auto OColor = Opposite(Color);
 
+            // The main thread is responsible for ensuring that the correct selective depth is reported
             if (ThreadType == Main && PV) SelectiveDepth = std::max(SelectiveDepth, ply);
 
             if (!PV) {
+                // Transposition Table Reading:
+                //
+                // We can check if the current position has been searched before, and if it has, then there most likely
+                // exists a transposition entry - if the entry is valid, depending on the bounds of the entry, we can
+                // return the evaluation from the entry. We do not check for the entry's depth here, as we are already
+                // at a non-positive depth and all entries are going to be at least deeper than this depth. We also do
+                // not do this in PV branches as even a slight inaccuracy due to hash collisions or other factors can
+                // cause us to miss a good move
+
                 const ZobristHash hash = Board.Zobrist();
 
                 const SearchTranspositionEntry& ttEntry = TT[hash];
@@ -1012,8 +1024,17 @@ namespace StockDory
                 }
             }
 
+            // Static Evaluation:
+            //
+            // In Quiescence search, we use the neural network evaluation directly as the static evaluation
             const Score staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
 
+            // Window Adjustment:
+            //
+            // If our static evaluation is already better than our upper bound (beta), we directly have a beta cut-off
+            // and can return immediately without searching any moves. If that is not the case, we should adjust our
+            // lower bound (alpha) to be the maximum of our current lower bound and the static evaluation, as we only
+            // want to look for tactical sequences that improve our position
             if (staticEvaluation >= beta) return beta;
             if (staticEvaluation > alpha) alpha = staticEvaluation;
 
@@ -1025,6 +1046,11 @@ namespace StockDory
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move = moves[i];
 
+                // Static Exchange Evaluation (SEE) Pruning:
+                //
+                // SEE is essentially an evaluation that determines if an exchange of pieces is materially favorable for
+                // us or not, and if it is not, then that tactical sequence is not worth searching further, and we can
+                // prune that branch entirely
                 if (!SEE::Accurate(Board, move, 0)) continue;
 
                 const PreviousState state = DoMove<false>(move, ply);
