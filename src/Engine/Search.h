@@ -1225,6 +1225,38 @@ namespace StockDory
 
             Searching = true;
 
+            // Symmetric MultiProcessing (SMP):
+            //
+            // Relevant links:
+            // - http://en.wikipedia.org/wiki/Symmetric_multiprocessing
+            // - https://www.chessprogramming.org/Lazy_SMP
+            //
+            // Assuming there is more than one thread available for the search, a SMP approach is used to get a much
+            // more accurate search. This approach relies on constructive and destructive interference of multiple
+            // threads through the transposition table shared between them - the main thread is running the main search
+            // task, while the other threads are running parallel search tasks that are constructively and destructively
+            // interfering with the main search task (and with each other).
+            //
+            // Destructive interference happens when one task overwrites the transposition table entry another task is
+            // about to read - this prevents the task from reading the entry and forces it to search the position again,
+            // potentially disabling certain pruning techniques and enabling others. Regardless, the search space
+            // explored by the task gets widened, and the search is more accurate, however, searching the extra branches
+            // causes the search to take longer to complete; a consequence of destructive interference.
+            //
+            // Constructive interference happens when one task provides a transposition table entry that another task
+            // is about to read - this allows the task to read the entry and use it to speed through certain branches by
+            // returning directly from the transposition table if possible. Where this isn't possible, the task can use
+            // the entry's evaluation as the static evaluation for that branch, enabling certain pruning techniques and
+            // disabling others, once again widening the search space explored by the task. Furthermore, the provided
+            // entry's move can be used to speed through the branch since the move policy ensures that the move is
+            // the first move in the move list. This can allow the search for that branch to complete much faster,
+            // overall reducing the search time, mitigating the destructive interference's negative impact on the
+            // search time.
+            //
+            // Together, the search space is considerably widened, making the search more accurate, while the search
+            // time remains relatively the same on average. This leads the engine to find better moves in the same
+            // amount of time and avoid some pitfalls of the heuristical pruning, reduction, and search techniques used
+
             if (ParallelTaskPool.Size()) {
                 ParallelTaskPool.Fill(l, b, r, hmc);
 
@@ -1243,6 +1275,8 @@ namespace StockDory
                 {
                     MainTask.IterativeDeepening();
 
+                    // The main thread is responsible for ensuring that it stops all the parallel tasks when it has
+                    // concluded searching
                     if (ParallelTaskPool.Size()) {
                         for (auto& task : &ParallelTaskPool) task.Stop();
 
