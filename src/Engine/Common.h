@@ -25,6 +25,8 @@ namespace StockDory
     constexpr uint8_t MaxDepth = 128;
     constexpr uint8_t MaxMove  = 218;
 
+    constexpr uint16_t HistoryLimit = 16384;
+
     constexpr size_t MB = 1024 * 1024;
 
     using MS = std::chrono::milliseconds;
@@ -32,8 +34,6 @@ namespace StockDory
 
     using KTable = Array<Move, 2, MaxDepth>;
     using HTable = Array<int16_t, 2, 6, 64>;
-
-    constexpr int16_t HistoryLimit = 16384;
 
 } // StockDory
 

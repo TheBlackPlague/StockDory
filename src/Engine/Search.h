@@ -1108,7 +1108,7 @@ namespace StockDory
         template<Color Color, bool Increase>
         void UpdateHistory(const Move move, const int16_t depth)
         {
-            const int16_t bonus = std::min<int16_t>(300 * depth - 250, HistoryLimit);
+            const int16_t bonus = std::min<int16_t>(HistoryMultiplier * depth - HistoryShiftDown, HistoryLimit);
 
             int16_t& history = History[Color][Board[move.From()].Piece()][move.To()];
 
