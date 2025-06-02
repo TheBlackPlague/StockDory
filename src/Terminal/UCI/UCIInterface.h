@@ -20,12 +20,12 @@
 #include "../../Backend/Misc.h"
 
 #include "../../Engine/Search.h"
-#include "../../Engine/Time/TimeManager.h"
 
 #include "../Perft/PerftRunner.h"
 
 #include "UCIOption.h"
-#include "UCISearch.h"
+#include "UCISearchEventHandler.h"
+#include "UCITime.h"
 
 namespace StockDory
 {
@@ -33,27 +33,31 @@ namespace StockDory
     class UCIInterface
     {
 
+        using UCISearch = ThreadedSearch<UCISearchEventHandler>;
+
         using Arguments      = std::vector<std::string>;
         using CommandHandler = std::function<void(const Arguments&)>;
         using CommandSwitch  = std::unordered_map<std::string, CommandHandler>;
-        using OptionSwitch   = std::unordered_map<std::string, std::shared_ptr<UCIOptionBase> >;
+        using OptionSwitch   = std::unordered_map<std::string, std::shared_ptr<UCIOptionBase>>;
 
-        static bool Running;
+        static inline bool     Running =  true;
+        static inline bool UCIPrompted = false;
 
-        static bool UciPrompted;
+        static inline CommandSwitch UCICommandSwitch = {};
+        static inline OptionSwitch  UCIOptionSwitch  = {};
 
-        static CommandSwitch UCICommandSwitch;
-        static OptionSwitch  UCIOptionSwitch;
+        static inline Board                     Board {};
+        static inline RepetitionStack      Repetition {};
+        static inline uint8_t         HalfMoveCounter {};
 
-        static Board             MainBoard;
-        static RepetitionHistory MainHistory;
-        static uint8_t           HalfMoveCounter;
-
-        static UCISearch Search;
+        static inline UCISearchEventHandler SearchEventHandler;
 
         public:
         static void Launch()
         {
+            Repetition.Push(Board.Zobrist());
+            HalfMoveCounter = 1;
+
             RegisterOptions();
             RegisterCommands();
 
@@ -90,7 +94,7 @@ namespace StockDory
                             return;
                         }
 
-                        TTable.Resize(value * MB);
+                        TT.Resize(value * MB);
                     }
                 );
 
@@ -109,11 +113,23 @@ namespace StockDory
                         }
 
                         ThreadPool.Resize(value);
+
+                        Evaluation::Initialize();
+                        UCISearch::ParallelTaskPool.Resize();
+                    }
+                );
+
+            auto wdl =
+                std::make_shared<UCIOption<bool>>
+                ("WDL", false, [](const bool& value) -> void
+                    {
+                        UCISearchEventHandler::SetOutputWDL(value);
                     }
                 );
 
             UCIOptionSwitch.emplace(   hash->GetName(), hash   );
             UCIOptionSwitch.emplace(threads->GetName(), threads);
+            UCIOptionSwitch.emplace(    wdl->GetName(), wdl    );
         }
 
         static void HandleInput(const std::string& input)
@@ -128,7 +144,7 @@ namespace StockDory
 
         static void Uci()
         {
-            if (UciPrompted) return;
+            if (UCIPrompted) return;
 
             std::stringstream ss;
             ss << "id name " << NAME << " " << VERSION << "\n";
@@ -142,12 +158,12 @@ namespace StockDory
             ss << "uciok";
 
             std::cout << ss.str() << std::endl;
-            UciPrompted = true;
+            UCIPrompted = true;
         }
 
         static void SetOption(const Arguments& args)
         {
-            if (!UciPrompted || args.size() < 4) return;
+            if (!UCIPrompted || args.size() < 4) return;
 
             if (!UCIOptionSwitch.contains(args[1])) return;
 
@@ -159,48 +175,56 @@ namespace StockDory
 
         static void UciNewGame()
         {
-            if (!UciPrompted) return;
+            if (!UCIPrompted) return;
 
-            Search.Stop();
+            if (UCISearch::Searching) UCISearch::MainTask.Stop();
+            while (UCISearch::Searching) Sleep(1);
 
-            MainBoard   = Board();
-            MainHistory = RepetitionHistory(MainBoard.Zobrist());
-            TTable.Clear();
+            Board           = {};
+            Repetition      = {};
+            HalfMoveCounter =  1;
+
+            Repetition.Push(Board.Zobrist());
+
+            TT.Clear();
         }
 
         static void IsReady()
         {
-            if (!UciPrompted) return;
+            if (!UCIPrompted) return;
 
             std::cout << "readyok" << std::endl;
         }
 
         static void Quit()
         {
-            Search.Stop();
+            if (UCISearch::Searching) UCISearch::MainTask.Stop();
+            while (UCISearch::Searching) Sleep(1);
+
             Running = false;
         }
 
         static void Info(const Arguments& args)
         {
-            if (!UciPrompted || Search.IsRunning()) return;
+            if (!UCIPrompted || UCISearch::Searching) return;
 
-            MainBoard.LoadForEvaluation();
-            const int32_t evaluation = Evaluation::Evaluate(MainBoard.ColorToMove());
+            Board.LoadForEvaluation();
+
+            const Score evaluation = WDLCalculator::S(Board, Evaluation::Evaluate(Board.ColorToMove()));
 
             std::stringstream ss;
-            ss << "FEN: " << MainBoard.Fen() << "\n";
-            ss << "Hash: " << ToHex(MainBoard.Zobrist()) << "\n";
+            ss << "FEN: " << Board.Fen() << "\n";
+            ss << "Hash: " << ToHex(Board.Zobrist()) << "\n";
             ss << "Evaluation: " << evaluation;
 
             if (!args.empty() && strutil::compare_ignore_case(args[0], "moves")) {
                 ss << "\nMoves: ";
-                if (MainBoard.ColorToMove() == White) {
-                    OrderedMoveList<White> moves (MainBoard, 0, {}, {}, {});
+                if (Board.ColorToMove() == White) {
+                    OrderedMoveList<White> moves (Board, 0, {}, {}, {});
 
                     for (uint8_t i = 0; i < moves.Count(); i++) ss << "\n" << moves[i].ToString();
                 } else {
-                    OrderedMoveList<Black> moves (MainBoard, 0, {}, {}, {});
+                    OrderedMoveList<Black> moves (Board, 0, {}, {}, {});
 
                     for (uint8_t i = 0; i < moves.Count(); i++) ss << "\n" << moves[i].ToString();
                 }
@@ -211,20 +235,26 @@ namespace StockDory
 
         static void HandlePosition(const Arguments& args)
         {
-            if (!UciPrompted) return;
+            if (!UCIPrompted) return;
 
             uint8_t moveStrIndex = 2;
             if (strutil::compare_ignore_case(args[0], "fen")) {
                 const Arguments   fenToken = {args.begin() + 1, args.begin() + 7};
                 const std::string fen      = strutil::join(fenToken, " ");
-                MainBoard                  = Board(fen);
-                MainHistory                = RepetitionHistory(MainBoard.Zobrist());
-                HalfMoveCounter            = std::stoi(fenToken[4]);
-                moveStrIndex               = 8;
+
+                Board           = StockDory::Board(fen);
+                Repetition      = {};
+                HalfMoveCounter = std::stoi(fenToken[4]);
+
+                Repetition.Push(Board.Zobrist());
+
+                moveStrIndex = 8;
             } else if (strutil::compare_ignore_case(args[0], "startpos")) {
-                MainBoard       = Board();
-                MainHistory     = RepetitionHistory(MainBoard.Zobrist());
-                HalfMoveCounter = 0;
+                Board      = {};
+                Repetition = {};
+
+                Repetition.Push(Board.Zobrist());
+                HalfMoveCounter = 1;
             } else return;
 
             if (args.size() >= moveStrIndex &&
@@ -233,17 +263,16 @@ namespace StockDory
                      const std::string& moveStr: movesToken) {
                     const Move move = Move::FromString(moveStr);
 
-                    if (MainBoard[move.To()].Piece() != NAP || MainBoard[move.From()].Piece() == Pawn)
-                        HalfMoveCounter = 0;
-                    else HalfMoveCounter++;
+                    if (Board[move.To()].Piece() != NAP || Board[move.From()].Piece() == Pawn) HalfMoveCounter = 1;
+                    else                                                                       HalfMoveCounter++;
 
-                    MainBoard.Move<ZOBRIST>(move.From(), move.To(), move.Promotion());
-                    MainHistory.Push(MainBoard.Zobrist());
+                    Board.Move<ZOBRIST>(move.From(), move.To(), move.Promotion());
+
+                    Repetition.Push(Board.Zobrist());
                 }
         }
 
         template<typename T>
-        [[nodiscard]]
         // ReSharper disable once CppDFAConstantParameter
         static T TokenToValue(const Arguments& args, const std::string& token, const T defaultValue)
         {
@@ -256,63 +285,57 @@ namespace StockDory
 
         static void HandleGo(const Arguments& args)
         {
-            if (!UciPrompted || Search.IsRunning()) return;
+            if (!UCIPrompted) return;
+
+            if (UCISearch::Searching) {
+                std::cerr << "ERROR: The engine is already searching" << std::endl;
+                return;
+            }
 
             if (args.size() > 1 && strutil::compare_ignore_case(args[0], "perft")) {
                 const auto depth = static_cast<uint8_t>(std::stoull(args[1]));
-                PerftRunner::SetBoard(MainBoard);
+                PerftRunner::SetBoard(Board);
                 PerftRunner::Perft<true>(depth);
                 return;
             }
 
-            TimeControl timeControl = TimeManager::Default();
-            auto        limit       = Limit();
+            Limit limit;
 
             if (args.size() == 2) {
-                if (     strutil::compare_ignore_case(args[0], "movetime"))
-                    timeControl = TimeManager::Fixed(std::stoull(args[1]));
-                else if (strutil::compare_ignore_case(args[0], "depth"))
-                    limit = Limit(static_cast<uint8_t >(std::stoull(args[1])));
-                else if (strutil::compare_ignore_case(args[0], "nodes"))
-                    limit = Limit(static_cast<uint64_t>(std::stoull(args[1])));
+                if (strutil::compare_ignore_case(args[0], "depth"))
+                    limit.Depth = static_cast<uint8_t>(std::stoull(args[1]));
+                if (strutil::compare_ignore_case(args[0], "nodes"))
+                    limit.Nodes =                      std::stoull(args[1]) ;
+                if (strutil::compare_ignore_case(args[0], "movetime")) {
+                    const UCITime<true> time { .Time = std::stoull(args[1]) };
+                    time.AsLimit(limit);
+                }
             } else if (args.size() > 2) {
-                const TimeData timeData{
-                    .WhiteTime      = TokenToValue<uint64_t>(args, "wtime"    , 0),
-                    .BlackTime      = TokenToValue<uint64_t>(args, "btime"    , 0),
-                    .WhiteIncrement = TokenToValue<uint64_t>(args, "winc"     , 0),
-                    .BlackIncrement = TokenToValue<uint64_t>(args, "binc"     , 0),
-                    .MovesToGo      = TokenToValue<uint16_t>(args, "movestogo", 0)
+                const UCITime<false> time {
+                    .WhiteTime = TokenToValue<uint64_t>(args, "wtime"    , 0),
+                    .BlackTime = TokenToValue<uint64_t>(args, "btime"    , 0),
+                    .WhiteInc  = TokenToValue<uint64_t>(args, "winc"     , 0),
+                    .BlackInc  = TokenToValue<uint64_t>(args, "binc"     , 0),
+                    .MovesToGo = TokenToValue<uint16_t>(args, "movestogo", 0),
+
+                    .ColorToMove = Board.ColorToMove()
                 };
 
-                timeControl = TimeManager::Optimal(MainBoard, timeData);
+                time.AsLimit(limit);
             }
 
-            Search.Stop();
-            Search = UCISearch(MainBoard, timeControl, MainHistory, HalfMoveCounter);
-            Search.Start(limit);
+            UCISearch::Run(limit, Board, Repetition, HalfMoveCounter);
         }
 
         static void HandleStop()
         {
-            if (!UciPrompted || !Search.IsRunning()) return;
+            if (!UCIPrompted) return;
 
-            Search.Stop();
+            UCISearch::MainTask.Stop();
         }
 
     };
 
 } // StockDory
-
-bool StockDory::UCIInterface::Running     = true ;
-bool StockDory::UCIInterface::UciPrompted = false;
-
-StockDory::UCIInterface::CommandSwitch StockDory::UCIInterface::UCICommandSwitch = CommandSwitch();
-StockDory::UCIInterface::OptionSwitch  StockDory::UCIInterface::UCIOptionSwitch  =  OptionSwitch();
-
-StockDory::Board             StockDory::UCIInterface::MainBoard   = Board();
-StockDory::RepetitionHistory StockDory::UCIInterface::MainHistory = RepetitionHistory(MainBoard.Zobrist());
-
-uint8_t              StockDory::UCIInterface::HalfMoveCounter =     0      ;
-StockDory::UCISearch StockDory::UCIInterface::Search          = UCISearch();
 
 #endif //STOCKDORY_UCIINTERFACE_H

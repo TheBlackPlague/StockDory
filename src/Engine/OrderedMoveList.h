@@ -9,13 +9,12 @@
 #include <array>
 #include <cassert>
 
-#include "HistoryTable.h"
-#include "KillerTable.h"
-#include "Policy.h"
-#include "../EngineParameter.h"
+#include "../Backend/Move/MoveList.h"
+#include "../Backend/Type/Move.h"
 
-#include "../../Backend/Move/MoveList.h"
-#include "../../Backend/Type/Move.h"
+#include "Common.h"
+
+#include "Policy.h"
 
 namespace StockDory
 {
@@ -38,13 +37,15 @@ namespace StockDory
 
         };
 
-        std::array<OrderedMove, MaxMove> Internal;
-        uint8_t                          Size = 0;
+        using OrderingPolicy = Policy<Color, CaptureOnly>;
+
+        Array<OrderedMove, MaxMove> Internal;
+        uint8_t                     Size = 0;
 
         public:
-        explicit OrderedMoveList(const Board&        board, const uint8_t       ply   ,
-                                 const KillerTable& kTable, const HistoryTable& hTable,
-                                 const Move         ttMove)
+        explicit OrderedMoveList(const Board & board , const uint8_t ply   ,
+                                 const KTable& kTable, const HTable& hTable,
+                                 const Move    ttMove = {})
         {
             const Move kOne = kTable[0][ply];
             const Move kTwo = kTable[1][ply];
@@ -66,9 +67,11 @@ namespace StockDory
         }
 
         template<Piece Piece>
-        void AddMoveLoop(const Board&                      board, const HistoryTable& hTable,
-                         const Policy<Color, CaptureOnly>& policy,
-                         const PinBitBoard&                pin, const CheckBitBoard& check)
+        void AddMoveLoop(const Board         &  board,
+                         const HTable        & hTable,
+                         const OrderingPolicy& policy,
+                         const PinBitBoard   &    pin,
+                         const CheckBitBoard &  check)
         {
             BitBoardIterator iterator (board.PieceBoard<Color>(Piece));
 
@@ -95,11 +98,11 @@ namespace StockDory
         private:
         // ReSharper disable once CppRedundantElaboratedTypeSpecifier
         template<Piece Piece, enum Piece Promotion = NAP>
-        static OrderedMove CreateOrdered(const Board&                      board ,
-                                         const HistoryTable&               hTable,
-                                         const Policy<Color, CaptureOnly>& policy,
-                                         const Square                      from  ,
-                                         const Square                      to    )
+        static OrderedMove CreateOrdered(const Board         &  board,
+                                         const HTable        & hTable,
+                                         const OrderingPolicy& policy,
+                                         const Square           from ,
+                                         const Square            to  )
         {
             const auto move = Move(from, to, Promotion);
             return { policy.template Score<Piece, Promotion>(board, hTable, move), move };
@@ -140,8 +143,8 @@ namespace StockDory
                 i++;
             }
 
-            const OrderedMove temp = Internal[index];
-            Internal[index]        = Internal[sorted];
+            const OrderedMove temp = Internal[ index];
+            Internal[ index]       = Internal[sorted];
             Internal[sorted]       = temp;
         }
 

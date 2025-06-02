@@ -11,7 +11,6 @@
 #include <string>
 
 #include "../Engine/Search.h"
-#include "../Engine/Time/TimeManager.h"
 
 namespace StockDory
 {
@@ -19,41 +18,45 @@ namespace StockDory
     class BenchHash
     {
 
-        constexpr static uint8_t BenchLength = 50;
-        constexpr static auto    BenchLimit  = Limit(static_cast<uint8_t>(13));
+        constexpr static        uint8_t BenchLength =                  50  ;
+                  static inline auto    BenchLimit  = Limit { .Depth = 13 };
 
         static std::array<std::string, BenchLength> Positions;
 
         public:
+
         static void Run()
         {
-            using BTP = std::chrono::time_point<std::chrono::high_resolution_clock>;
-
-            std::array<uint64_t, BenchLength> nodes;
-            std::array<   MS   , BenchLength> times;
+            Array<uint64_t, BenchLength> nodes;
+            Array<   MS   , BenchLength> times;
 
             for (size_t i = 0; i < BenchLength; i++) {
                 std::cout << "Position (" << std::setw(2) << std::setfill('0')
                           << static_cast<uint16_t>(i + 1) << "/" << static_cast<uint16_t>(BenchLength) << "): ";
-                std::cout << Positions[i] << std::endl;
+                std::cout << Positions[i];
 
-                const Board             board   (Positions[i]);
-                const RepetitionHistory history (board.Zobrist());
+                Board           board(Positions[i]);
+                RepetitionStack repetition;
 
-                const TimeControl infinite = TimeManager::Default();
+                const uint8_t hmc = static_cast<uint8_t>(std::stoi(strutil::split(Positions[i], ' ').back()));
 
-                Search search (board, infinite, history, 0);
+                repetition.Push(board.Zobrist());
 
-                const BTP t0 = std::chrono::high_resolution_clock::now();
-                search.IterativeDeepening(BenchLimit);
-                const BTP t1 = std::chrono::high_resolution_clock::now();
+                SearchTask<> search (BenchLimit, board, repetition, 0);
 
-                nodes[i] = search.NodesSearched();
+                const auto t0 = std::chrono::high_resolution_clock::now();
+                search.IterativeDeepening();
+                const auto t1 = std::chrono::high_resolution_clock::now();
+
+                nodes[i] = search.GetNodes();
                 times[i] = std::chrono::duration_cast<MS>(t1 - t0);
+
+                const Score evaluation = search.GetEvaluation();
+                std::cout << " -> " << evaluation << " cp " << nodes[i] << " nodes" << std::endl;
             }
 
-            const uint64_t nodeC = std::accumulate(nodes.begin(), nodes.end(),  0ULL);
-            const    MS    timeC = std::accumulate(times.begin(), times.end(), MS(0));
+            const auto nodeC = std::accumulate(nodes.begin(), nodes.end(),    0ULL);
+            const auto timeC = std::accumulate(times.begin(), times.end(), MS(0)  );
 
             const auto nps = static_cast<uint64_t>(
                 static_cast<double>(nodeC) / (static_cast<double>(timeC.count()) / 1000.0)

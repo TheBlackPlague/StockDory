@@ -7,8 +7,8 @@
 
 #include "Information.h"
 
-#include "BenchHash.h"
-#include "UCI/UCIInterface.h"
+#include "Terminal/BenchHash.h"
+#include "Terminal/UCI/UCIInterface.h"
 
 void DisplayTitle()
 {
@@ -21,6 +21,8 @@ void DisplayTitle()
 
 int main(const int argc, const char* argv[])
 {
+    StockDory::Evaluation::Initialize();
+
     DisplayTitle();
 
     if (argc > 1) {

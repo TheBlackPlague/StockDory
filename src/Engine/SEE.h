@@ -6,11 +6,10 @@
 #ifndef STOCKDORY_SEE_H
 #define STOCKDORY_SEE_H
 
-#include <array>
-#include <cstdint>
-
 #include "../Backend/Board.h"
 #include "../Backend/Type/Move.h"
+
+#include "Common.h"
 
 namespace StockDory
 {
@@ -18,27 +17,20 @@ namespace StockDory
     class SEE
     {
 
-        constexpr static std::array<uint16_t, 7> Internal = {
+        constexpr static Array<uint16_t, 7> Internal {
             82, 337, 365, 477, 1025, 30000, 0
         };
-
-        static bool Unchecked(const Board& board, const Move move)
-        {
-            if (move.Promotion() != NAP) return true;
-
-            const Piece from = board[move.From()].Piece();
-            if (from == Pawn && move.To() == board.EnPassantSquare()) return true;
-
-            return from == King && (move.To() == C1 || move.To() == C8 || move.To() == G1 || move.To() == G8);
-        }
 
         public:
         static bool Accurate(const Board& board, const Move move, const int32_t threshold)
         {
-            if (Unchecked(board, move)) return true;
+            if (move.Promotion() != NAP) return true;
 
             const Square from = move.From();
             const Square to   = move.  To();
+
+            if (board[from].Piece() == Pawn &&  to == board.EnPassantSquare()                ) return true;
+            if (board[from].Piece() == King && (to == C1 || to == C8 || to == G1 || to == G8)) return true;
 
             int32_t value = Internal[board[to].Piece()] - threshold;
             if (value < 0) return false;

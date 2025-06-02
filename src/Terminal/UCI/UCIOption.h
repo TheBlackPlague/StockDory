@@ -77,7 +77,7 @@ namespace StockDory
 
             output << "option name " << Name << " ";
 
-            if (std::is_integral_v<T>)
+            if (std::is_integral_v<T> && !std::is_same_v<T, bool>)
                 output << "type spin ";
             else if (std::is_same_v<T, bool>)
                 output << "type check ";
@@ -89,9 +89,11 @@ namespace StockDory
                  output << "default " << static_cast<uint16_t>(Default);
             else if (std::is_same_v<T, int8_t>)
                  output << "default " << static_cast< int16_t>(Default);
+            else if (std::is_same_v<T, bool>)
+                 output << "default " << (Default ? "true" : "false");
             else output << "default " << Default;
 
-            if (std::is_integral_v<T>) {
+            if (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
                 if (std::is_same_v<T, uint8_t>)
                      output << " min " << static_cast<uint16_t>(Min) << " max " << static_cast<uint16_t>(Max);
                 else if (std::is_same_v<T, int8_t>)
@@ -104,6 +106,11 @@ namespace StockDory
 
         void Set(const std::string& value) override
         {
+            if (std::is_same_v<T, bool>) {
+                if (strutil::compare_ignore_case(value, "true" )) { OptionHandler(true ); return; }
+                if (strutil::compare_ignore_case(value, "false")) { OptionHandler(false); return; }
+            }
+
             OptionHandler(strutil::parse_string<T>(value));
         }
 

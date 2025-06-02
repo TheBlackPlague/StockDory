@@ -6,11 +6,11 @@
 #ifndef STOCKDORY_POLICY_H
 #define STOCKDORY_POLICY_H
 
-#include "../../Backend/Board.h"
-#include "../../Backend/Type/Move.h"
+#include "../Backend/Board.h"
+#include "../Backend/Type/Move.h"
 
-#include "HistoryTable.h"
-#include "../SEE.h"
+#include "Common.h"
+#include "SEE.h"
 
 namespace StockDory
 {
@@ -54,7 +54,7 @@ namespace StockDory
 
         // ReSharper disable once CppRedundantElaboratedTypeSpecifier
         template<Piece Piece, enum Piece Promotion = NAP>
-        int32_t Score(const Board& board, const HistoryTable& historyTable, const Move move) const
+        int32_t Score(const Board& board, const HTable& historyTable, const Move move) const
         {
             if (move == TTMove) return Priority - 1;
 
