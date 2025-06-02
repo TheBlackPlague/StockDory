@@ -677,7 +677,12 @@ PYBIND11_MODULE(StockDory, m)
 
         pool.def(
             "resize",
-            [](const uint32_t n) -> void { StockDory::ThreadPool.Resize(n); },
+            [](const uint32_t n) -> void
+            {
+                StockDory::ThreadPool.Resize(n);
+                StockDory::Evaluation::Initialize();
+                SEARCH.ParallelTaskPool.Resize();
+            },
             py::arg("thread_count")
         );
 

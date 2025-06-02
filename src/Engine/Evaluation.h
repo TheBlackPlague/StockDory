@@ -23,12 +23,6 @@ namespace StockDory
 
         static inline std::vector<Aurora> NNs;
 
-        // static inline Aurora NN = [] -> Aurora
-        // {
-        //     MantaRay::BinaryMemoryStream stream (_NeuralNetworkBinaryData, sizeof _NeuralNetworkBinaryData);
-        //     return Aurora(stream);
-        // }();
-
         public:
         static std::string Name()
         {
