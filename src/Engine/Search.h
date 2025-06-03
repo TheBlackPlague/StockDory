@@ -775,7 +775,7 @@ namespace StockDory
                 // binary search window, centered around our upper bound (beta) as their lower bound (alpha). If the
                 // branch is bad for the opponent, they'll be unable to improve upon their lower bound and fail-low. In
                 // turn, this can allow us to produce a beta cut-off and prune this branch
-                if (!Root && depth >= NullMoveMinimumDepth && staticEvaluation >= beta) {
+                if (depth >= NullMoveMinimumDepth && staticEvaluation >= beta) {
                     // The reduced depth is determined by the below formula:
                     //
                     // d = current depth
