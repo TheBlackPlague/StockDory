@@ -29,14 +29,24 @@ namespace StockDory
             {0000, 0000, 0000, 0000, 0000, 0000, 0000}
         }};
 
-        constexpr static int32_t Priority = 0x7FFFFFFF;
+        constexpr static int32_t MaximumScore = std::numeric_limits<int32_t>::max();
 
         constexpr static std::array<int32_t, 5> PromotionPriority = {
             0,
-            Priority - 8 + 3,
-            Priority - 8 + 1,
-            Priority - 8 + 2,
-            Priority - 8 + 4
+            3000000 - 4 + 3,
+            3000000 - 4 + 1,
+            3000000 - 4 + 2,
+            3000000 - 4 + 4
+        };
+
+        constexpr static int32_t PromotionMultiplier = 100000;
+
+        constexpr static Array<int32_t, 5> PromotionFactor = {
+            0, //   Pawn
+            3, // Knight
+            1, // Bishop
+            2, //   Rook
+            4  //  Queen
         };
 
         Move KillerOne;
@@ -52,29 +62,42 @@ namespace StockDory
             TTMove = tt;
         }
 
-        // ReSharper disable once CppRedundantElaboratedTypeSpecifier
-        template<Piece Piece, enum Piece Promotion = NAP>
-        int32_t Score(const Board& board, const HTable& historyTable, const Move move) const
+        template<Piece Piece, enum Piece PromotionPiece = NAP>
+        int32_t Score(const Board& board, const HTable& history, const Move move) const
         {
-            if (move == TTMove) return Priority - 1;
+            // Policy:
+            // - Transposition Table Move
+            // - Good Captures that are also Promotions
+            // - Promotions
+            // - Good Captures
+            // - Killer Moves
+            // - Good Quiet Moves
+            // - Bad Captures
+            // - Bad Quiet Moves
 
-            if (Promotion != NAP) return PromotionPriority[Promotion];
+            if (move == TTMove) return MaximumScore - 1;
 
-            if (CaptureOnly || board[move.To()].Piece() != NAP) return CaptureScore<Piece>(board, move);
+            constexpr bool Promotion = PromotionPiece != NAP;
 
-            if (move == KillerOne) return 900000;
-            if (move == KillerTwo) return 800000;
+            const bool     capture = board[move.To()].Piece() != NAP;
+            const bool goodCapture = capture ? SEE::Accurate(board, move, 0) : false;
 
-            return historyTable[Color][Piece][move.To()];
-        }
+            int32_t score = 0;
 
-        template<Piece Piece>
-        static int32_t CaptureScore(const Board& board, const Move move)
-        {
-            if (SEE::Accurate(board, move, 0))
-                return MvvLva[board[move.To()].Piece()][Piece] * 1000;
+            if (Promotion) score += PromotionFactor[PromotionPiece] * PromotionMultiplier;
 
-                return MvvLva[board[move.To()].Piece()][Piece] * 300 ;
+            if (CaptureOnly || capture) {
+                score += MvvLva[board[move.To()].Piece()][Piece] * (goodCapture ? 20 : 1);
+
+                return score;
+            }
+
+            if (move == KillerOne) score += HistoryLimit    ;
+            if (move == KillerTwo) score += HistoryLimit / 2;
+
+            score += history[Color][Piece][move.To()];
+
+            return score;
         }
 
     };
