@@ -62,11 +62,11 @@ namespace StockDory
             //
             // - Transposition Table Move
             // - Promotions
-            // - Good Captures
+            // - Good Captures (SEE >= 0)
             // - Good Quiet Moves
             //   - Killer Moves
             //   - Good History Moves
-            // - Bad Captures
+            // - Bad Captures (SEE < 0)
             // - Bad Quiet Moves
             //   - Bad History Moves
 
