@@ -30,7 +30,7 @@ namespace StockDory
 
     constexpr uint8_t ReverseFutilityMaximumDepth    = 7;
     constexpr uint8_t ReverseFutilityDepthFactor     = 80;
-    constexpr uint8_t ReverseFutilityImprovingFactor = 60;
+    constexpr uint8_t ReverseFutilityImprovingFactor = 60; 
 
     constexpr uint8_t RazoringDepth            = 1;
     constexpr uint8_t RazoringEvaluationMargin = 150;
