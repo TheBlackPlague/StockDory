@@ -19,7 +19,7 @@ namespace StockDory
     class Policy
     {
 
-        constexpr static std::array<std::array<uint16_t, 7>, 7> MvvLva = {{
+        constexpr static Array<uint16_t, 7, 7> MvvLva = {{
             {2005, 2004, 2003, 2002, 2001, 2000, 0000},
             {3005, 3004, 3003, 3002, 3001, 3000, 0000},
             {4005, 4004, 4003, 4002, 4001, 4000, 0000},
@@ -29,19 +29,13 @@ namespace StockDory
             {0000, 0000, 0000, 0000, 0000, 0000, 0000}
         }};
 
-        constexpr static int32_t MaximumScore = std::numeric_limits<int32_t>::max();
+        constexpr static uint32_t MaximumScore = std::numeric_limits<uint32_t>::max();
 
-        constexpr static std::array<int32_t, 5> PromotionPriority = {
-            0,
-            3000000 - 4 + 3,
-            3000000 - 4 + 1,
-            3000000 - 4 + 2,
-            3000000 - 4 + 4
-        };
+        constexpr static uint32_t PromotionMultiplier = 100000;
 
-        constexpr static int32_t PromotionMultiplier = 100000;
+        constexpr static uint32_t ScoreAnchor = 1000000;
 
-        constexpr static Array<int32_t, 5> PromotionFactor = {
+        constexpr static Array<uint8_t, 5> PromotionFactor = {
             0, //   Pawn
             3, // Knight
             1, // Bishop
@@ -55,34 +49,35 @@ namespace StockDory
         Move TTMove;
 
         public:
-        Policy(const Move kOne, const Move kTwo, const Move tt)
-        {
-            KillerOne          = kOne;
-            KillerTwo          = kTwo;
-            TTMove = tt;
-        }
+        Policy(const Move kOne, const Move kTwo, const Move tt) : KillerOne(kOne), KillerTwo(kTwo), TTMove(tt) {}
 
         template<Piece Piece, enum Piece PromotionPiece = NAP>
-        int32_t Score(const Board& board, const HTable& history, const Move move) const
+        uint32_t Score(const Board& board, const HTable& history, const Move move) const
         {
             // Policy:
+            //
+            // The categories below give a rough idea of how the score is calculated for move ordering, but in practical
+            // terms, the score isn't as categorical and there are overlaps between the categories (e.g. a good capture
+            // can appear before a promotion):
+            //
             // - Transposition Table Move
-            // - Good Captures that are also Promotions
             // - Promotions
             // - Good Captures
-            // - Killer Moves
             // - Good Quiet Moves
+            //   - Killer Moves
+            //   - Good History Moves
             // - Bad Captures
             // - Bad Quiet Moves
+            //   - Bad History Moves
 
-            if (move == TTMove) return MaximumScore - 1;
+            if (move == TTMove) return MaximumScore;
 
             constexpr bool Promotion = PromotionPiece != NAP;
 
             const bool     capture = board[move.To()].Piece() != NAP;
             const bool goodCapture = capture ? SEE::Accurate(board, move, 0) : false;
 
-            int32_t score = 0;
+            uint32_t score = ScoreAnchor;
 
             if (Promotion) score += PromotionFactor[PromotionPiece] * PromotionMultiplier;
 

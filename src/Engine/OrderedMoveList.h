@@ -26,12 +26,12 @@ namespace StockDory
         struct OrderedMove
         {
 
-            int32_t Score;
+            uint32_t Score;
             Move    Move ;
 
             OrderedMove() = default;
 
-            OrderedMove(const int32_t score, const ::Move move) : Score(score), Move(move) {}
+            OrderedMove(const uint32_t score, const ::Move move) : Score(score), Move(move) {}
 
             OrderedMove(const OrderedMove& other) : Score(other.Score), Move(other.Move) {}
 
