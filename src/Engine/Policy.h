@@ -31,16 +31,14 @@ namespace StockDory
 
         constexpr static uint32_t MaximumScore = std::numeric_limits<uint32_t>::max();
 
-        constexpr static uint32_t PromotionMultiplier = 100000;
-
         constexpr static uint32_t ScoreAnchor = 1000000;
 
-        constexpr static Array<uint8_t, 5> PromotionFactor = {
-            0, //   Pawn
-            3, // Knight
-            1, // Bishop
-            2, //   Rook
-            4  //  Queen
+        constexpr static Array<uint32_t, 5> PromotionFactor = {
+            /** Pawn   **/ 0,
+            /** Knight **/ 200000,
+            /** Bishop **/ 50000 ,
+            /** Rook   **/ 75000 ,
+            /** Queen  **/ 300000
         };
 
         Move KillerOne;
@@ -61,8 +59,9 @@ namespace StockDory
             // can appear before a promotion):
             //
             // - Transposition Table Move
-            // - Promotions
+            // - Good Promotions (Queen or Knight)
             // - Good Captures
+            // - Bad Promotions (Rook or Bishop)
             // - Good Quiet Moves
             //   - Killer Moves
             //   - Good History Moves
@@ -79,7 +78,7 @@ namespace StockDory
 
             uint32_t score = ScoreAnchor;
 
-            if (Promotion) score += PromotionFactor[PromotionPiece] * PromotionMultiplier;
+            if (Promotion) score += PromotionFactor[PromotionPiece];
 
             if (CaptureOnly || capture) {
                 score += MvvLva[board[move.To()].Piece()][Piece] * (goodCapture ? 20 : 1);
