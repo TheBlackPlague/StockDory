@@ -527,8 +527,6 @@ namespace StockDory
                     research++;
 
                     beta  = std::min<Score>(beta  + research * research * AspirationWindowMarginDelta,  Infinity);
-
-                    BestMove = PVTable[0].PV[0];
                 } else return bestEvaluation;
             }
         }
