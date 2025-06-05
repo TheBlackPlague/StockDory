@@ -43,14 +43,17 @@ namespace StockDory
         uint8_t                     Size = 0;
 
         public:
-        explicit OrderedMoveList(      Board & board      , const uint8_t ply         ,
-                                 const KTable& kTable     , const HTable& hTable      ,
-                                 const Move    ttMove = {}, const size_t  threadId = 0)
+        explicit OrderedMoveList(      Board & board       , const uint8_t ply                 ,
+                                 const KTable& kTable      , const HTable& hTable              ,
+                                 const Move    ttMove = {} , const Score   staticEvaluation = 0,
+                                 const size_t  threadId = 0)
         {
             const Move kOne = kTable[0][ply];
             const Move kTwo = kTable[1][ply];
 
-            const Policy<Color, NNPolicy, CaptureOnly> policy (kOne, kTwo, ttMove, threadId);
+            Score scaledStaticEvaluation = WDLCalculator::S(board, staticEvaluation);
+
+            const Policy<Color, NNPolicy, CaptureOnly> policy (kOne, kTwo, ttMove, scaledStaticEvaluation, threadId);
 
             const PinBitBoard   pin   = board.Pin<Color, Opposite(Color)>();
 

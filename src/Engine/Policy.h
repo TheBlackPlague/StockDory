@@ -11,6 +11,7 @@
 
 #include "Common.h"
 #include "SEE.h"
+#include "WDL.h"
 
 namespace StockDory
 {
@@ -48,6 +49,8 @@ namespace StockDory
 
         Move TTMove;
 
+        Score StaticEvaluation;
+
         size_t ThreadId = 0;
 
         uint32_t NNScore(Board& board, const Move move) const
@@ -56,16 +59,19 @@ namespace StockDory
 
             const PreviousState state = board.Move<MT>(move.From(), move.To(), move.Promotion(), ThreadId);
 
-            const uint32_t score = ScoreAnchor - Evaluation::Evaluate(board.ColorToMove(), ThreadId);
+            const StockDory::Score moveEvaluation = WDLCalculator::S(
+                board,
+                -Evaluation::Evaluate(board.ColorToMove(), ThreadId)
+            );
 
             board.UndoMove<MT>(state, move.From(), move.To(), ThreadId);
 
-            return score;
+            return ScoreAnchor + (moveEvaluation - StaticEvaluation);
         }
 
         public:
-        Policy(const Move kOne, const Move kTwo, const Move tt, size_t threadId)
-        : KillerOne(kOne), KillerTwo(kTwo), TTMove(tt), ThreadId(threadId) {}
+        Policy(const Move kOne, const Move kTwo, const Move tt, const Score staticEvaluation, const size_t threadId)
+        : KillerOne(kOne), KillerTwo(kTwo), TTMove(tt), StaticEvaluation(staticEvaluation), ThreadId(threadId) {}
 
         template<Piece Piece, enum Piece PromotionPiece = NAP>
         uint32_t Score(Board& board, const HTable& history, const Move move) const
