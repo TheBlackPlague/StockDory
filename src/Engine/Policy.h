@@ -15,7 +15,7 @@
 namespace StockDory
 {
 
-    template<Color Color, bool CaptureOnly = false>
+    template<Color Color, bool NNPolicy, bool CaptureOnly = false>
     class Policy
     {
 
@@ -48,11 +48,27 @@ namespace StockDory
 
         Move TTMove;
 
+        size_t ThreadId = 0;
+
+        uint32_t NNScore(Board& board, const HTable& history, const Move move) const
+        {
+            constexpr MoveType MT = NNUE | ZOBRIST;
+
+            const PreviousState state = board.Move<MT>(move.From(), move.To(), move.Promotion(), ThreadId);
+
+            const uint32_t score = ScoreAnchor - Evaluation::Evaluate(board.ColorToMove(), ThreadId);
+
+            board.UndoMove<MT>(state, move.From(), move.To(), ThreadId);
+
+            return score;
+        }
+
         public:
-        Policy(const Move kOne, const Move kTwo, const Move tt) : KillerOne(kOne), KillerTwo(kTwo), TTMove(tt) {}
+        Policy(const Move kOne, const Move kTwo, const Move tt, size_t threadId)
+        : KillerOne(kOne), KillerTwo(kTwo), TTMove(tt), ThreadId(threadId) {}
 
         template<Piece Piece, enum Piece PromotionPiece = NAP>
-        uint32_t Score(const Board& board, const HTable& history, const Move move) const
+        uint32_t Score(Board& board, const HTable& history, const Move move) const
         {
             // Policy:
             //
@@ -71,6 +87,8 @@ namespace StockDory
             //   - Bad History Moves
 
             if (move == TTMove) return MaximumScore;
+
+            if (NNPolicy) return NNScore(board, history, move);
 
             constexpr bool Promotion = PromotionPiece != NAP;
 

@@ -19,7 +19,7 @@
 namespace StockDory
 {
 
-    template<Color Color, bool CaptureOnly = false>
+    template<Color Color, bool NNPolicy, bool CaptureOnly = false>
     class OrderedMoveList
     {
 
@@ -37,20 +37,20 @@ namespace StockDory
 
         };
 
-        using OrderingPolicy = Policy<Color, CaptureOnly>;
+        using OrderingPolicy = Policy<Color, NNPolicy, CaptureOnly>;
 
         Array<OrderedMove, MaxMove> Internal;
         uint8_t                     Size = 0;
 
         public:
-        explicit OrderedMoveList(const Board & board , const uint8_t ply   ,
-                                 const KTable& kTable, const HTable& hTable,
-                                 const Move    ttMove = {})
+        explicit OrderedMoveList(      Board & board      , const uint8_t ply         ,
+                                 const KTable& kTable     , const HTable& hTable      ,
+                                 const Move    ttMove = {}, const size_t  threadId = 0)
         {
             const Move kOne = kTable[0][ply];
             const Move kTwo = kTable[1][ply];
 
-            const Policy<Color, CaptureOnly> policy (kOne, kTwo, ttMove);
+            const Policy<Color, NNPolicy, CaptureOnly> policy (kOne, kTwo, ttMove, threadId);
 
             const PinBitBoard   pin   = board.Pin<Color, Opposite(Color)>();
 
@@ -67,7 +67,7 @@ namespace StockDory
         }
 
         template<Piece Piece>
-        void AddMoveLoop(const Board         &  board,
+        void AddMoveLoop(      Board         &  board,
                          const HTable        & hTable,
                          const OrderingPolicy& policy,
                          const PinBitBoard   &    pin,
@@ -98,7 +98,7 @@ namespace StockDory
         private:
         // ReSharper disable once CppRedundantElaboratedTypeSpecifier
         template<Piece Piece, enum Piece Promotion = NAP>
-        static OrderedMove CreateOrdered(const Board         &  board,
+        static OrderedMove CreateOrdered(      Board         &  board,
                                          const HTable        & hTable,
                                          const OrderingPolicy& policy,
                                          const Square           from ,

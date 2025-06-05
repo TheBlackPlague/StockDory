@@ -438,10 +438,10 @@ namespace StockDory
             uint8_t moveCount;
 
             if (Board.ColorToMove() == White) {
-                const OrderedMoveList<White> moves (Board, 0, Killer, History);
+                const OrderedMoveList<White, false> moves (Board, 0, Killer, History, {}, ThreadId);
                 moveCount = moves.Count();
             } else {
-                const OrderedMoveList<Black> moves (Board, 0, Killer, History);
+                const OrderedMoveList<Black, false> moves (Board, 0, Killer, History, {}, ThreadId);
                 moveCount = moves.Count();
             }
 
@@ -828,9 +828,9 @@ namespace StockDory
             // usually have a transposition table entry
             if (depth >= IIRMinimumDepth && !ttHit) depth -= IIRDepthReduction;
 
-            using MoveList = OrderedMoveList<Color>;
+            using MoveList = OrderedMoveList<Color, PV>;
 
-            MoveList moves (Board, ply, Killer, History, ttMove);
+            MoveList moves (Board, ply, Killer, History, ttMove, ThreadId);
 
             // Out of Moves:
             //
@@ -1068,9 +1068,9 @@ namespace StockDory
             if (staticEvaluation >= beta) return beta;
             if (staticEvaluation > alpha) alpha = staticEvaluation;
 
-            using MoveList = OrderedMoveList<Color, true>;
+            using MoveList = OrderedMoveList<Color, PV, true>;
 
-            MoveList moves (Board, ply, Killer, History);
+            MoveList moves (Board, ply, Killer, History, {}, ThreadId);
 
             Score bestEvaluation = staticEvaluation;
             for (uint8_t i = 0; i < moves.Count(); i++) {
