@@ -50,7 +50,7 @@ namespace StockDory
 
         size_t ThreadId = 0;
 
-        uint32_t NNScore(Board& board, const HTable& history, const Move move) const
+        uint32_t NNScore(Board& board, const Move move) const
         {
             constexpr MoveType MT = NNUE | ZOBRIST;
 
@@ -88,8 +88,6 @@ namespace StockDory
 
             if (move == TTMove) return MaximumScore;
 
-            if (NNPolicy) return NNScore(board, history, move);
-
             constexpr bool Promotion = PromotionPiece != NAP;
 
             const bool     capture = board[move.To()].Piece() != NAP;
@@ -104,6 +102,8 @@ namespace StockDory
 
                 return score;
             }
+
+            if (NNPolicy) return NNScore(board, move);
 
             if (move == KillerOne) score += HistoryLimit    ;
             if (move == KillerTwo) score += HistoryLimit / 2;
