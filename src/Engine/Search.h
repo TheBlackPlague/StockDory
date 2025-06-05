@@ -855,7 +855,11 @@ namespace StockDory
             uint8_t quietMoves = 0;
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move  = moves[i];
-                const bool quiet = Board[move.To()].Piece() == NAP;
+
+                const Piece movingPiece = Board[move.From()].Piece();
+                const Piece targetPiece = Board[move.  To()].Piece();
+
+                const bool quiet = targetPiece == NAP;
 
                 quietMoves += quiet;
 
@@ -942,9 +946,12 @@ namespace StockDory
                         // the move may be tactical and in certain cases, extend the search depth instead
                         if (Board.Checked<OColor>()) r--;
 
+                        // Increase reduction for bad history moves and reduce for good history moves
+                        r -= History[Color][movingPiece][move.To()] / (HistoryLimit / 2);
+
                         evaluation = -PVS<OColor, false, false>(
                             ply + 1,
-                            std::max<int16_t>(depth - r, 1),
+                            std::clamp<int16_t>(depth - r, 1, depth + 1),
                             -alpha - 1,
                             -alpha
                         );
