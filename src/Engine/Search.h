@@ -64,8 +64,19 @@ namespace StockDory
         Array<SearchTranspositionEntry, Size> Internal {};
 
         public:
-              SearchTranspositionEntry& operator[](const ZobristHash hash)       { return Internal[hash % Size]; }
-        const SearchTranspositionEntry& operator[](const ZobristHash hash) const { return Internal[hash % Size]; }
+        SearchTranspositionEntry& operator[](const CompressedHash hash)
+        {
+            for (size_t i = 0; i < Size; i++) if (Internal[i].Hash == hash) return Internal[i];
+
+            return Internal[0];
+        }
+
+        const SearchTranspositionEntry& operator[](const CompressedHash hash) const
+        {
+            for (size_t i = 0; i < Size; i++) if (Internal[i].Hash == hash) return Internal[i];
+
+            return Internal[0];
+        }
 
     };
 
