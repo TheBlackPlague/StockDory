@@ -56,7 +56,19 @@ namespace StockDory
 
     };
 
-    inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
+    class SearchTranspositionCluster
+    {
+
+        constexpr static size_t Size = 4;
+
+        Array<SearchTranspositionEntry, Size> Internal {};
+
+        public:
+        SearchTranspositionEntry& operator[](const CompressedHash hash) { return Internal[hash % Size]; }
+
+    };
+
+    inline TranspositionTable<SearchTranspositionCluster> TT (16 * MB);
 
     inline auto LMRTable =
     [] -> Array<int16_t, MaxDepth, MaxMove>
@@ -621,7 +633,7 @@ namespace StockDory
             // exists a transposition entry - if the entry is valid, depending on the quality of the entry, we can
             // return the evaluation from the entry. Even if the entry isn't of sufficient quality to return directly,
             // we can still search the move in the entry first, since it most likely is the best move in the position
-            SearchTranspositionEntry& ttEntry = TT[hash];
+            SearchTranspositionEntry& ttEntry = TT[hash][hash];
             Move                      ttMove  = {};
             bool                      ttHit   = false;
 
@@ -1045,7 +1057,7 @@ namespace StockDory
 
                 const ZobristHash hash = Board.Zobrist();
 
-                const SearchTranspositionEntry& ttEntry = TT[hash];
+                const SearchTranspositionEntry& ttEntry = TT[hash][hash];
 
                 if (ttEntry.Hash == CompressHash(hash)) {
                     if (ttEntry.Type == Exact                               ) return ttEntry.Evaluation;
