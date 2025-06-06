@@ -577,6 +577,17 @@ namespace StockDory
                 // the game is drawn. The half-move counter tracks the number of half-moves since the last pawn move or
                 // capture, so if it reaches 100, the game is drawn
                 if (Stack[ply].HalfMoveCounter == 100) {
+                    // However, for the 50-move rule to apply, we must also ensure that the position is not a checkmate
+                    // as someone could mate us at the 100th half-move
+
+                    if (Board.Checked<Color>()) {
+                        using MoveList = OrderedMoveList<Color>;
+
+                        MoveList moves (Board, ply, Killer, History);
+
+                        if (moves.Count() == 0) return -Mate + ply;
+                    }
+
                     return Draw;
                 }
 
