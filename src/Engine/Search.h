@@ -950,11 +950,11 @@ namespace StockDory
 
                         // Increase reduction for bad history moves and reduce for good history moves (possibly
                         // extending the search depth)
-                        r -= History[Color][movingPiece][move.To()] / (HistoryLimit / 2);
+                        r -= History[Color][movingPiece][move.To()] / (HistoryLimit / 4);
 
                         evaluation = -PVS<OColor, false, false>(
                             ply + 1,
-                            std::clamp<int16_t>(depth - r, 1, depth + 1),
+                            std::clamp<int16_t>(depth - r, 1, depth + 2),
                             -alpha - 1,
                             -alpha
                         );
