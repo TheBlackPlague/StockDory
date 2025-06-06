@@ -576,7 +576,9 @@ namespace StockDory
                 // The 50-move rule states that if there have been 50 full moves without a pawn move or a capture, then
                 // the game is drawn. The half-move counter tracks the number of half-moves since the last pawn move or
                 // capture, so if it reaches 100, the game is drawn
-                if (Stack[ply].HalfMoveCounter >= 100) return Draw;
+                if (Stack[ply].HalfMoveCounter == 100) {
+                    return Draw;
+                }
 
                 // Repetition:
                 //
