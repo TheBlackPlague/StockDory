@@ -109,6 +109,8 @@ Information(${VERSION} ${CODENAME} ${CI})
 
 file(GLOB_RECURSE StockDoryBackendType "src/Backend/*.h")
 
+file(GLOB_RECURSE StockDoryBackend2Type "src/Backend2/*.h")
+
 file(GLOB_RECURSE StockDoryEngineType "src/Engine/*.h")
 
 file(GLOB_RECURSE StockDoryExternalType "src/External/*.h")
@@ -129,6 +131,7 @@ if(PYMODULE)
 
     pybind11_add_module(StockDory src/python_binding.cpp
             ${StockDoryBackendType}
+            ${StockDoryBackend2Type}
             ${StockDoryEngineType}
             ${StockDoryExternalType}
             ${StockDoryFrontendType}
@@ -146,6 +149,7 @@ else()
 
     add_executable(StockDory src/main.cpp
             ${StockDoryBackendType}
+            ${StockDoryBackend2Type}
             ${StockDoryEngineType}
             ${StockDoryExternalType}
             ${StockDoryFrontendType}
