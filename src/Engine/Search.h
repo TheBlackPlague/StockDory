@@ -963,7 +963,7 @@ namespace StockDory
 
                         evaluation = -PVS<OColor, false, false>(
                             ply + 1,
-                            std::clamp<int16_t>(depth - r, 1, depth + 1),
+                            std::clamp<int16_t>(depth - r, 1, depth),
                             -alpha - 1,
                             -alpha
                         );
