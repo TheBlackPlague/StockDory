@@ -59,14 +59,14 @@ namespace StockDory
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
 
     inline auto LMRTable =
-    [] -> Array<int16_t, MaxDepth, MaxMove>
+    [] -> Array<int32_t, MaxDepth, MaxMove>
     {
         const auto formula = [](const uint8_t depth, const uint8_t move) -> int16_t
         {
-            return static_cast<int16_t>(std::log(depth) * std::log(move) / 2 - 0.2);
+            return static_cast<int32_t>((std::log(depth) * std::log(move) / 2 - 0.2) * 1024);
         };
 
-        Array<int16_t, MaxDepth, MaxMove> temp {};
+        Array<int32_t, MaxDepth, MaxMove> temp {};
 
         for (uint8_t depth = 1; depth < MaxDepth; depth++)
         for (uint8_t move  = 1; move  < MaxMove ;  move++) temp[depth][move] = formula(depth, move);
@@ -929,18 +929,20 @@ namespace StockDory
                         // Reduction values are determined by a formula that takes into account the current depth and
                         // move number. Current formula:
                         //
-                        // r = floor(ln(depth) * ln(i) / 2 - 0.2)
-                        int16_t r = LMRTable[depth][i];
+                        // r = floor((ln(depth) * ln(i) / 2 - 0.2) * 1024)
+                        int32_t r = LMRTable[depth][i];
 
                         // If we are not in a PV branch, we can afford to reduce the search depth further
-                        if (!PV) r++;
+                        if (!PV) r += LMRNotPVBonus;
 
                         // If we are not improving positionally, we can afford to reduce the search depth further
-                        if (!improving) r++;
+                        if (!improving) r += LMRNotImprovingBonus;
 
                         // If our last move gave check to the opponent, we should try to reduce the search depth less as
                         // the move may be tactical and in certain cases, extend the search depth instead
-                        if (Board.Checked<OColor>()) r--;
+                        if (Board.Checked<OColor>()) r -= LMRGaveCheckPenalty;
+
+                        r /= 1024;
 
                         evaluation = -PVS<OColor, false, false>(
                             ply + 1,
