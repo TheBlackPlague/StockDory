@@ -952,13 +952,13 @@ namespace StockDory
                         // the move may be tactical and in certain cases, extend the search depth instead
                         if (Board.Checked<OColor>()) r -= LMRGaveCheckPenalty;
 
+                        // Increase reduction for bad history moves and reduce for good history moves (possibly
+                        // extending the search depth)
+                        r -= History[Color][movingPiece][move.To()];
+
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
                         // mapped to discrete reduction
                         r /= LMRGranularityFactor;
-
-                        // Increase reduction for bad history moves and reduce for good history moves (possibly
-                        // extending the search depth)
-                        r -= History[Color][movingPiece][move.To()] / (HistoryLimit / 2);
 
                         evaluation = -PVS<OColor, false, false>(
                             ply + 1,
