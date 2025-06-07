@@ -954,7 +954,8 @@ namespace StockDory
 
                         // Increase reduction for bad history moves and reduce for good history moves (possibly
                         // extending the search depth)
-                        r -= History[Color][movingPiece][move.To()];
+                        const int16_t history = History[Color][movingPiece][move.To()];
+                        r -= history / ((HistoryLimit / LMRHistoryPartition) / LMRHistoryWeight);
 
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
                         // mapped to discrete reduction
@@ -962,7 +963,7 @@ namespace StockDory
 
                         evaluation = -PVS<OColor, false, false>(
                             ply + 1,
-                            std::clamp<int16_t>(depth - r, 1, depth),
+                            std::clamp<int16_t>(depth - r, 1, depth + 1),
                             -alpha - 1,
                             -alpha
                         );
