@@ -58,7 +58,7 @@ namespace StockDory
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
 
-    constexpr  uint16_t LMRGranularityFactor = 1024;
+    constexpr uint16_t LMRGranularityFactor = 1024;
 
     inline auto LMRTable =
     [] -> Array<int32_t, MaxDepth, MaxMove>

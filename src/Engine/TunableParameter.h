@@ -17,7 +17,7 @@ namespace StockDory
     constexpr uint8_t TimeIncrementPartitionDenominator = 4;
     constexpr uint8_t TimeProcessingOverhead            = 10;
 
-    constexpr Array<uint16_t, 5> SearchStabilityTimeOptimizationFactor{
+    constexpr Array<uint16_t, 5> SearchStabilityTimeOptimizationFactor {
         250, 180, 120, 99, 97
     };
 
