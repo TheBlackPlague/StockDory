@@ -48,15 +48,21 @@ namespace StockDory
 
         using EntryType = SearchTranspositionEntryType;
 
-        CompressedHash  Hash       = 0;
-        CompressedScore Evaluation = 0;
-        Move            Move       = ::Move();
-        uint8_t         Depth      = 0;
-        EntryType       Type       = Invalid;
+        CompressedHash  Hash       = {};
+        CompressedScore Evaluation = {};
+        Move            Move       = {};
+
+        // Metadata
+        uint8_t Depth     = {};
+        uint8_t Age   : 6 = {};
+        uint8_t Type  : 2 = {};
 
     };
 
+    static_assert(sizeof(SearchTranspositionEntry) == 8, "SearchTranspositionEntry must be 8 bytes");
+
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
+    inline uint8_t                                      TTAge = 0;
 
     inline auto LMRTable =
     [] -> Array<int16_t, MaxDepth, MaxMove>
@@ -331,6 +337,8 @@ namespace StockDory
 
         uint8_t SearchStability = 0;
 
+        uint8_t TTEntryAge = 0;
+
         size_t ThreadId = 0;
 
         SearchThreadStatus Status = Running;
@@ -340,12 +348,13 @@ namespace StockDory
 
         // ReSharper disable CppPassValueParameterByConstReference
         SearchTask(
-            const StockDory::Limit      limit,
-            const StockDory::Board      board,
-            const RepetitionStack  repetition,
-            const uint8_t                 hmc,
+            const StockDory::Limit      limit    ,
+            const StockDory::Board      board    ,
+            const RepetitionStack  repetition    ,
+            const uint8_t                 hmc    ,
+            const uint8_t          ttEntryAge = 0,
             const size_t             threadId = 0)
-        : Board(board), Repetition(repetition), Limit(limit), ThreadId(threadId)
+        : Board(board), Repetition(repetition), Limit(limit), TTEntryAge(ttEntryAge), ThreadId(threadId)
         {
             Stack[0].HalfMoveCounter = hmc;
         }
