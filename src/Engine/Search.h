@@ -58,12 +58,14 @@ namespace StockDory
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
 
+    constexpr  uint16_t LMRGranularityFactor = 1024;
+
     inline auto LMRTable =
     [] -> Array<int32_t, MaxDepth, MaxMove>
     {
         const auto formula = [](const uint8_t depth, const uint8_t move) -> int32_t
         {
-            return static_cast<int32_t>((std::log(depth) * std::log(move) / 2 - 0.2) * 1024);
+            return static_cast<int32_t>((std::log(depth) * std::log(move) / 2 - 0.2) * LMRGranularityFactor);
         };
 
         Array<int32_t, MaxDepth, MaxMove> temp {};
@@ -929,7 +931,7 @@ namespace StockDory
                         // Reduction values are determined by a formula that takes into account the current depth and
                         // move number. Current formula:
                         //
-                        // r = floor((ln(depth) * ln(i) / 2 - 0.2) * 1024)
+                        // r = floor((ln(depth) * ln(i) / 2 - 0.2) * LMRGranularityFactor)
                         int32_t r = LMRTable[depth][i];
 
                         // If we are not in a PV branch, we can afford to reduce the search depth further
@@ -942,7 +944,9 @@ namespace StockDory
                         // the move may be tactical and in certain cases, extend the search depth instead
                         if (Board.Checked<OColor>()) r -= LMRGaveCheckPenalty;
 
-                        r /= 1024;
+                        // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
+                        // mapped to discrete reduction
+                        r /= LMRGranularityFactor;
 
                         evaluation = -PVS<OColor, false, false>(
                             ply + 1,
