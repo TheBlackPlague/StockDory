@@ -61,7 +61,7 @@ namespace StockDory
     inline auto LMRTable =
     [] -> Array<int32_t, MaxDepth, MaxMove>
     {
-        const auto formula = [](const uint8_t depth, const uint8_t move) -> int16_t
+        const auto formula = [](const uint8_t depth, const uint8_t move) -> int32_t
         {
             return static_cast<int32_t>((std::log(depth) * std::log(move) / 2 - 0.2) * 1024);
         };
