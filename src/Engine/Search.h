@@ -58,15 +58,19 @@ namespace StockDory
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
 
+    constexpr uint16_t LMRGranularityFactor = 1024;
+
     inline auto LMRTable =
-    [] -> Array<int16_t, MaxDepth, MaxMove>
+    [] -> Array<int32_t, MaxDepth, MaxMove>
     {
-        const auto formula = [](const uint8_t depth, const uint8_t move) -> int16_t
+        const auto formula = [](const uint8_t depth, const uint8_t move) -> int32_t
         {
-            return static_cast<int16_t>(std::log(depth) * std::log(move) / 2 - 0.2);
+            const int32_t value = (std::log(depth) * std::log(move) / 2 - 0.2) * LMRGranularityFactor;
+
+            return value / LMRGranularityFactor > 0 ? value : 0;
         };
 
-        Array<int16_t, MaxDepth, MaxMove> temp {};
+        Array<int32_t, MaxDepth, MaxMove> temp {};
 
         for (uint8_t depth = 1; depth < MaxDepth; depth++)
         for (uint8_t move  = 1; move  < MaxMove ;  move++) temp[depth][move] = formula(depth, move);
@@ -935,18 +939,22 @@ namespace StockDory
                         // Reduction values are determined by a formula that takes into account the current depth and
                         // move number. Current formula:
                         //
-                        // r = floor(ln(depth) * ln(i) / 2 - 0.2)
-                        int16_t r = LMRTable[depth][i];
+                        // r = floor((ln(depth) * ln(i) / 2 - 0.2) * LMRGranularityFactor)
+                        int32_t r = LMRTable[depth][i];
 
                         // If we are not in a PV branch, we can afford to reduce the search depth further
-                        if (!PV) r++;
+                        if (!PV) r += LMRNotPVBonus;
 
                         // If we are not improving positionally, we can afford to reduce the search depth further
-                        if (!improving) r++;
+                        if (!improving) r += LMRNotImprovingBonus;
 
                         // If our last move gave check to the opponent, we should try to reduce the search depth less as
                         // the move may be tactical and in certain cases, extend the search depth instead
-                        if (Board.Checked<OColor>()) r--;
+                        if (Board.Checked<OColor>()) r -= LMRGaveCheckPenalty;
+
+                        // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
+                        // mapped to discrete reduction
+                        r /= LMRGranularityFactor;
 
                         // Increase reduction for bad history moves and reduce for good history moves (possibly
                         // extending the search depth)
