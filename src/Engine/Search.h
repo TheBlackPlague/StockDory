@@ -65,7 +65,9 @@ namespace StockDory
     {
         const auto formula = [](const uint8_t depth, const uint8_t move) -> int32_t
         {
-            return static_cast<int32_t>((std::log(depth) * std::log(move) / 2 - 0.2) * LMRGranularityFactor);
+            const int32_t value = (std::log(depth) * std::log(move) / 2 - 0.2) * LMRGranularityFactor;
+
+            return value / LMRGranularityFactor > 0 ? value : 0;
         };
 
         Array<int32_t, MaxDepth, MaxMove> temp {};
