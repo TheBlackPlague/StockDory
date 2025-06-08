@@ -58,6 +58,7 @@ namespace StockDory
     constexpr uint16_t HistoryShiftDown  = 250;
 
     constexpr uint8_t TTReplacementDepthMargin = 3;
+    constexpr uint8_t TTReplacementPVFactor    = 2;
 
 } // StockDory
 

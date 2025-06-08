@@ -1027,7 +1027,7 @@ namespace StockDory
             //
             // As long as the search has not stopped, we should try to insert/replace the transposition table entry
             // with the new entry as it is most likely more relevant than the old entry
-            if (Status != SearchThreadStatus::Stopped) TryWriteTT(ttEntry, ttEntryNew);
+            if (Status != SearchThreadStatus::Stopped) TryWriteTT<PV>(ttEntry, ttEntryNew);
 
             return bestEvaluation;
         }
@@ -1153,12 +1153,13 @@ namespace StockDory
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
         }
 
+        template<bool PV>
         static void TryWriteTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
         {
             if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
                (pEntry.Type == Alpha &&
                 nEntry.Type == Beta) ||
-                nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
+                nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin - PV * TTReplacementPVFactor)
                 pEntry = nEntry;
         }
 
