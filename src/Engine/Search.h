@@ -62,7 +62,9 @@ namespace StockDory
     static_assert(sizeof(SearchTranspositionEntry) == 8, "SearchTranspositionEntry must be 8 bytes");
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
-    inline uint8_t                                      TTAge = 0;
+
+    constexpr uint8_t TTMaxAge = 63;
+    inline    uint8_t TTAge    =  0;
 
     inline auto LMRTable =
     [] -> Array<int16_t, MaxDepth, MaxMove>
@@ -1192,8 +1194,8 @@ namespace StockDory
 
         size_t Size() const { return TaskCount; }
 
-        void Fill(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc)
-        { for (size_t i = 0; i < TaskCount; i++) Internal.emplace_back(l, b, r, hmc, i + 1); }
+        void Fill(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc, const uint8_t ttAge)
+        { for (size_t i = 0; i < TaskCount; i++) Internal.emplace_back(l, b, r, hmc, ttAge, i + 1); }
 
         constexpr std::vector<ParallelTask>& operator &(){ return Internal; }
 
@@ -1267,7 +1269,7 @@ namespace StockDory
             // amount of time and avoid some pitfalls of the heuristical pruning, reduction, and search techniques used
 
             if (ParallelTaskPool.Size()) {
-                ParallelTaskPool.Fill(l, b, r, hmc);
+                ParallelTaskPool.Fill(l, b, r, hmc, TTAge);
 
                 for (auto& task : &ParallelTaskPool) ThreadPool.Execute(
                     [&task] -> void
@@ -1277,7 +1279,7 @@ namespace StockDory
                 );
             }
 
-            MainTask = MainSearchTask(l, b, r, hmc, 0);
+            MainTask = MainSearchTask(l, b, r, hmc, TTAge, 0);
 
             ThreadPool.Execute(
                 [] -> void
@@ -1293,6 +1295,9 @@ namespace StockDory
                     }
 
                     ParallelTaskPool.Clear();
+
+                    TTAge = TTAge + 1 % TTMaxAge;
+
                     Searching = false;
                 }
             );
