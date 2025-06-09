@@ -58,14 +58,17 @@ namespace StockDory
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
 
-    constexpr uint16_t LMRGranularityFactor = 1024;
-
     inline auto LMRTable =
     [] -> Array<int32_t, MaxDepth, MaxMove>
     {
         const auto formula = [](const uint8_t depth, const uint8_t move) -> int32_t
         {
-            const int32_t value = (std::log(depth) * std::log(move) / 2 - 0.2) * LMRGranularityFactor;
+            const double weightedLnDepth = std::log(depth) * LMRBaseReductionDepthWeight;
+            const double weightedLnMove  = std::log(move ) * LMRBaseReductionMoveWeight ;
+
+            const double fixedValue = weightedLnDepth * weightedLnMove - LMRBaseReductionShift;
+
+            const int32_t value = fixedValue * LMRGranularityFactor;
 
             return value / LMRGranularityFactor > 0 ? value : 0;
         };
