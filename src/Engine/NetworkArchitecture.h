@@ -12,8 +12,14 @@
 // Activation Function:
 constexpr auto ClippedReLU = &MantaRay::ClippedReLU<MantaRay::i16, 0, 255>::Activate;
 
+constexpr size_t AccumulatorStackSize = StockDory::MaxDepth * 4;
+
 // Architecture:
-using Starshard = MantaRay::Perspective<MantaRay::i16, MantaRay::i32, ClippedReLU, 768, 256, 1, 512, 400, 255, 64>;
-using Aurora    = MantaRay::Perspective<MantaRay::i16, MantaRay::i32, ClippedReLU, 768, 384, 1, 512, 400, 255, 64>;
+using Starshard = MantaRay::Perspective<
+    MantaRay::i16, MantaRay::i32, ClippedReLU, 768, 256, 1, AccumulatorStackSize, 400, 255, 64
+>;
+using Aurora    = MantaRay::Perspective<
+    MantaRay::i16, MantaRay::i32, ClippedReLU, 768, 384, 1, AccumulatorStackSize, 400, 255, 64
+>;
 
 #endif //STOCKDORY_NETWORKARCHITECTURE_H

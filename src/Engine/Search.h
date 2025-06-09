@@ -859,7 +859,11 @@ namespace StockDory
             uint8_t quietMoves = 0;
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move  = moves[i];
-                const bool quiet = Board[move.To()].Piece() == NAP;
+
+                const Piece movingPiece = Board[move.From()].Piece();
+                const Piece targetPiece = Board[move.  To()].Piece();
+
+                const bool quiet = targetPiece == NAP;
 
                 quietMoves += quiet;
 
@@ -921,14 +925,16 @@ namespace StockDory
                     // shows potential to improve our position, we will research with a full window search assuming
                     // we are in a PV branch
 
-                    // Late Move Reduction (LMR):
+                    // Late Move Reduction and Extension (LMR-E):
                     //
-                    // LMR is a reduction technique that allows us to reduce the depth of the search for moves that
+                    // Base LMR is a reduction technique that allows us to reduce the depth of the search for moves that
                     // appear later since, according to the move policy, they are likely worse than the moves that were
-                    // searched earlier. The moves that appear later are searched with a reduced depth, and if they give
-                    // promising evaluation (i.e., greater than our current lower bound, which is alpha), we research
-                    // them at a full depth. The researches are relatively inexpensive due to the transposition table,
-                    // and the time we save by not searching moves that are unlikely to improve our position is worth it
+                    // searched earlier. However, LMR-E allows us to extend the search depth for moves that may be very
+                    // tactically promising or likely to fail high (i.e., produce a beta cut-off). If the reduced or
+                    // extended search gives a promising evaluation (i.e., greater than our current lower bound, which
+                    // is alpha), we then research them at a full depth. The researches are relatively inexpensive due
+                    // to the transposition table, and the time we save by not searching moves that are unlikely to
+                    // improve our position is worth it
                     if (doLMR && i > LMRMinimumMoves) {
                         // Reduction values are determined by a formula that takes into account the current depth and
                         // move number. Current formula:
@@ -946,13 +952,18 @@ namespace StockDory
                         // the move may be tactical and in certain cases, extend the search depth instead
                         if (Board.Checked<OColor>()) r -= LMRGaveCheckPenalty;
 
+                        // Increase reduction for bad history moves and reduce for good history moves (possibly
+                        // extending the search depth)
+                        const int16_t history = History[Color][movingPiece][move.To()];
+                        r -= history / ((HistoryLimit / LMRHistoryPartition) / LMRHistoryWeight);
+
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
                         // mapped to discrete reduction
                         r /= LMRGranularityFactor;
 
                         evaluation = -PVS<OColor, false, false>(
                             ply + 1,
-                            std::max<int16_t>(depth - r, 1),
+                            std::clamp<int16_t>(depth - r, 1, depth),
                             -alpha - 1,
                             -alpha
                         );
