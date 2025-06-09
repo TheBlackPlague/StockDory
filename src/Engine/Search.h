@@ -489,9 +489,15 @@ namespace StockDory
 
             const double confidence = MoveConfidence[BestMove.From()][BestMove.To()] / static_cast<double>(totalNodes);
 
-            const double actual  = Limit.ActualTime.count();
-            const double optimal =
-                actual * (1 - ConfidenceTimeOptimizationK * std::pow(confidence, ConfidenceTimeOptimizationP));
+            const double actual = Limit.ActualTime.count();
+
+            const double inflection = confidence - ConfidenceTimeOptimizationC             ;
+            const double steepness  =              ConfidenceTimeOptimizationB * inflection;
+
+            const double curve =            ConfidenceTimeOptimizationA /
+                (1 + std::exp(steepness)) + ConfidenceTimeOptimizationD;
+
+            const double optimal = actual * curve;
 
             Limit.OptimalTime = MS(static_cast<uint64_t>(optimal));
         }
