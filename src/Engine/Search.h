@@ -144,6 +144,8 @@ namespace StockDory
 
     using PVTable = Array<PVEntry, MaxDepth>;
 
+    using MoveConfidenceData = Array<uint64_t, 64, 64>;
+
     enum SearchThreadStatus : bool
     {
 
@@ -333,7 +335,9 @@ namespace StockDory
 
         Move BestMove {};
 
-        uint8_t SearchStability = 0;
+        // uint8_t SearchStability = 0;
+
+        MoveConfidenceData MoveConfidence {};
 
         size_t ThreadId = 0;
 
@@ -397,7 +401,9 @@ namespace StockDory
 
                     BestMove = PVTable[0].PV[0];
 
-                    SearchStabilityTimeOptimization(lastBestMove);
+                    // SearchStabilityTimeOptimization(lastBestMove);
+
+                    ConfidenceTimeOptimization();
 
                     EventHandler::HandleIterativeDeepeningIterationCompletion({
                         .Depth          = IDepth,
@@ -456,19 +462,36 @@ namespace StockDory
             Limit.OptimalTime = MS(time * TimeBasePartitionNumerator / TimeBasePartitionDenominator);
         }
 
-        void SearchStabilityTimeOptimization(const Move lastBestMove)
+        // void SearchStabilityTimeOptimization(const Move lastBestMove)
+        // {
+        //     if (!Limit.Timed) return;
+        //     if ( Limit.Fixed) return;
+        //
+        //     if (lastBestMove == BestMove) SearchStability = std::min<uint8_t>(SearchStability + 1, 4);
+        //     else                          SearchStability = 0;
+        //
+        //     const auto factor = SearchStabilityTimeOptimizationFactor[SearchStability];
+        //
+        //     const uint64_t time = Limit.OptimalTime.count();
+        //
+        //     Limit.OptimalTime = MS(std::min<uint64_t>(time * factor / 100, Limit.ActualTime.count()));
+        // }
+
+        void ConfidenceTimeOptimization()
         {
             if (!Limit.Timed) return;
             if ( Limit.Fixed) return;
 
-            if (lastBestMove == BestMove) SearchStability = std::min<uint8_t>(SearchStability + 1, 4);
-            else                          SearchStability = 0;
+            uint64_t totalNodes = 0;
 
-            const auto factor = SearchStabilityTimeOptimizationFactor[SearchStability];
+            for (size_t i = 0; i < 64; i++)
+            for (size_t j = 0; j < 64; j++) totalNodes += MoveConfidence[i][j];
 
-            const uint64_t time = Limit.OptimalTime.count();
+            const double confidence = MoveConfidence[BestMove.From()][BestMove.To()] / static_cast<double>(totalNodes);
 
-            Limit.OptimalTime = MS(std::min<uint64_t>(time * factor / 100, Limit.ActualTime.count()));
+            const double maxTime = Limit.ActualTime.count();
+
+            Limit.OptimalTime = MS(static_cast<uint64_t>(maxTime * (1 / confidence)));
         }
 
         template<Color Color>
@@ -904,6 +927,8 @@ namespace StockDory
                     if (doLMP && quietMoves > lmpLastQuiet && bestEvaluation > -Infinity) break;
                 }
 
+                const uint64_t nodesBefore = Nodes;
+
                 const PreviousState state = DoMove<true>(move, ply, quiet);
 
                 // Principle Variation Search (PVS):
@@ -982,6 +1007,10 @@ namespace StockDory
                 }
 
                 UndoMove<true>(state, move);
+
+                const uint64_t nodesAfter = Nodes;
+
+                if (ThreadType == Main && Root) MoveConfidence[move.From()][move.To()] += nodesAfter - nodesBefore;
 
                 if (evaluation <= bestEvaluation) continue;
 
