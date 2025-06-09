@@ -21,6 +21,9 @@ namespace StockDory
         250, 180, 120, 99, 97
     };
 
+    constexpr double ConfidenceTimeOptimizationK = 0.5;
+    constexpr double ConfidenceTimeOptimizationP = 3.0;
+
     constexpr uint16_t AspirationWindowFallbackBound = 3500;
     constexpr uint8_t  AspirationWindowMargin        = 16;
     constexpr uint8_t  AspirationWindowMarginDelta   = 23;
