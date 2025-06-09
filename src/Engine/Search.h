@@ -66,7 +66,7 @@ namespace StockDory
             const double weightedLnDepth = std::log(depth) * LMRBaseReductionDepthWeight;
             const double weightedLnMove  = std::log(move ) * LMRBaseReductionMoveWeight ;
 
-            const double fixedValue = weightedLnDepth * weightedLnMove - LMRBaseReductionShift;
+            const double fixedValue = weightedLnDepth * weightedLnMove + LMRBaseReductionShift;
 
             const int32_t value = fixedValue * LMRGranularityFactor;
 
