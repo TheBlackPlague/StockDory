@@ -489,9 +489,9 @@ namespace StockDory
 
             const double confidence = MoveConfidence[BestMove.From()][BestMove.To()] / static_cast<double>(totalNodes);
 
-            const double maxTime = Limit.ActualTime.count();
+            const double actualTime = Limit.ActualTime.count();
 
-            Limit.OptimalTime = MS(static_cast<uint64_t>(maxTime * (1 / confidence)));
+            Limit.OptimalTime = MS(static_cast<uint64_t>(actualTime * (1 - confidence)));
         }
 
         template<Color Color>
