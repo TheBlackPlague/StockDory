@@ -862,6 +862,7 @@ namespace StockDory
                 .Evaluation = -CompressedInfinity,
                 .Move       = ttMove,
                 .Depth      = static_cast<uint8_t>(depth),
+                .Age        = TTEntryAge,
                 .Type       = Alpha
             };
 
