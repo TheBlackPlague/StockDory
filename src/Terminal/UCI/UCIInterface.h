@@ -187,6 +187,7 @@ namespace StockDory
             Repetition.Push(Board.Zobrist());
 
             TT.Clear();
+            SearchTranspositionEntry::CurrentAge = 0;
         }
 
         static void IsReady()
