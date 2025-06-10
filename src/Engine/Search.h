@@ -1194,7 +1194,6 @@ namespace StockDory
             // Replace if:
             // - N.Type is Exact
             // - N.Hash is different from P.Hash
-            // - P.Type is Alpha and N.Type is Beta
             // - N.Age is different from P.Age
             // - N.Depth is greater than P.Depth by at least TTReplacementDepthMargin
 
@@ -1203,10 +1202,6 @@ namespace StockDory
 
             // To avoid transposition table from becoming stagnated
             if (nEntry.Hash != pEntry.Hash) pEntry = nEntry;
-
-            // Beta cutoff entries are preferred over unchanging alpha entries as they suit the search better due to
-            // various pruning techniques
-            if (pEntry.Type == Alpha && nEntry.Type == Beta) pEntry = nEntry;
 
             if (nEntry.Age != pEntry.Age) pEntry = nEntry;
 
