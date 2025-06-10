@@ -1187,7 +1187,7 @@ namespace StockDory
             // If our new entry is an exact entry, we should always replace the previous entry with it
             if (nEntry.Type == Exact) pEntry = nEntry;
 
-            // If our new entry has a different hash, it's likely a new position (possibly more relevant)
+            // If our new entry has a different hash, it's likely a new position (possibly more relevant),
             // so we should replace the previous entry with it
             if (nEntry.Hash != pEntry.Hash) pEntry = nEntry;
 
