@@ -48,6 +48,9 @@ namespace StockDory
                 search.IterativeDeepening();
                 const auto t1 = std::chrono::high_resolution_clock::now();
 
+                SearchTranspositionEntry::CurrentAge = (SearchTranspositionEntry::CurrentAge + 1) %
+                                                        SearchTranspositionEntry::    MaxAge      ;
+
                 nodes[i] = search.GetNodes();
                 times[i] = std::chrono::duration_cast<MS>(t1 - t0);
 
