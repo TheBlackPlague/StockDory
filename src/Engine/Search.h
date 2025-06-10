@@ -1171,8 +1171,6 @@ namespace StockDory
         static void TryWriteTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
         {
             if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
-               (pEntry.Type == Alpha &&
-                nEntry.Type == Beta) ||
                 nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
                 pEntry = nEntry;
         }
