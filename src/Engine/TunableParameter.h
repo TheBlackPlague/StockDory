@@ -24,6 +24,7 @@ namespace StockDory
                 0, // Alpha
     };
     constexpr       int32_t     TTQualityDepthWeight = 100;
+    constexpr       int32_t     TTQualityMargin      = 200;
 
     constexpr Array<uint16_t, 5> SearchStabilityTimeOptimizationFactor {
         250, 180, 120, 99, 97
@@ -67,8 +68,6 @@ namespace StockDory
 
     constexpr uint16_t HistoryMultiplier = 300;
     constexpr uint16_t HistoryShiftDown  = 250;
-
-    constexpr uint8_t TTReplacementDepthMargin = 3;
 
 } // StockDory
 

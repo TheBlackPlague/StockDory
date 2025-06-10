@@ -1172,7 +1172,7 @@ namespace StockDory
 
         static void TryWriteTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
         {
-            if (nEntry.Hash == pEntry.Hash && nEntry.Quality() < pEntry.Quality()) return;
+            if (nEntry.Hash == pEntry.Hash && nEntry.Quality() < pEntry.Quality() - TTQualityMargin) return;
 
             pEntry = nEntry;
         }
