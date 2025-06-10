@@ -19,8 +19,8 @@ namespace StockDory
 
     constexpr Array<int32_t, 4> TTQualityTypeWeight {
         -10000000, // Invalid
-             3000, // Exact
-             1000, // Beta
+              300, // Exact
+              100, // Beta
                 0, // Alpha
     };
     constexpr       int32_t     TTQualityDepthWeight = 100;
