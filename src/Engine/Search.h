@@ -349,8 +349,6 @@ namespace StockDory
 
         uint8_t SearchStability = 0;
 
-        uint8_t TTEntryAge = 0;
-
         SearchThreadStatus Status = Running;
 
         public:
@@ -363,8 +361,7 @@ namespace StockDory
             const RepetitionStack  repetition    ,
             const uint8_t                 hmc    ,
             const size_t             threadId = 0)
-        : Board(board), Repetition(repetition), Limit(limit), ThreadId(threadId),
-          TTEntryAge(SearchTranspositionEntry::CurrentAge)
+        : Board(board), Repetition(repetition), Limit(limit), ThreadId(threadId)
         {
             Stack[0].HalfMoveCounter = hmc;
         }
@@ -862,7 +859,6 @@ namespace StockDory
                 .Evaluation = -CompressedInfinity,
                 .Move       = ttMove,
                 .Depth      = static_cast<uint8_t>(depth),
-                .Age        = TTEntryAge,
                 .Type       = Alpha
             };
 
@@ -1184,8 +1180,10 @@ namespace StockDory
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
         }
 
-        static void TryReplaceTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
+        static void TryReplaceTT(SearchTranspositionEntry& pEntry, SearchTranspositionEntry nEntry)
         {
+            nEntry.Age = SearchTranspositionEntry::CurrentAge;
+
             // If our new entry is an exact entry, we should always replace the previous entry with it
             if (nEntry.Type == Exact) pEntry = nEntry;
 
