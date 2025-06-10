@@ -1198,21 +1198,19 @@ namespace StockDory
             // - N.Age is different from P.Age
             // - N.Depth is greater than P.Depth by at least TTReplacementDepthMargin
 
-            // If our new entry is an exact entry, we should always replace the previous entry with it
+            // Exact entries are always preferred - they're the most accurate
             if (nEntry.Type == Exact) pEntry = nEntry;
 
-            // If our new entry has a different hash, it's likely a new position (possibly more relevant),
-            // so we should replace the previous entry with it
+            // To avoid transposition table from becoming stagnated
             if (nEntry.Hash != pEntry.Hash) pEntry = nEntry;
 
-            // Typically, we want more beta cut-offs since they suit the pruning techniques we use, so if the new
-            // entry caused a beta cut-off, we should replace the previous entry if it was an alpha entry
+            // Beta cutoff entries are preferred over unchanging alpha entries as they suit the search better due to
+            // various pruning techniques
             if (pEntry.Type == Alpha && nEntry.Type == Beta) pEntry = nEntry;
 
-            // If the new entry has a different age, we should replace the previous entry with it
             if (nEntry.Age != pEntry.Age) pEntry = nEntry;
 
-            // If the new entry has a reasonably higher depth than the previous entry, we should replace
+            // Entries from a reasonably higher depth are almost always more useful
             if (nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin) pEntry = nEntry;
         }
 
