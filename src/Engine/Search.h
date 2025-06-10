@@ -1186,12 +1186,22 @@ namespace StockDory
 
         static void TryWriteTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
         {
-            if (nEntry.Type == Exact                         ||
-                nEntry.Hash != pEntry.Hash                   ||
-               (pEntry.Type == Alpha && nEntry.Type == Beta) ||
-                nEntry.Age  != pEntry.Age                    ||
-                nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
-                pEntry = nEntry;
+            // If our new entry is an exact entry, we should always replace the previous entry with it
+            if (nEntry.Type == Exact) pEntry = nEntry;
+
+            // If our new entry has a different hash, it's likely a new position (possibly more relevant)
+            // so we should replace the previous entry with it
+            if (nEntry.Hash != pEntry.Hash) pEntry = nEntry;
+
+            // Typically, we want more beta cut-offs since they suit the pruning techniques we use, so if the new
+            // entry caused a beta cut-off, we should replace the previous entry if it was an alpha entry
+            if (pEntry.Type == Alpha && nEntry.Type == Beta) pEntry = nEntry;
+
+            // If the new entry has a different age, we should replace the previous entry with it
+            if (nEntry.Age != pEntry.Age) pEntry = nEntry;
+
+            // If the new entry has a reasonably higher depth than the previous entry, we should replace
+            if (nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin) pEntry = nEntry;
         }
 
     };
