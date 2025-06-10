@@ -49,9 +49,11 @@ namespace StockDory
         constexpr static size_t TypeSize = 2;
         constexpr static size_t  AgeSize = 6;
 
-        constexpr static uint8_t MaxAge = (1 << AgeSize) - 1;
+        constexpr static uint8_t AgeLimit = 1 << AgeSize;
 
         static inline uint8_t CurrentAge = 0;
+
+        static void UpdateAge() { CurrentAge = (CurrentAge + 1) % AgeLimit; }
 
         using EntryType = SearchTranspositionEntryType;
 
@@ -1184,6 +1186,18 @@ namespace StockDory
         {
             nEntry.Age = SearchTranspositionEntry::CurrentAge;
 
+            // Replacement Strategy:
+            //
+            // N: New entry
+            // P: Previous entry
+            //
+            // Replace if:
+            // - N.Type is Exact
+            // - N.Hash is different from P.Hash
+            // - P.Type is Alpha and N.Type is Beta
+            // - N.Age is different from P.Age
+            // - N.Depth is greater than P.Depth by at least TTReplacementDepthMargin
+
             // If our new entry is an exact entry, we should always replace the previous entry with it
             if (nEntry.Type == Exact) pEntry = nEntry;
 
@@ -1333,8 +1347,7 @@ namespace StockDory
 
                     ParallelTaskPool.Clear();
 
-                    SearchTranspositionEntry::CurrentAge = (SearchTranspositionEntry::CurrentAge + 1) %
-                                                            SearchTranspositionEntry::    MaxAge      ;
+                    SearchTranspositionEntry::UpdateAge();
 
                     Searching = false;
                 }
