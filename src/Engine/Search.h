@@ -1197,16 +1197,10 @@ namespace StockDory
             // - N.Age is different from P.Age
             // - N.Depth is greater than P.Depth by at least TTReplacementDepthMargin
 
-            // Exact entries are always preferred - they're the most accurate
-            if (nEntry.Type == Exact) pEntry = nEntry;
-
-            // To avoid transposition table from becoming stagnated
-            if (nEntry.Hash != pEntry.Hash) pEntry = nEntry;
-
-            if (nEntry.Age != pEntry.Age) pEntry = nEntry;
-
-            // Entries from a reasonably higher depth are almost always more useful
-            if (nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin) pEntry = nEntry;
+            if (nEntry.Type == Exact       ||
+                nEntry.Hash != pEntry.Hash ||
+                nEntry.Age  != pEntry.Age  ||
+                nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin) pEntry = nEntry;
         }
 
     };
