@@ -54,6 +54,8 @@ namespace StockDory
         uint8_t         Depth      = 0;
         EntryType       Type       = Invalid;
 
+        int32_t Quality() const { return TTQualityTypeWeight[Type] + Depth * TTQualityDepthWeight; }
+
     };
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
@@ -1170,11 +1172,9 @@ namespace StockDory
 
         static void TryWriteTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
         {
-            if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
-               (pEntry.Type == Alpha &&
-                nEntry.Type == Beta) ||
-                nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
-                pEntry = nEntry;
+            if (nEntry.Hash == pEntry.Hash && nEntry.Quality() < pEntry.Quality()) return;
+
+            pEntry = nEntry;
         }
 
     };
