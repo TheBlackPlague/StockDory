@@ -82,35 +82,37 @@ namespace StockDory
         public:
         SearchTranspositionEntry& operator[](const CompressedHash hash)
         {
-            using Generation = SearchTranspositionEntry::Generation;
+            auto& result = Internal[0];
 
-            struct AgeIndex { size_t Index = 0; Generation Age = 0; };
+            if (result.Type == Invalid || result.Hash == hash) return Internal[0];
 
-            AgeIndex oldest {};
-
-            for (size_t i = 0; i < Size; i++) {
+            for (size_t i = 1; i < Size; i++) {
                 const auto& entry = Internal[i];
 
-                if (entry.Hash == hash) return Internal[i];
+                if (entry.Type == Invalid || entry.Hash == hash) return result;
 
-                if (entry.Age() > oldest.Age) oldest = {
-                    .Index = i,
-                    .Age   = entry.Age()
-                };
+                const int16_t resultQuality = result.Depth - result.Age();
+                const int16_t  entryQuality =  entry.Depth -  entry.Age();
+
+                if (resultQuality > entryQuality) result = entry;
             }
 
-            return Internal[oldest.Index];
+            return result;
         }
 
         const SearchTranspositionEntry& operator[](const CompressedHash hash) const
         {
-            for (size_t i = 0; i < Size; i++) {
+            const auto& result = Internal[0];
+
+            if (result.Type == Invalid || result.Hash == hash) return result;
+
+            for (size_t i = 1; i < Size; i++) {
                 const auto& entry = Internal[i];
 
-                if (entry.Hash == hash) return Internal[i];
+                if (entry.Type == Invalid || entry.Hash == hash) return entry;
             }
 
-            return Internal[0];
+            return result;
         }
 
     };
