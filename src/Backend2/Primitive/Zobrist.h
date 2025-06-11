@@ -15,7 +15,7 @@ namespace StockDory
 
     using Zobrist = u64;
 
-    struct Key
+    struct ZobristKey
     {
 
         constexpr static Array<Zobrist, 3, 7, 64> Piece {
@@ -388,12 +388,25 @@ namespace StockDory
 
     };
 
-    constexpr Zobrist Hash(const Zobrist hash, const Piece piece, const Square sq)
+    constexpr Zobrist ZobristHash(const Zobrist hash, const Piece piece, const Square sq)
     {
-        return hash ^ Key::Piece[piece.Side()][piece.Type()][sq];
+        return hash ^ ZobristKey::Piece[piece.Side()][piece.Type()][sq];
     }
 
-    constexpr Zobrist Hash(const Zobrist )
+    constexpr Zobrist ZobristHash(const Zobrist hash, const u08 castling)
+    {
+        return hash ^ ZobristKey::Castling[castling];
+    }
+
+    constexpr Zobrist ZobristHash(const Zobrist hash, const Square epSq)
+    {
+        return hash ^ ZobristKey::EnPassant[epSq];
+    }
+
+    constexpr Zobrist ZobristHash(const Zobrist hash)
+    {
+        return hash ^ ZobristKey::SideToMove;
+    }
 
 } // StockDory
 

@@ -25,6 +25,36 @@ namespace StockDory
 
     };
 
+    Square operator ++(Square& sq) { sq = static_cast<Square>(sq + 1); return sq; }
+
+    Square operator ++(Square& sq, int)
+    {
+        const Square temp = sq;
+
+        sq = static_cast<Square>(sq + 1);
+
+        return temp;
+    }
+
+    InputStream& operator >>(InputStream& is, Square& sq)
+    {
+        char file, rank;
+
+        is >> file >> rank;
+
+        file = tolower(file);
+        rank = tolower(rank);
+
+        if (file < 'a' || file > 'h' || rank < '1' || rank > '8') {
+            sq = InvalidSquare;
+            return is;
+        }
+
+        sq = static_cast<Square>((rank - '1') * 8 + (file - 'a'));
+
+        return is;
+    }
+
     OutputStream& operator <<(OutputStream& os, const Square sq)
     {
         constexpr static Array<char, 8> File { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' };

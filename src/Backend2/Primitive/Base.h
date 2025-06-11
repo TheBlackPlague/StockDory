@@ -44,13 +44,17 @@ namespace StockDory
     template<typename T>
     using VarArray = std::vector<T>; // Variable-size heap-allocated array of type T
 
+    using OutputStream = std::ostream; // Output stream type
+
+    using InputStream = std::istream; // Input stream type
+
     using String = std::string; // String type
 
     using StringStream = std::stringstream; // String stream type
 
-    using OutputStream = std::ostream; // Output stream type
+    using OutputStringStream = std::ostringstream; // Output string stream type
 
-    using InputStream = std::istream; // Input stream type
+    using InputStringStream = std::istringstream; // Input string stream type
 
     template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
     String AsHex(const T v)
