@@ -25,6 +25,16 @@ namespace StockDory
 
     };
 
+    OutputStream& operator <<(OutputStream& os, const Square sq)
+    {
+        constexpr static Array<char, 8> File { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' };
+        constexpr static Array<char, 8> Rank { '1', '2', '3', '4', '5', '6', '7', '8' };
+
+        if (sq == InvalidSquare) return os << "xx";
+
+        return os << File[sq % 8] << Rank[sq / 8];
+    }
+
 } // StockDory
 
 #endif //STOCKDORY_SQUARE_H

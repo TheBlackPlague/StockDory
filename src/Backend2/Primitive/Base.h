@@ -7,6 +7,7 @@
 #define STOCKDORY_BASE_H
 
 #include <array>
+#include <cassert>
 #include <cstdint>
 #include <iomanip>
 #include <sstream>
@@ -44,6 +45,8 @@ namespace StockDory
     using VarArray = std::vector<T>; // Variable-size heap-allocated array of type T
 
     using String = std::string; // String type
+
+    using StringStream = std::stringstream; // String stream type
 
     using OutputStream = std::ostream; // Output stream type
 

@@ -18,16 +18,18 @@ namespace StockDory
         constexpr static u08 PieceTypeMask = 0b111;
         constexpr static u08 SideShift     =     3;
 
-        u08 Internal;
+        u08 Internal = InvalidPieceType | InvalidSide << SideShift;
 
         public:
-        constexpr Piece(const Side side, const PieceType type) { Internal = type | side << SideShift; }
+        constexpr Piece(const Side side, const PieceType type) : Internal(type | side << SideShift) {}
 
         constexpr PieceType Type() const { return static_cast<PieceType>(Internal & PieceTypeMask); }
 
         constexpr Side Side() const { return static_cast<enum Side>(Internal >> SideShift); }
 
     };
+
+    OutputStream& operator <<(OutputStream& os, const Piece piece) { return os << piece.Side() << " " << piece.Type(); }
 
 } // StockDory
 
