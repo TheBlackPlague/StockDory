@@ -48,6 +48,8 @@ namespace StockDory
                 search.IterativeDeepening();
                 const auto t1 = std::chrono::high_resolution_clock::now();
 
+                SearchTranspositionEntry::AdvanceGeneration();
+
                 nodes[i] = search.GetNodes();
                 times[i] = std::chrono::duration_cast<MS>(t1 - t0);
 

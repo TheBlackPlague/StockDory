@@ -46,13 +46,29 @@ namespace StockDory
     struct SearchTranspositionEntry
     {
 
-        using EntryType = SearchTranspositionEntryType;
+        using EntryType  = SearchTranspositionEntryType;
+        using Generation = uint8_t;
 
-        CompressedHash  Hash       = 0;
-        CompressedScore Evaluation = 0;
-        Move            Move       = ::Move();
-        uint8_t         Depth      = 0;
-        EntryType       Type       = Invalid;
+        constexpr static size_t TypeSize = 2;
+        constexpr static size_t  GenSize = 6;
+
+        constexpr static uint8_t GenLimit = 1 << GenSize;
+
+        static inline Generation CurrentGeneration = 0;
+
+        static void   ResetGeneration() { CurrentGeneration = 0; }
+        static void AdvanceGeneration() { CurrentGeneration = (CurrentGeneration + 1) % GenLimit; }
+
+        CompressedHash  Hash       = {};
+        CompressedScore Evaluation = {};
+        Move            Move       = {};
+
+        // Metadata
+        uint8_t    Depth            = {};
+        EntryType  Type  : TypeSize = {};
+        Generation Gen   :  GenSize = {};
+
+        Generation Age() const { return (CurrentGeneration - Gen + GenLimit) % GenLimit; }
 
     };
 
@@ -64,8 +80,38 @@ namespace StockDory
         Array<SearchTranspositionEntry, Size> Internal {};
 
         public:
-              SearchTranspositionEntry& operator[](const ZobristHash hash)       { return Internal[hash % Size]; }
-        const SearchTranspositionEntry& operator[](const ZobristHash hash) const { return Internal[hash % Size]; }
+        SearchTranspositionEntry& operator[](const CompressedHash hash)
+        {
+            using Generation = SearchTranspositionEntry::Generation;
+
+            struct AgeIndex { size_t Index = 0; Generation Age = 0; };
+
+            AgeIndex oldest {};
+
+            for (size_t i = 0; i < Size; i++) {
+                const auto& entry = Internal[i];
+
+                if (entry.Hash == hash) return Internal[i];
+
+                if (entry.Age() > oldest.Age) oldest = {
+                    .Index = i,
+                    .Age   = entry.Age()
+                };
+            }
+
+            return Internal[oldest.Index];
+        }
+
+        const SearchTranspositionEntry& operator[](const CompressedHash hash) const
+        {
+            for (size_t i = 0; i < Size; i++) {
+                const auto& entry = Internal[i];
+
+                if (entry.Hash == hash) return Internal[i];
+            }
+
+            return Internal[0];
+        }
 
     };
 
@@ -1032,7 +1078,7 @@ namespace StockDory
             //
             // As long as the search has not stopped, we should try to insert/replace the transposition table entry
             // with the new entry as it is most likely more relevant than the old entry
-            if (Status != SearchThreadStatus::Stopped) TryWriteTT(ttEntry, ttEntryNew);
+            if (Status != SearchThreadStatus::Stopped) TryReplaceTT(ttEntry, ttEntryNew);
 
             return bestEvaluation;
         }
@@ -1158,8 +1204,10 @@ namespace StockDory
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
         }
 
-        static void TryWriteTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
+        static void TryReplaceTT(SearchTranspositionEntry& pEntry, SearchTranspositionEntry nEntry)
         {
+            nEntry.Gen = SearchTranspositionEntry::CurrentGeneration;
+
             if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
                (pEntry.Type == Alpha &&
                 nEntry.Type == Beta) ||
@@ -1297,6 +1345,9 @@ namespace StockDory
                     }
 
                     ParallelTaskPool.Clear();
+
+                    SearchTranspositionEntry::AdvanceGeneration();
+
                     Searching = false;
                 }
             );
