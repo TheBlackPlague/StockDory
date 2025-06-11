@@ -82,22 +82,22 @@ namespace StockDory
         public:
         SearchTranspositionEntry& operator[](const CompressedHash hash)
         {
-            auto& result = Internal[0];
+            SearchTranspositionEntry* result = &Internal[0];
 
-            if (result.Type == Invalid || result.Hash == hash) return Internal[0];
+            if (result->Type == Invalid || result->Hash == hash) return *result;
 
             for (size_t i = 1; i < Size; i++) {
-                const auto& entry = Internal[i];
+                SearchTranspositionEntry& entry = Internal[i];
 
-                if (entry.Type == Invalid || entry.Hash == hash) return result;
+                if (entry.Type == Invalid || entry.Hash == hash) return entry;
 
-                const int16_t resultQuality = result.Depth - result.Age();
-                const int16_t  entryQuality =  entry.Depth -  entry.Age();
+                const int16_t resultQuality = result->Depth - result->Age();
+                const int16_t  entryQuality =  entry .Depth -  entry .Age();
 
-                if (resultQuality > entryQuality) result = entry;
+                if (resultQuality > entryQuality) result = &entry;
             }
 
-            return result;
+            return *result;
         }
 
         const SearchTranspositionEntry& operator[](const CompressedHash hash) const
