@@ -35,12 +35,16 @@ namespace StockDory
     using CompressedHash  = uint16_t;
     using CompressedScore =  int16_t;
 
-    constexpr CompressedScore CompressedInfinity = 32000;
-
     CompressedHash  CompressHash (const ZobristHash hash) { return hash; }
-    CompressedScore CompressScore(const Score      score)
+
+    CompressedScore CompressScore(const Score score, const uint8_t ply)
     {
-        return std::clamp<Score>(score, -CompressedInfinity, CompressedInfinity);
+        return IsWin(score) ? score + ply : IsLoss(score) ? score - ply : score;
+    }
+
+    Score DecompressScore(const CompressedScore score, const uint8_t ply)
+    {
+        return IsWin(score) ? score - ply : IsLoss(score) ? score + ply : score;
     }
 
     struct SearchTranspositionEntry
@@ -85,8 +89,8 @@ namespace StockDory
         struct Frame
         {
 
-            Score   StaticEvaluation = 0;
-            uint8_t HalfMoveCounter  = 0;
+            Score   StaticEvaluation = None;
+            uint8_t HalfMoveCounter  =    0;
 
         };
 
@@ -614,8 +618,8 @@ namespace StockDory
                 // evaluation will be Mate - ply - 1. If our alpha is greater or equal to this evaluation, then we know
                 // that an equally short or shorter mate was already found at some previous ply, and thus there is not
                 // much point in continuing further since we will not find a shorter mate in this branch
-                alpha = std::max<Score>(alpha, -Mate + ply    );
-                beta  = std::min<Score>(beta ,  Mate - ply - 1);
+                alpha = std::max<Score>(alpha, LossIn(ply    ));
+                beta  = std::min<Score>(beta ,  WinIn(ply + 1));
                 if (alpha >= beta) return alpha;
             }
 
@@ -625,13 +629,16 @@ namespace StockDory
             // exists a transposition entry - if the entry is valid, depending on the quality of the entry, we can
             // return the evaluation from the entry. Even if the entry isn't of sufficient quality to return directly,
             // we can still search the move in the entry first, since it most likely is the best move in the position
-            SearchTranspositionEntry& ttEntry = TT[hash];
-            Move                      ttMove  = {};
-            bool                      ttHit   = false;
+            SearchTranspositionEntry& ttEntry      = TT[hash];
+            Move                      ttMove       = {};
+            bool                      ttHit        = false;
+            Score                     ttEvaluation = None;
 
             if (ttEntry.Type != Invalid && ttEntry.Hash == CompressHash(hash)) {
                 ttHit  = true;
                 ttMove = ttEntry.Move;
+
+                ttEvaluation = DecompressScore(ttEntry.Evaluation, ply);
 
                 if (!PV && ttEntry.Depth >= depth) {
                     // If the entry is of sufficient quality, depending on the bounding type of the entry, we can
@@ -648,9 +655,9 @@ namespace StockDory
                     // - Alpha: The evaluation never exceeded alpha in the producing search, but we should only return
                     //          if we know it isn't exceeding alpha in the current search
 
-                    if (ttEntry.Type == Exact                               ) return ttEntry.Evaluation;
-                    if (ttEntry.Type == Beta  && ttEntry.Evaluation >= beta ) return ttEntry.Evaluation;
-                    if (ttEntry.Type == Alpha && ttEntry.Evaluation <= alpha) return ttEntry.Evaluation;
+                    if (ttEntry.Type == Exact                         ) return ttEvaluation;
+                    if (ttEntry.Type == Beta  && ttEvaluation >= beta ) return ttEvaluation;
+                    if (ttEntry.Type == Alpha && ttEvaluation <= alpha) return ttEvaluation;
                 }
             }
 
@@ -707,7 +714,7 @@ namespace StockDory
             //     unlikely to exceed alpha - in simple terms, use whichever evaluation is more pessimistic
             // - If we do not have a valid transposition table entry, use the neural network evaluation
             if (ttHit) {
-                staticEvaluation = ttEntry.Evaluation;
+                staticEvaluation = ttEvaluation;
 
                 if (ttEntry.Type != Exact) {
                     const Score nnEvaluation = Evaluation::Evaluate(Color, ThreadId);
@@ -728,7 +735,6 @@ namespace StockDory
             // ago if we were not under check, or the static evaluation from N * 2 plies ago if we were under check.
             // This is explained more in detail in the "Last non-checked Static Evaluation" comment above
             improving = staticEvaluation > Stack[ply - 2].StaticEvaluation;
-
 
             if (!PV) {
                 // Risky Pruning:
@@ -839,12 +845,11 @@ namespace StockDory
             // Out of Moves:
             //
             // If we have no moves to search at this point, it is either because we are in checkmate or stalemate
-            if (moves.Count() == 0) return checked ? -Mate + ply : Draw;
+            if (moves.Count() == 0) return checked ? LossIn(ply) : Draw;
 
             SearchTranspositionEntry ttEntryNew
             {
                 .Hash       = CompressHash(hash),
-                .Evaluation = -CompressedInfinity,
                 .Move       = ttMove,
                 .Depth      = static_cast<uint8_t>(depth),
                 .Type       = Alpha
@@ -1036,13 +1041,13 @@ namespace StockDory
                 break;
             }
 
-            ttEntryNew.Evaluation = CompressScore(bestEvaluation);
+            ttEntryNew.Evaluation = CompressScore(bestEvaluation, ply);
 
             // Transposition Table Writing:
             //
             // As long as the search has not stopped, we should try to insert/replace the transposition table entry
             // with the new entry as it is most likely more relevant than the old entry
-            if (Status != SearchThreadStatus::Stopped) TryWriteTT(ttEntry, ttEntryNew);
+            if (Status != SearchThreadStatus::Stopped) TryReplaceTT(ttEntry, ttEntryNew);
 
             return bestEvaluation;
         }
@@ -1071,9 +1076,11 @@ namespace StockDory
                 const SearchTranspositionEntry& ttEntry = TT[hash];
 
                 if (ttEntry.Hash == CompressHash(hash)) {
-                    if (ttEntry.Type == Exact                               ) return ttEntry.Evaluation;
-                    if (ttEntry.Type == Beta  && ttEntry.Evaluation >= beta ) return ttEntry.Evaluation;
-                    if (ttEntry.Type == Alpha && ttEntry.Evaluation <= alpha) return ttEntry.Evaluation;
+                    const Score ttEvaluation = DecompressScore(ttEntry.Evaluation, ply);
+
+                    if (ttEntry.Type == Exact                               ) return ttEvaluation;
+                    if (ttEntry.Type == Beta  && ttEvaluation >= beta ) return ttEvaluation;
+                    if (ttEntry.Type == Alpha && ttEvaluation <= alpha) return ttEvaluation;
                 }
             }
 
@@ -1168,10 +1175,8 @@ namespace StockDory
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
         }
 
-        static void TryWriteTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
+        static void TryReplaceTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
         {
-            if (abs(nEntry.Evaluation) >= CompressedInfinity) return;
-
             if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
                (pEntry.Type == Alpha &&
                 nEntry.Type == Beta) ||
