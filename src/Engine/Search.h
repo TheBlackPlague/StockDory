@@ -1170,6 +1170,8 @@ namespace StockDory
 
         static void TryWriteTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
         {
+            if (abs(nEntry.Evaluation) >= CompressedInfinity) return;
+
             if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
                (pEntry.Type == Alpha &&
                 nEntry.Type == Beta) ||
