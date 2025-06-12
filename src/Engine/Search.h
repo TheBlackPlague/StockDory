@@ -82,37 +82,29 @@ namespace StockDory
         public:
         SearchTranspositionEntry& operator[](const CompressedHash hash)
         {
-            auto* result = &Internal[0];
+            auto& a = Internal[0];
+            auto& b = Internal[1];
 
-            if (result->Type == Invalid || result->Hash == hash) return *result;
+            if (a.Type == Invalid || a.Hash == hash) return a;
+            if (b.Type == Invalid || b.Hash == hash) return b;
 
-            for (size_t i = 1; i < Size; i++) {
-                auto& entry = Internal[i];
+            const int16_t qualityA = a.Depth - a.Age();
+            const int16_t qualityB = b.Depth - b.Age();
 
-                if (entry.Type == Invalid || entry.Hash == hash) return entry;
+            if (qualityA > qualityB) return b;
 
-                const int16_t resultQuality = result->Depth - result->Age();
-                const int16_t  entryQuality =  entry .Depth -  entry .Age();
-
-                if (resultQuality > entryQuality) result = &entry;
-            }
-
-            return *result;
+            return a;
         }
 
         const SearchTranspositionEntry& operator[](const CompressedHash hash) const
         {
-            const auto& result = Internal[0];
+            const auto& a = Internal[0];
+            const auto& b = Internal[1];
 
-            if (result.Type == Invalid || result.Hash == hash) return result;
+            if (a.Type == Invalid || a.Hash == hash) return a;
+            if (b.Type == Invalid || b.Hash == hash) return b;
 
-            for (size_t i = 1; i < Size; i++) {
-                const auto& entry = Internal[i];
-
-                if (entry.Type == Invalid || entry.Hash == hash) return entry;
-            }
-
-            return result;
+            return a;
         }
 
     };
