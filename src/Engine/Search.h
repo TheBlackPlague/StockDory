@@ -75,7 +75,7 @@ namespace StockDory
     class SearchTranspositionCluster
     {
 
-        constexpr static size_t Size = 4;
+        constexpr static size_t Size = 2;
 
         Array<SearchTranspositionEntry, Size> Internal {};
 
