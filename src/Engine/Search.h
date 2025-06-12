@@ -1104,7 +1104,7 @@ namespace StockDory
                 // SEE is essentially an evaluation that determines if an exchange of pieces is materially favorable for
                 // us or not, and if it is not, then that tactical sequence is not worth searching further, and we can
                 // prune that branch entirely
-                if (!SEE::Accurate(Board, move, 0)) continue;
+                if (!SEE(Board, move, -SEEMaterial[Bishop])) continue;
 
                 const PreviousState state = DoMove<false>(move, ply);
 

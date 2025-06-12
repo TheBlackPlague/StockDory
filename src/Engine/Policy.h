@@ -75,7 +75,7 @@ namespace StockDory
             constexpr bool Promotion = PromotionPiece != NAP;
 
             const bool     capture = board[move.To()].Piece() != NAP;
-            const bool goodCapture = capture ? SEE::Accurate(board, move, 0) : false;
+            const bool goodCapture = capture ? SEE(board, move, 0) : false;
 
             uint32_t score = ScoreAnchor;
 

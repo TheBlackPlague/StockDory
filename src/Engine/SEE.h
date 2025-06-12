@@ -9,78 +9,68 @@
 #include "../Backend/Board.h"
 #include "../Backend/Type/Move.h"
 
-#include "Common.h"
+#include "TunableParameter.h"
 
 namespace StockDory
 {
 
-    class SEE
+    bool SEE(const Board& board, const Move move, const int32_t threshold)
     {
+        if (move.Promotion() != NAP) return true;
 
-        constexpr static Array<uint16_t, 7> Internal {
-            82, 337, 365, 477, 1025, 30000, 0
-        };
+        const Square from = move.From();
+        const Square to   = move.  To();
 
-        public:
-        static bool Accurate(const Board& board, const Move move, const int32_t threshold)
-        {
-            if (move.Promotion() != NAP) return true;
+        if (board[from].Piece() == Pawn &&  to == board.EnPassantSquare()                ) return true;
+        if (board[from].Piece() == King && (to == C1 || to == C8 || to == G1 || to == G8)) return true;
 
-            const Square from = move.From();
-            const Square to   = move.  To();
+        int32_t value = SEEMaterial[board[to].Piece()] - threshold;
+        if (value < 0) return false;
 
-            if (board[from].Piece() == Pawn &&  to == board.EnPassantSquare()                ) return true;
-            if (board[from].Piece() == King && (to == C1 || to == C8 || to == G1 || to == G8)) return true;
+        value -= SEEMaterial[board[from].Piece()];
+        if (value >= 0) return true;
 
-            int32_t value = Internal[board[to].Piece()] - threshold;
-            if (value < 0) return false;
+        const BitBoard diagonal = board.PieceBoard<White>(Bishop) | board.PieceBoard<Black>(Bishop) |
+                                  board.PieceBoard<White>(Queen ) | board.PieceBoard<Black>(Queen ) ;
+        const BitBoard straight = board.PieceBoard<White>(Rook  ) | board.PieceBoard<Black>(Rook  ) |
+                                  board.PieceBoard<White>(Queen ) | board.PieceBoard<Black>(Queen ) ;
 
-            value -= Internal[board[from].Piece()];
-            if (value >= 0) return true;
+        BitBoard occ = ~board[NAC] ^ FromSquare(from);
+        BitBoard att = board.SquareAttackers(to, occ);
 
-            const BitBoard diagonal = board.PieceBoard<White>(Bishop) | board.PieceBoard<Black>(Bishop) |
-                                      board.PieceBoard<White>(Queen ) | board.PieceBoard<Black>(Queen ) ;
-            const BitBoard straight = board.PieceBoard<White>(Rook  ) | board.PieceBoard<Black>(Rook  ) |
-                                      board.PieceBoard<White>(Queen ) | board.PieceBoard<Black>(Queen ) ;
+        Color ctm = Opposite(board.ColorToMove());
+        while (true) {
+            att &= occ;
 
-            BitBoard occ = ~board[NAC] ^ FromSquare(from);
-            BitBoard att = board.SquareAttackers(to, occ);
+            const BitBoard us = att & board[ctm];
+            if (!us) break;
 
-            Color ctm = Opposite(board.ColorToMove());
-            while (true) {
-                att &= occ;
+            Piece piece;
+            for (piece = Pawn; piece < King; piece = Next(piece)) if (us & board.PieceBoard(piece, ctm)) break;
 
-                const BitBoard us = att & board[ctm];
-                if (!us) break;
+            ctm = Opposite(ctm);
 
-                Piece piece;
-                for (piece = Pawn; piece < King; piece = Next(piece)) if (us & board.PieceBoard(piece, ctm)) break;
+            value = -value - 1 - SEEMaterial[piece];
+            if (value >= 0) {
+                if (piece == King && att & board[ctm]) ctm = Opposite(ctm);
 
-                ctm = Opposite(ctm);
-
-                value = -value - 1 - Internal[piece];
-                if (value >= 0) {
-                    if (piece == King && att & board[ctm]) ctm = Opposite(ctm);
-
-                    break;
-                }
-
-                Set<false>(occ, ToSquare(us & board.PieceBoard(piece, Opposite(ctm))));
-
-                if (piece == Pawn || piece == Bishop || piece == Queen) {
-                    const uint32_t idx = BlackMagicFactory::MagicIndex(Bishop, move.To(), occ);
-                    att |= AttackTable::Sliding[idx] & diagonal;
-                }
-                if (piece == Rook || piece == Queen) {
-                    const uint32_t idx = BlackMagicFactory::MagicIndex(Rook, move.To(), occ);
-                    att |= AttackTable::Sliding[idx] & straight;
-                }
+                break;
             }
 
-            return ctm != board.ColorToMove();
+            Set<false>(occ, ToSquare(us & board.PieceBoard(piece, Opposite(ctm))));
+
+            if (piece == Pawn || piece == Bishop || piece == Queen) {
+                const uint32_t idx = BlackMagicFactory::MagicIndex(Bishop, move.To(), occ);
+                att |= AttackTable::Sliding[idx] & diagonal;
+            }
+            if (piece == Rook || piece == Queen) {
+                const uint32_t idx = BlackMagicFactory::MagicIndex(Rook, move.To(), occ);
+                att |= AttackTable::Sliding[idx] & straight;
+            }
         }
 
-    };
+        return ctm != board.ColorToMove();
+    }
 
 } // StockDory
 

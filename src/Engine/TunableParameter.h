@@ -57,6 +57,10 @@ namespace StockDory
 
     constexpr uint8_t FutilityDepthFactor = 150;
 
+    constexpr Array<uint16_t, 7> SEEMaterial {
+        82, 337, 365, 477, 1025, 30000, 0
+    };
+
     constexpr uint16_t HistoryMultiplier = 300;
     constexpr uint16_t HistoryShiftDown  = 250;
 
