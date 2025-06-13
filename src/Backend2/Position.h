@@ -8,10 +8,10 @@
 
 #include "../External/strutil.h"
 
-#include "Primitive/BitBoard.h"
-#include "Primitive/Piece.h"
-#include "Primitive/PositionProperty.h"
-#include "Primitive/Zobrist.h"
+#include "BitBoard.h"
+#include "Piece.h"
+#include "PositionProperty.h"
+#include "Zobrist.h"
 
 namespace StockDory
 {
@@ -131,10 +131,38 @@ namespace StockDory
 
     };
 
+    class DefaultEvaluationHandler
+    {
+
+        static void Reset(const TID _ = 0) {};
+
+        [[clang::always_inline]]
+        static void  PreMakeMove(const TID threadId = 0) {};
+        [[clang::always_inline]]
+        static void PostMakeMove(const TID threadId = 0) {};
+
+        [[clang::always_inline]]
+        static void  PreUndoMove(const TID threadId = 0) {};
+        [[clang::always_inline]]
+        static void PostUndoMove(const TID threadId = 0) {};
+
+        static void   Activate(const Side side, const PieceType type, const Square sq, const TID threadId = 0) {};
+        static void Deactivate(const Side side, const PieceType type, const Square sq, const TID threadId = 0) {};
+
+        static void Transition(const Side side, const PieceType type, const Square origin, const Square target,
+                               const TID threadId = 0) {};
+
+        static Score Evaluate(const Side perspective, const TID threadId = 0) { std::unreachable(); }
+
+    };
+
+    template<class EvaluationHandler = DefaultEvaluationHandler>
     class Position
     {
 
         protected:
+        Zobrist Zobrist {};
+
         Array<BitBoard, 3, 7> PieceBB {};
         Array<BitBoard, 3   >  SideBB {};
 
@@ -142,10 +170,8 @@ namespace StockDory
 
         PositionProperty Property {};
 
-        Zobrist Zobrist {};
-
         public:
-        Position(const FEN& fen)
+        explicit Position(const FEN& fen)
         {
             PieceArray = fen.ExtractPieceArray();
             Property   = fen.ExtractProperty()  ;
@@ -168,9 +194,13 @@ namespace StockDory
             if (Property.SideToMove() != White) Zobrist = ZobristHash(Zobrist);
         }
 
-        FEN FEN() const { return StockDory::FEN(PieceArray, Property); }
+        // ReSharper disable once CppNonExplicitConversionOperator
+        operator FEN() const { return FEN(PieceArray, Property); }
 
-        BitBoard operator [](const Piece piece) const { return operator[](piece.Type(), piece.Side()); }
+        Score Evaluate(const TID threadId = 0)
+        { return EvaluationHandler::Evaluate(Property.SideToMove(), threadId); }
+
+        BitBoard operator [](const Piece piece) const { return operator[](piece.Side(), piece.Type()); }
 
         BitBoard operator [](const Side side) const
         {
@@ -179,7 +209,7 @@ namespace StockDory
             return SideBB[side];
         }
 
-        BitBoard operator [](const PieceType type, const Side side) const
+        BitBoard operator [](const Side side, const PieceType type) const
         {
             assert(type != InvalidPieceType, "Invalid Piece Type");
             assert(side != InvalidSide     , "Invalid Side"      );
@@ -190,6 +220,109 @@ namespace StockDory
         StockDory::Zobrist Hash() const { return Zobrist; }
 
         PositionProperty PositionProperty() const { return Property; }
+
+        template<Side Side>
+        bool UnderCheck() const
+        {
+            static_assert(Side != InvalidSide, "Invalid side");
+
+            const Square king = AsSquare(PieceBB[Side][King]);
+
+            if (Attack::Pawn  [Side][king] & PieceBB[~Side][Pawn  ]) return true;
+            if (Attack::Knight      [king] & PieceBB[~Side][Knight]) return true;
+
+            // TODO: Replace usage of InvalidSide BB
+            const BitBoard occ = ~SideBB[InvalidSide];
+
+            if (Attack::Sliding<Bishop>(king, occ) & (PieceBB[~Side][Bishop] | PieceBB[~Side][Queen]))
+                return true;
+
+            if (Attack::Sliding< Rook >(king, occ) & (PieceBB[~Side][ Rook ] | PieceBB[~Side][Queen]))
+                return true;
+
+            return false;
+        }
+
+        template<Side Side>
+        CheckBitBoard CheckBB() const
+        {
+            u08           count {};
+            CheckBitBoard check {};
+
+            const Square king = AsSquare(PieceBB[Side][King]);
+
+            const BitBoard   pawnCheck = Attack::Pawn  [Side][king] & PieceBB[~Side][Pawn  ];
+            const BitBoard knightCheck = Attack::Knight      [king] & PieceBB[~Side][Knight];
+
+            check.Mask |=   pawnCheck;
+            check.Mask |= knightCheck;
+
+            if (  pawnCheck) count++;
+            if (knightCheck) count++;
+
+            // TODO: Replace usage of InvalidSide BB
+            const BitBoard occ = ~SideBB[InvalidSide];
+
+            const BitBoard diagonalCheck = Attack::Sliding<Bishop>(king, occ) &
+                (PieceBB[~Side][Bishop] | PieceBB[~Side][Queen]);
+
+            const BitBoard straightCheck = Attack::Sliding< Rook >(king, occ) &
+                (PieceBB[~Side][ Rook ] | PieceBB[~Side][Queen]);
+
+            if (diagonalCheck) {
+                const Square checkSq = AsSquare(diagonalCheck);
+                check.Mask |= Ray::Between[king][checkSq];
+                check.Mask |= diagonalCheck;
+
+                count++;
+            }
+
+            if (straightCheck) {
+                const Square checkSq = AsSquare(straightCheck);
+                check.Mask |= Ray::Between[king][checkSq];
+                check.Mask |= straightCheck;
+
+                count++;
+
+                if (Count(straightCheck) > 1) count++;
+            }
+
+            if (check.Mask == 0) check.Mask = ~check.Mask;
+
+            check.Double = count > 1;
+
+            return check;
+        }
+
+        template<Side Side>
+        PinBitBoard PinBB() const
+        {
+            PinBitBoard pin {};
+
+            const Square king = AsSquare(PieceBB[Side][King]);
+
+            const BitBoard occ = SideBB[~Side];
+
+            const BitBoard diagonalCheck = Attack::Sliding<Bishop>(king, occ) &
+                (PieceBB[~Side][Bishop] | PieceBB[~Side][Queen]);
+
+            const BitBoard straightCheck = Attack::Sliding< Rook >(king, occ) &
+                (PieceBB[~Side][ Rook ] | PieceBB[~Side][Queen]);
+
+            for (const Square checkSq : diagonalCheck) {
+                const BitBoard possiblePin = Ray::Between[king][checkSq] | AsBitBoard(checkSq);
+
+                if (Count(possiblePin & SideBB[Side]) == 1) pin.DiagonalMask |= possiblePin;
+            }
+
+            for (const Square checkSq : straightCheck) {
+                const BitBoard possiblePin = Ray::Between[king][checkSq] | AsBitBoard(checkSq);
+
+                if (Count(possiblePin & SideBB[Side]) == 1) pin.StraightMask |= possiblePin;
+            }
+
+            return pin;
+        }
 
     };
 

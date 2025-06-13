@@ -7,7 +7,6 @@
 #define STOCKDORY_BASE_H
 
 #include <array>
-#include <cassert>
 #include <cstdint>
 #include <iomanip>
 #include <sstream>
@@ -31,6 +30,10 @@ namespace StockDory
     using f64 = double;
 
     using s00 = size_t;
+
+    using TID = s00;
+
+    using Score = i32;
 
     template<typename T, s00 N, s00... Ns>
     struct IArray { using Base = std::array<typename IArray<T, Ns...>::Base, N>; };

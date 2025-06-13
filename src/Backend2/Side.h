@@ -21,6 +21,8 @@ namespace StockDory
         "Invalid"
     };
 
+    constexpr Side operator ~(const Side side) { return static_cast<Side>(side ^ 1); }
+
     OutputStream& operator <<(OutputStream& os, const Side side) { return os << SideToString[side]; }
 
 } // StockDory

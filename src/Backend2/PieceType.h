@@ -6,8 +6,6 @@
 #ifndef STOCKDORY_PIECETYPE_H
 #define STOCKDORY_PIECETYPE_H
 
-#include <iostream>
-
 #include "Base.h"
 
 namespace StockDory

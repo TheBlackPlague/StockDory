@@ -61,14 +61,7 @@ namespace StockDory
 
         constexpr bool IsPromotion() const { return Flag() >= QueenPromotionCapture; }
 
-        constexpr PieceType PromotionType() const
-        {
-            const auto type = static_cast<PieceType>((Flag() - 3) / 2);
-
-            assert(type == Knight || type == Bishop || type == Rook || type == Queen, "Invalid Promotion Type");
-
-            return type;
-        }
+        constexpr PieceType PromotionType() const { return static_cast<PieceType>((Flag() - 3) / 2); }
 
     };
 
