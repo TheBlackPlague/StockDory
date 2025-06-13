@@ -13,19 +13,31 @@ namespace StockDory
 
     enum PieceType : u08 { Pawn, Knight, Bishop, Rook, Queen, King, InvalidPieceType };
 
-    constexpr void operator ++(PieceType& type) { type = static_cast<PieceType>(type + 1); }
+    constexpr PieceType operator ++(PieceType& type) { type = static_cast<PieceType>(type + 1); return type; }
 
-    constexpr inline Array<String, 7> PieceTypeToString {
-        "Pawn"  ,
-        "Knight",
-        "Bishop",
-        "Rook"  ,
-        "Queen" ,
-        "King"  ,
-        "Invalid"
-    };
+    constexpr PieceType operator ++(PieceType& type, int)
+    {
+        const PieceType temp = type;
 
-    OutputStream& operator <<(OutputStream& os, const PieceType type) { return os << PieceTypeToString[type]; }
+        type = static_cast<PieceType>(type + 1);
+
+        return temp;
+    }
+
+    OutputStream& operator <<(OutputStream& os, const PieceType type)
+    {
+        constexpr static Array<String, 7> PieceTypeToString {
+            "Pawn"  ,
+            "Knight",
+            "Bishop",
+            "Rook"  ,
+            "Queen" ,
+            "King"  ,
+            "Invalid"
+        };
+
+        return os << PieceTypeToString[type];
+    }
 
 } // StockDory
 

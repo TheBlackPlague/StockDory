@@ -25,9 +25,9 @@ namespace StockDory
 
     };
 
-    Square operator ++(Square& sq) { sq = static_cast<Square>(sq + 1); return sq; }
+    constexpr Square operator ++(Square& sq) { sq = static_cast<Square>(sq + 1); return sq; }
 
-    Square operator ++(Square& sq, int)
+    constexpr Square operator ++(Square& sq, int)
     {
         const Square temp = sq;
 
