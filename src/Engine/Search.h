@@ -48,11 +48,14 @@ namespace StockDory
 
         using EntryType = SearchTranspositionEntryType;
 
-        CompressedHash  Hash       = 0;
-        CompressedScore Evaluation = 0;
-        Move            Move       = ::Move();
-        uint8_t         Depth      = 0;
-        EntryType       Type       = Invalid;
+        CompressedHash  Hash             {};
+        CompressedScore Evaluation       {};
+        CompressedScore StaticEvaluation {};
+
+        // Metadata
+        Move      Move  {};
+        uint8_t   Depth {};
+        EntryType Type  {};
 
     };
 
@@ -707,7 +710,7 @@ namespace StockDory
             //     unlikely to exceed alpha - in simple terms, use whichever evaluation is more pessimistic
             // - If we do not have a valid transposition table entry, use the neural network evaluation
             if (ttHit) {
-                staticEvaluation = ttEntry.Evaluation;
+                staticEvaluation = ttEntry.StaticEvaluation;
 
                 if (ttEntry.Type != Exact) {
                     const Score nnEvaluation = Evaluation::Evaluate(Color, ThreadId);
@@ -715,7 +718,11 @@ namespace StockDory
                     if      (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, nnEvaluation);
                     else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, nnEvaluation);
                 }
-            } else staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
+            } else {
+                staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
+
+                ttEntry.StaticEvaluation = staticEvaluation;
+            }
 
             Stack[ply].StaticEvaluation = staticEvaluation;
 
@@ -843,11 +850,11 @@ namespace StockDory
 
             SearchTranspositionEntry ttEntryNew
             {
-                .Hash       = CompressHash(hash),
-                .Evaluation = -CompressedInfinity,
-                .Move       = ttMove,
-                .Depth      = static_cast<uint8_t>(depth),
-                .Type       = Alpha
+                .Hash             = CompressHash(hash),
+                .StaticEvaluation = CompressScore(staticEvaluation),
+                .Move             = ttMove,
+                .Depth            = static_cast<uint8_t>(depth),
+                .Type             = Alpha
             };
 
             const uint8_t lmpLastQuiet = LMPLastQuietBase +   depth * depth;
