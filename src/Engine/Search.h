@@ -711,12 +711,6 @@ namespace StockDory
             // - If we do not have a valid transposition table entry, use the neural network evaluation
             if (ttHit) {
                 staticEvaluation = ttEntry.StaticEvaluation;
-
-                const Score ttEvaluation = ttEntry.Evaluation;
-
-                if      (ttEntry.Type == Exact) staticEvaluation = ttEvaluation;
-                else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttEvaluation);
-                else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttEvaluation);
             } else {
                 staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
 
