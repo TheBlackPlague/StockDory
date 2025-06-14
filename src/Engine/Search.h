@@ -24,7 +24,7 @@ namespace StockDory
     enum SearchTranspositionEntryType : uint8_t
     {
 
-        Invalid,
+        UnknownType,
 
         Exact,
         Beta ,
@@ -632,7 +632,7 @@ namespace StockDory
             Move                      ttMove  = {};
             bool                      ttHit   = false;
 
-            if (ttEntry.Type != Invalid && ttEntry.Hash == CompressHash(hash)) {
+            if (ttEntry.Hash == CompressHash(hash)) {
                 ttHit  = true;
                 ttMove = ttEntry.Move;
 
@@ -712,16 +712,20 @@ namespace StockDory
             if (ttHit) {
                 staticEvaluation = ttEntry.StaticEvaluation;
 
-                if (ttEntry.Type != Exact) {
-                    const Score nnEvaluation = Evaluation::Evaluate(Color, ThreadId);
+                const Score ttEvaluation = ttEntry.Evaluation;
 
-                    if      (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, nnEvaluation);
-                    else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, nnEvaluation);
-                }
+                if      (ttEntry.Type == Exact) staticEvaluation = ttEvaluation;
+                else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttEvaluation);
+                else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttEvaluation);
             } else {
                 staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
 
-                ttEntry.StaticEvaluation = staticEvaluation;
+                const SearchTranspositionEntry ttEntryNew {
+                    .Hash             = CompressHash(hash),
+                    .StaticEvaluation = CompressScore(staticEvaluation),
+                };
+
+                TryWriteTT(ttEntry, ttEntryNew);
             }
 
             Stack[ply].StaticEvaluation = staticEvaluation;
