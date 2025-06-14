@@ -867,9 +867,13 @@ namespace StockDory
 
             Score bestEvaluation = -Infinity;
 
+            bool legalTTMove = false;
+
             uint8_t quietMoves = 0;
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move  = moves[i];
+
+                if (i == 0 && move == ttMove) legalTTMove = true;
 
                 const Piece movingPiece = Board[move.From()].Piece();
                 const Piece targetPiece = Board[move.  To()].Piece();
@@ -958,7 +962,7 @@ namespace StockDory
 
                         // Increase the reduction for moves if we have a transposition table move since it's most likely
                         // the best move in the position and the others are likely worse
-                        if (ttHit && ttEntry.Type != Alpha) r += LMRTTMoveBonus;
+                        if (legalTTMove && ttEntry.Type != Alpha) r += LMRTTMoveBonus;
 
                         // If we are not improving positionally, we can afford to reduce the search depth further
                         if (!improving) r += LMRNotImprovingBonus;
