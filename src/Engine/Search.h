@@ -63,9 +63,9 @@ namespace StockDory
     {
         const auto formula = [](const uint8_t depth, const uint8_t move) -> int32_t
         {
-            const int32_t value = (std::log(depth) * std::log(move) / 2 - 0.2) * LMRGranularityFactor;
+            const int32_t value = (std::log(depth) * std::log(move) / 2 - 0.2) * LMRQuantization;
 
-            return value / LMRGranularityFactor > 0 ? value : 0;
+            return value / LMRQuantization > 0 ? value : 0;
         };
 
         Array<int32_t, MaxDepth, MaxMove> temp {};
@@ -961,7 +961,7 @@ namespace StockDory
 
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
                         // mapped to discrete reduction
-                        r /= LMRGranularityFactor;
+                        r /= LMRQuantization;
 
                         evaluation = -PVS<OColor, false, false>(
                             ply + 1,
@@ -1181,9 +1181,9 @@ namespace StockDory
                                         Count(rook  ) * MaterialScalingWeightRook   +
                                         Count(queen ) * MaterialScalingWeightQueen  ;
 
-            weightedMaterial += MaterialScalingGranularity - MaterialScalingWeightedStartValue;
+            weightedMaterial += MaterialScalingQuantization - MaterialScalingWeightedStartValue;
 
-            return (Evaluation::Evaluate(Color, ThreadId) * weightedMaterial) / MaterialScalingGranularity;
+            return (Evaluation::Evaluate(Color, ThreadId) * weightedMaterial) / MaterialScalingQuantization;
         }
 
         static void TryWriteTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
