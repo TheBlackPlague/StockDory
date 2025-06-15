@@ -845,7 +845,7 @@ namespace StockDory
             // If we are at a high enough depth but have no transposition table entry, we can reduce the depth of the
             // search by a small amount - good positions are normally reached by a lot of different sequences and
             // usually have a transposition table entry
-            if (depth >= IIRMinimumDepth && !ttHit) depth -= IIRDepthReduction;
+            if (!PV && depth >= IIRMinimumDepth && !ttHit) depth -= IIRDepthReduction;
 
             using MoveList = OrderedMoveList<Color>;
 
