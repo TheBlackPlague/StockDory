@@ -52,12 +52,16 @@ namespace StockDory
 
         using EntryType = SearchTranspositionEntryType;
 
-        CompressedHash  Hash             {};
-        CompressedScore Evaluation       {};
-        CompressedScore StaticEvaluation {};
+        // Identity
+        CompressedHash Hash {};
+
+        // Evaluation
+        CompressedScore Evaluation       = None;
+        CompressedScore StaticEvaluation = None;
+
+        Move Move  {};
 
         // Metadata
-        Move      Move  {};
         uint8_t   Depth {};
         EntryType Type  {};
 
@@ -665,6 +669,10 @@ namespace StockDory
             Score staticEvaluation;
             bool  improving       ;
 
+            SearchTranspositionEntry staticTTEntry {
+                .Hash = CompressHash(hash)
+            };
+
             const bool checked = Board.Checked<Color>();
 
             if (checked) {
@@ -714,23 +722,26 @@ namespace StockDory
             //     network evaluation may be more unlikely to exceed alpha, so we should use whichever is more
             //     unlikely to exceed alpha - in simple terms, use whichever evaluation is more pessimistic
             // - If we do not have a valid transposition table entry, use the neural network evaluation
-            if (ttHit) {
-                staticEvaluation = ScaleEvaluation(DecompressScore(ttEntry.StaticEvaluation, ply));
+            Score rawStaticEvaluation;
 
+            if (ttHit) {
+                rawStaticEvaluation = ttEntry.StaticEvaluation;
+
+                if (rawStaticEvaluation == None) rawStaticEvaluation = Evaluation::Evaluate(Color, ThreadId);
+            } else {
+                rawStaticEvaluation = Evaluation::Evaluate(Color, ThreadId);
+            }
+
+            staticTTEntry.StaticEvaluation = rawStaticEvaluation;
+
+            TryReplaceTT(ttEntry, staticTTEntry);
+
+            staticEvaluation = ScaleEvaluation(rawStaticEvaluation);
+
+            if (ttHit) {
                 if (ttEntry.Type == Exact) staticEvaluation =                                   ttEvaluation ;
                 if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttEvaluation);
                 if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttEvaluation);
-            } else {
-                auto [raw, scaled] = EvaluateScaled<Color>();
-
-                const SearchTranspositionEntry ttEntryNew {
-                    .Hash             = CompressHash(hash),
-                    .StaticEvaluation = CompressScore(raw, ply),
-                };
-
-                TryReplaceTT(ttEntry, ttEntryNew);
-
-                staticEvaluation = scaled;
             }
 
             Stack[ply].StaticEvaluation = staticEvaluation;
@@ -856,13 +867,13 @@ namespace StockDory
             // If we have no moves to search at this point, it is either because we are in checkmate or stalemate
             if (moves.Count() == 0) return checked ? LossIn(ply) : Draw;
 
-            SearchTranspositionEntry ttEntryNew
-            {
-                .Hash             = CompressHash(hash),
-                .StaticEvaluation = CompressScore(staticEvaluation, ply),
-                .Move             = ttMove,
-                .Depth            = static_cast<uint8_t>(depth),
-                .Type             = Alpha
+            SearchTranspositionEntry ttEntryNew {
+                .Hash             = staticTTEntry.Hash,
+                .StaticEvaluation = staticTTEntry.StaticEvaluation,
+
+                .Move  = ttMove,
+                .Depth = static_cast<uint8_t>(depth),
+                .Type  = Alpha
             };
 
             const uint8_t lmpLastQuiet = LMPLastQuietBase +   depth * depth;
@@ -1218,7 +1229,7 @@ namespace StockDory
             return evaluation;
         }
 
-        static void TryReplaceTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
+        static void TryReplaceTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry& nEntry)
         {
             if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
                (pEntry.Type == Alpha &&
