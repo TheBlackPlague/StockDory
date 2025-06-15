@@ -61,16 +61,14 @@ namespace StockDory
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
 
-    constexpr uint16_t LMRGranularityFactor = 1024;
-
     inline auto LMRTable =
     [] -> Array<int32_t, MaxDepth, MaxMove>
     {
         const auto formula = [](const uint8_t depth, const uint8_t move) -> int32_t
         {
-            const int32_t value = (std::log(depth) * std::log(move) / 2 - 0.2) * LMRGranularityFactor;
+            const int32_t value = (std::log(depth) * std::log(move) / 2 - 0.2) * LMRQuantization;
 
-            return value / LMRGranularityFactor > 0 ? value : 0;
+            return value / LMRQuantization > 0 ? value : 0;
         };
 
         Array<int32_t, MaxDepth, MaxMove> temp {};
@@ -710,16 +708,22 @@ namespace StockDory
             //     unlikely to exceed alpha - in simple terms, use whichever evaluation is more pessimistic
             // - If we do not have a valid transposition table entry, use the neural network evaluation
             if (ttHit) {
-                staticEvaluation = ttEntry.StaticEvaluation;
+                staticEvaluation = ScaleEvaluation(ttEntry.StaticEvaluation);
+
+                if (ttEntry.Type == Exact) staticEvaluation =                                   ttEntry.Evaluation ;
+                if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttEntry.Evaluation);
+                if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttEntry.Evaluation);
             } else {
-                staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
+                auto [raw, scaled] = EvaluateScaled<Color>();
 
                 const SearchTranspositionEntry ttEntryNew {
                     .Hash             = CompressHash(hash),
-                    .StaticEvaluation = CompressScore(staticEvaluation),
+                    .StaticEvaluation = CompressScore(raw),
                 };
 
                 TryWriteTT(ttEntry, ttEntryNew);
+
+                staticEvaluation = scaled;
             }
 
             Stack[ply].StaticEvaluation = staticEvaluation;
@@ -861,13 +865,9 @@ namespace StockDory
 
             Score bestEvaluation = -Infinity;
 
-            bool legalTTMove = false;
-
             uint8_t quietMoves = 0;
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move  = moves[i];
-
-                if (i == 0 && move == ttMove) legalTTMove = true;
 
                 const Piece movingPiece = Board[move.From()].Piece();
                 const Piece targetPiece = Board[move.  To()].Piece();
@@ -956,7 +956,7 @@ namespace StockDory
 
                         // Increase the reduction for moves if we have a transposition table move since it's most likely
                         // the best move in the position and the others are likely worse
-                        if (legalTTMove && ttEntry.Type != Alpha) r += LMRTTMoveBonus;
+                        if (ttHit && ttEntry.Type != Alpha && ttEntry.Type != None) r += LMRTTMoveBonus;
 
                         // If we are not improving positionally, we can afford to reduce the search depth further
                         if (!improving) r += LMRNotImprovingBonus;
@@ -972,7 +972,7 @@ namespace StockDory
 
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
                         // mapped to discrete reduction
-                        r /= LMRGranularityFactor;
+                        r /= LMRQuantization;
 
                         evaluation = -PVS<OColor, false, false>(
                             ply + 1,
@@ -1089,7 +1089,7 @@ namespace StockDory
             // Static Evaluation:
             //
             // In Quiescence search, we use the neural network evaluation directly as the static evaluation
-            const Score staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
+            const Score staticEvaluation = EvaluateScaled<Color>().Scaled;
 
             // Window Adjustment:
             //
@@ -1175,6 +1175,39 @@ namespace StockDory
             int16_t& history = History[Color][Board[move.From()].Piece()][move.To()];
 
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
+        }
+
+        Score ScaleEvaluation(const Score raw) const
+        {
+            const BitBoard pawn   = Board.PieceBoard(Pawn  , White) | Board.PieceBoard(Pawn  , Black);
+            const BitBoard knight = Board.PieceBoard(Knight, White) | Board.PieceBoard(Knight, Black);
+            const BitBoard bishop = Board.PieceBoard(Bishop, White) | Board.PieceBoard(Bishop, Black);
+            const BitBoard rook   = Board.PieceBoard(Rook  , White) | Board.PieceBoard(Rook  , Black);
+            const BitBoard queen  = Board.PieceBoard(Queen , White) | Board.PieceBoard(Queen , Black);
+
+            uint16_t weightedMaterial = Count(pawn  ) * MaterialScalingWeightPawn   +
+                                        Count(knight) * MaterialScalingWeightKnight +
+                                        Count(bishop) * MaterialScalingWeightBishop +
+                                        Count(rook  ) * MaterialScalingWeightRook   +
+                                        Count(queen ) * MaterialScalingWeightQueen  ;
+
+            weightedMaterial += MaterialScalingQuantization - MaterialScalingWeightedStartValue;
+
+            return (raw * weightedMaterial) / MaterialScalingQuantization;
+        }
+
+        struct ScaledEvaluation { Score Raw; Score Scaled; };
+
+        template<Color Color>
+        ScaledEvaluation EvaluateScaled() const
+        {
+            ScaledEvaluation evaluation {
+                .Raw = Evaluation::Evaluate(Color, ThreadId)
+            };
+
+            evaluation.Scaled = ScaleEvaluation(evaluation.Raw);
+
+            return evaluation;
         }
 
         static void TryWriteTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
