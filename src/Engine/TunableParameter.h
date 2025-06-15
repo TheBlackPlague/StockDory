@@ -46,6 +46,7 @@ namespace StockDory
     constexpr uint8_t LMPMaximumDepth  = 3;
     constexpr uint8_t LMPLastQuietBase = 3;
 
+    constexpr uint16_t LMRQuantization      = 1024;
     constexpr  uint8_t LMRMinimumDepth      =    3;
     constexpr  uint8_t LMRMinimumMoves      =    3;
     constexpr uint16_t LMRNotPVBonus        = 1024;
@@ -59,6 +60,14 @@ namespace StockDory
 
     constexpr uint16_t HistoryMultiplier = 300;
     constexpr uint16_t HistoryShiftDown  = 250;
+
+    constexpr uint16_t MaterialScalingWeightedStartValue =  6688;
+    constexpr uint16_t MaterialScalingQuantization       = 16384;
+    constexpr uint16_t MaterialScalingWeightPawn         =     0;
+    constexpr uint16_t MaterialScalingWeightKnight       =   308;
+    constexpr uint16_t MaterialScalingWeightBishop       =   346;
+    constexpr uint16_t MaterialScalingWeightRook         =   521;
+    constexpr uint16_t MaterialScalingWeightQueen        =   994;
 
     constexpr uint8_t TTReplacementDepthMargin = 3;
 

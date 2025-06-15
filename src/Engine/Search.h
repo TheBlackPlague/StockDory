@@ -58,16 +58,14 @@ namespace StockDory
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
 
-    constexpr uint16_t LMRGranularityFactor = 1024;
-
     inline auto LMRTable =
     [] -> Array<int32_t, MaxDepth, MaxMove>
     {
         const auto formula = [](const uint8_t depth, const uint8_t move) -> int32_t
         {
-            const int32_t value = (std::log(depth) * std::log(move) / 2 - 0.2) * LMRGranularityFactor;
+            const int32_t value = (std::log(depth) * std::log(move) / 2 - 0.2) * LMRQuantization;
 
-            return value / LMRGranularityFactor > 0 ? value : 0;
+            return value / LMRQuantization > 0 ? value : 0;
         };
 
         Array<int32_t, MaxDepth, MaxMove> temp {};
@@ -710,12 +708,12 @@ namespace StockDory
                 staticEvaluation = ttEntry.Evaluation;
 
                 if (ttEntry.Type != Exact) {
-                    const Score nnEvaluation = Evaluation::Evaluate(Color, ThreadId);
+                    const Score nnEvaluation = EvaluateScaled<Color>();
 
                     if      (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, nnEvaluation);
                     else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, nnEvaluation);
                 }
-            } else staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
+            } else staticEvaluation = EvaluateScaled<Color>();
 
             Stack[ply].StaticEvaluation = staticEvaluation;
 
@@ -963,7 +961,7 @@ namespace StockDory
 
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
                         // mapped to discrete reduction
-                        r /= LMRGranularityFactor;
+                        r /= LMRQuantization;
 
                         evaluation = -PVS<OColor, false, false>(
                             ply + 1,
@@ -1080,7 +1078,7 @@ namespace StockDory
             // Static Evaluation:
             //
             // In Quiescence search, we use the neural network evaluation directly as the static evaluation
-            const Score staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
+            const Score staticEvaluation = EvaluateScaled<Color>();
 
             // Window Adjustment:
             //
@@ -1166,6 +1164,26 @@ namespace StockDory
             int16_t& history = History[Color][Board[move.From()].Piece()][move.To()];
 
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
+        }
+
+        template<Color Color>
+        Score EvaluateScaled() const
+        {
+            const BitBoard pawn   = Board.PieceBoard(Pawn  , White) | Board.PieceBoard(Pawn  , Black);
+            const BitBoard knight = Board.PieceBoard(Knight, White) | Board.PieceBoard(Knight, Black);
+            const BitBoard bishop = Board.PieceBoard(Bishop, White) | Board.PieceBoard(Bishop, Black);
+            const BitBoard rook   = Board.PieceBoard(Rook  , White) | Board.PieceBoard(Rook  , Black);
+            const BitBoard queen  = Board.PieceBoard(Queen , White) | Board.PieceBoard(Queen , Black);
+
+            uint16_t weightedMaterial = Count(pawn  ) * MaterialScalingWeightPawn   +
+                                        Count(knight) * MaterialScalingWeightKnight +
+                                        Count(bishop) * MaterialScalingWeightBishop +
+                                        Count(rook  ) * MaterialScalingWeightRook   +
+                                        Count(queen ) * MaterialScalingWeightQueen  ;
+
+            weightedMaterial += MaterialScalingQuantization - MaterialScalingWeightedStartValue;
+
+            return (Evaluation::Evaluate(Color, ThreadId) * weightedMaterial) / MaterialScalingQuantization;
         }
 
         static void TryWriteTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
