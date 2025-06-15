@@ -404,7 +404,7 @@ namespace StockDory
                     EventHandler::HandleIterativeDeepeningIterationCompletion({
                         .Depth          = IDepth,
                         .SelectiveDepth = SelectiveDepth,
-                        .Evaluation     = WDLCalculator::S(Board, Evaluation),
+                        .Evaluation     = Evaluation,
                         .WDL            = WDL(Board, Evaluation),
                         .Nodes          = Nodes,
                         .Time           = time,
