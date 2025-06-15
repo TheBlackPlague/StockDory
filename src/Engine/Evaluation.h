@@ -37,7 +37,7 @@ namespace StockDory
 
         static void Initialize()
         {
-            const size_t threadCount = ThreadPool.Size() + 1;
+            const size_t threadCount = ThreadPool.Size();
 
             ThreadLocalStack.clear();
             ThreadLocalStack.reserve(threadCount);
