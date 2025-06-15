@@ -1071,27 +1071,24 @@ namespace StockDory
             // The main thread is responsible for ensuring that the correct selective depth is reported
             if (ThreadType == Main && PV) SelectiveDepth = std::max(SelectiveDepth, ply);
 
-            if (!PV) {
-                // Transposition Table Reading:
-                //
-                // We can check if the current position has been searched before, and if it has, then there most likely
-                // exists a transposition entry - if the entry is valid, depending on the bounds of the entry, we can
-                // return the evaluation from the entry. We do not check for the entry's depth here, as we are already
-                // at a non-positive depth and all entries are going to be at least deeper than this depth. We also do
-                // not do this in PV branches as even a slight inaccuracy due to hash collisions or other factors can
-                // cause us to miss a good move
+            const ZobristHash hash = Board.Zobrist();
 
-                const ZobristHash hash = Board.Zobrist();
+            // Transposition Table Reading:
+            //
+            // We can check if the current position has been searched before, and if it has, then there most likely
+            // exists a transposition entry - if the entry is valid, depending on the bounds of the entry, we can
+            // return the evaluation from the entry. We do not check for the entry's depth here, as we are already
+            // at a non-positive depth and all entries are going to be at least deeper than this depth. We also do
+            // not do this in PV branches as even a slight inaccuracy due to hash collisions or other factors can
+            // cause us to miss a good move
+            SearchTranspositionEntry& ttEntry = TT[hash];
 
-                const SearchTranspositionEntry& ttEntry = TT[hash];
+            if (!PV && ttEntry.Hash == CompressHash(hash)) {
+                const Score ttEvaluation = DecompressScore(ttEntry.Evaluation, ply);
 
-                if (ttEntry.Hash == CompressHash(hash)) {
-                    const Score ttEvaluation = DecompressScore(ttEntry.Evaluation, ply);
-
-                    if (ttEntry.Type == Exact                         ) return ttEvaluation;
-                    if (ttEntry.Type == Beta  && ttEvaluation >= beta ) return ttEvaluation;
-                    if (ttEntry.Type == Alpha && ttEvaluation <= alpha) return ttEvaluation;
-                }
+                if (ttEntry.Type == Exact                         ) return ttEvaluation;
+                if (ttEntry.Type == Beta  && ttEvaluation >= beta ) return ttEvaluation;
+                if (ttEntry.Type == Alpha && ttEvaluation <= alpha) return ttEvaluation;
             }
 
             // Static Evaluation:
@@ -1111,6 +1108,13 @@ namespace StockDory
             using MoveList = OrderedMoveList<Color, true>;
 
             MoveList moves (Board, ply, Killer, History);
+
+            SearchTranspositionEntry ttEntryNew
+            {
+                .Hash             = CompressHash(hash),
+                .StaticEvaluation = CompressScore(staticEvaluation, ply),
+                .Type             = Alpha
+            };
 
             Score bestEvaluation = staticEvaluation;
             for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -1135,10 +1139,24 @@ namespace StockDory
 
                 if (evaluation <= alpha) continue;
 
+                ttEntryNew.Type = Exact;
+                ttEntryNew.Move =  move;
+
                 alpha = evaluation;
 
-                if (evaluation >= beta) break;
+                if (evaluation < beta) continue;
+
+                ttEntryNew.Type = Beta;
+                break;
             }
+
+            ttEntryNew.Evaluation = CompressScore(bestEvaluation, ply);
+
+            // Transposition Table Writing:
+            //
+            // As long as the search has not stopped, we should try to insert/replace the transposition table entry
+            // with the new entry as it is most likely more relevant than the old entry
+            if (Status != SearchThreadStatus::Stopped) TryReplaceTT(ttEntry, ttEntryNew);
 
             return bestEvaluation;
         }
@@ -1218,7 +1236,7 @@ namespace StockDory
             return evaluation;
         }
 
-        static void TryReplaceTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
+        static void TryReplaceTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry& nEntry)
         {
             if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
                (pEntry.Type == Alpha &&
