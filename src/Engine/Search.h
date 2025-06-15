@@ -715,7 +715,7 @@ namespace StockDory
             //     unlikely to exceed alpha - in simple terms, use whichever evaluation is more pessimistic
             // - If we do not have a valid transposition table entry, use the neural network evaluation
             if (ttHit) {
-                staticEvaluation = ScaleEvaluation(DecompressScore(ttEntry.StaticEvaluation, ply));
+                staticEvaluation = ScaleEvaluation(ttEntry.StaticEvaluation);
 
                 if (ttEntry.Type == Exact) staticEvaluation =                                   ttEvaluation ;
                 if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttEvaluation);
@@ -1218,7 +1218,7 @@ namespace StockDory
             return evaluation;
         }
 
-        static void TryReplaceTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
+        static void TryReplaceTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry& nEntry)
         {
             if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
                (pEntry.Type == Alpha &&
