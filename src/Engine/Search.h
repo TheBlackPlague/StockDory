@@ -52,12 +52,17 @@ namespace StockDory
 
         using EntryType = SearchTranspositionEntryType;
 
-        CompressedHash  Hash             {};
-        CompressedScore Evaluation       {};
-        CompressedScore StaticEvaluation {};
+        // Identity
+        CompressedHash Hash {};
+
+        // Evaluation
+        CompressedScore Evaluation       = None;
+        CompressedScore StaticEvaluation = None;
+
+        // Move
+        Move Move {};
 
         // Metadata
-        Move      Move  {};
         uint8_t   Depth {};
         EntryType Type  {};
 
@@ -90,8 +95,12 @@ namespace StockDory
         struct Frame
         {
 
-            Score   StaticEvaluation = None;
-            uint8_t HalfMoveCounter  =    0;
+            // Evaluation
+            Score RawStaticEvaluation = None;
+            Score    StaticEvaluation = None;
+
+            // Misc
+            uint8_t HalfMoveCounter = 0;
 
         };
 
@@ -662,8 +671,13 @@ namespace StockDory
                 }
             }
 
-            Score staticEvaluation;
-            bool  improving       ;
+            Score rawStaticEvaluation;
+            Score    staticEvaluation;
+            bool  improving          ;
+
+            SearchTranspositionEntry staticTTEntry {
+                .Hash = CompressHash(hash)
+            };
 
             const bool checked = Board.Checked<Color>();
 
@@ -678,7 +692,8 @@ namespace StockDory
                 // were in check, recursively, is the static evaluation from four plies ago, and so on. This essentially
                 // means the static evaluation from two plies ago is the static evaluation from the last ply where we
                 // were not checked which could be two plies ago, four plies ago, or any N * 2 plies ago
-                staticEvaluation = Stack[ply].StaticEvaluation = Stack[ply - 2].StaticEvaluation;
+                rawStaticEvaluation = Stack[ply].RawStaticEvaluation = Stack[ply - 2].RawStaticEvaluation;
+                   staticEvaluation = Stack[ply].   StaticEvaluation = Stack[ply - 2].   StaticEvaluation;
 
                 // Positionally Improving:
                 //
@@ -715,23 +730,28 @@ namespace StockDory
             //     unlikely to exceed alpha - in simple terms, use whichever evaluation is more pessimistic
             // - If we do not have a valid transposition table entry, use the neural network evaluation
             if (ttHit) {
-                staticEvaluation = ScaleEvaluation(ttEntry.StaticEvaluation);
+                rawStaticEvaluation = ttEntry.StaticEvaluation;
+
+                if (rawStaticEvaluation == None) {
+                    rawStaticEvaluation = Evaluation::Evaluate(Color, ThreadId);
+
+                    staticTTEntry.StaticEvaluation = rawStaticEvaluation;
+                }
+
+                staticEvaluation = ScaleEvaluation(rawStaticEvaluation);
 
                 if (ttEntry.Type == Exact) staticEvaluation =                                   ttEvaluation ;
                 if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttEvaluation);
                 if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttEvaluation);
             } else {
-                auto [raw, scaled] = EvaluateScaled<Color>();
+                rawStaticEvaluation = Evaluation::Evaluate(Color, ThreadId);
 
-                const SearchTranspositionEntry ttEntryNew {
-                    .Hash             = CompressHash(hash),
-                    .StaticEvaluation = CompressScore(raw, ply),
-                };
+                staticTTEntry.StaticEvaluation = rawStaticEvaluation;
 
-                TryReplaceTT(ttEntry, ttEntryNew);
-
-                staticEvaluation = scaled;
+                staticEvaluation = ScaleEvaluation(rawStaticEvaluation);
             }
+
+            TryReplaceTT(ttEntry, staticTTEntry);
 
             Stack[ply].StaticEvaluation = staticEvaluation;
 
@@ -845,7 +865,7 @@ namespace StockDory
             // If we are at a high enough depth but have no transposition table entry, we can reduce the depth of the
             // search by a small amount - good positions are normally reached by a lot of different sequences and
             // usually have a transposition table entry
-            if (depth >= IIRMinimumDepth && !ttHit) depth -= IIRDepthReduction;
+            if (depth >= IIRMinimumDepth && !ttMove) depth -= IIRDepthReduction;
 
             using MoveList = OrderedMoveList<Color>;
 
@@ -859,11 +879,12 @@ namespace StockDory
             SearchTranspositionEntry ttEntryNew
             {
                 .Hash             = CompressHash(hash),
-                .StaticEvaluation = CompressScore(staticEvaluation, ply),
                 .Move             = ttMove,
                 .Depth            = static_cast<uint8_t>(depth),
                 .Type             = Alpha
             };
+
+            ttEntryNew.StaticEvaluation = rawStaticEvaluation;
 
             const uint8_t lmpLastQuiet = LMPLastQuietBase +   depth * depth;
             const bool    doLMP        = !Root && !checked && depth <= LMPMaximumDepth;
