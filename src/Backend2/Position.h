@@ -6,6 +6,8 @@
 #ifndef STOCKDORY_POSITION_H
 #define STOCKDORY_POSITION_H
 
+#include <cassert>
+
 #include "../External/strutil.h"
 
 #include "BitBoard.h"
@@ -34,7 +36,7 @@ namespace StockDory
         {
             OutputStringStream stream;
 
-            s00 empty = 0;
+            usize empty = 0;
 
             for (Square sq = A1; sq < InvalidSquare; ++sq) {
                 if (sq % 8 == 0 && sq != A1) {
@@ -75,8 +77,8 @@ namespace StockDory
 
             InputStringStream stream (Internal);
 
-            for (s00 rank = 7; rank < 8; rank--) {
-                s00 file = 0;
+            for (usize rank = 7; rank < 8; rank--) {
+                usize file = 0;
 
                 while (true) {
                     const char p = stream.get();
@@ -84,7 +86,7 @@ namespace StockDory
                     if (p == '/') break;
 
                     if (isdigit(p)) {
-                        file += static_cast<s00>(p - 48);
+                        file += static_cast<usize>(p - 48);
                         continue;
                     }
 
@@ -118,7 +120,7 @@ namespace StockDory
         {
             PositionProperty result {};
 
-            const s00 idx = Internal.find(' ');
+            const usize idx = Internal.find(' ');
 
             const String fenProperty = Internal.substr(idx + 1);
 

@@ -29,19 +29,19 @@ namespace StockDory
     using f32 =  float;
     using f64 = double;
 
-    using s00 = size_t;
+    using usize = size_t;
 
-    using TID = s00;
+    using TID = usize;
 
     using Score = i32;
 
-    template<typename T, s00 N, s00... Ns>
+    template<typename T, usize N, usize... Ns>
     struct IArray { using Base = std::array<typename IArray<T, Ns...>::Base, N>; };
 
-    template<typename T, s00 N>
+    template<typename T, usize N>
     struct IArray<T, N> { using Base = std::array<T, N>; };
 
-    template<typename T, s00... Ns>
+    template<typename T, usize... Ns>
     using Array = typename IArray<T, Ns...>::Base; // Fixed-size N-dimensional array of type T
 
     template<typename T>

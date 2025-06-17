@@ -42,7 +42,10 @@ namespace StockDory
         u16    Internal3 = 1;
 
         public:
-        Zobrist HashCastlingRights(const Zobrist hash) const { return ZobristHash(hash, Internal0 & CastlingRightMask); }
+        Zobrist HashCastlingRights(const Zobrist hash) const
+        {
+            return ZobristHash(hash, Internal0 & CastlingRightMask);
+        }
 
         Zobrist HashEnPassantSquare(const Zobrist hash) const { return ZobristHash(hash, Internal1); }
 
