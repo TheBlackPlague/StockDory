@@ -55,27 +55,48 @@ namespace StockDory
 
         template<class EvaluationHandler = DefaultEvaluationHandler>
         [[clang::always_inline]]
-        void Pawn(const Position<EvaluationHandler>& position, const PinBitBoard& pin, const CheckBitBoard& check
+        void Pawn(const Position<EvaluationHandler>& position, const PinBitBoard& pin, const CheckBitBoard& check,
                   const Square sq)
         {
             const auto property = position.PositionProperty();
 
-            if (Get(pin.DiagonalMask, sq)) {
-                const BitBoard attack = Attack::Pawn[Side][sq];
+            BitBoard pushes {};
 
-                const Square ep = property.EnPassantSquare();
-
-                Internal |= attack &  AsBitBoard(ep) & pin.DiagonalMask |
-                            attack & position[~Side] & pin.DiagonalMask & check.Mask;
-
-                if (AsBitBoard(ep)) {
-                    const auto epPieceSq = static_cast<Square>(
-                        Side == White ? ep - 8 : ep + 8
-                    );
-
-                    if (!EnPassantLegal(position, sq, epPieceSq, ep)) Internal &= ~AsBitBoard(ep);
-                }
+            if (!Get(pin.DiagonalMask, sq)) {
+                // TODO: Replace usage of InvalidSide BB
+                pushes |= (Side == White ? AsBitBoard(sq) << 8 : AsBitBoard(sq) >> 8) & position[InvalidSide];
+                if (pushes && pushes & (Side == White ? Ray::Rank[Ray::Rank3] : Ray::Rank[Ray::Rank6]))
+                    pushes |= (Side == White ? pushes << 8 : pushes >> 8) & position[InvalidSide];
             }
+
+            Internal |= pushes & pin.StraightMask;
+
+            if (Get(pin.StraightMask, sq)) { Internal &= check.Mask; return; }
+
+            const BitBoard attack = Attack::Pawn[Side][sq];
+
+            const Square ep = property.EnPassantSquare();
+
+            Internal |= attack & AsBitBoard(ep) & pin.DiagonalMask;
+
+            if (Internal) {
+                const auto epPieceSq = static_cast<Square>(
+                    Side == White ? ep - 8 : ep + 8
+                );
+
+                if (!EnPassantLegal(position, sq, epPieceSq, ep)) Internal &= ~AsBitBoard(ep);
+            }
+
+            Internal |= attack & position[~Side] & pin.DiagonalMask & check.Mask;
+        }
+
+        template<class EvaluationHandler = DefaultEvaluationHandler>
+        void Knight(const Position<EvaluationHandler>& position, const PinBitBoard& pin, const CheckBitBoard& check
+                    const Square sq)
+        {
+            if (Get(pin.StraightMask | pin.DiagonalMask, sq)) return;
+
+            Internal |= Attack::Knight[sq] & ~position[Side] & check.Mask;
         }
 
     };
