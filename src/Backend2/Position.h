@@ -165,8 +165,8 @@ namespace StockDory
         protected:
         Zobrist Zobrist {};
 
-        Array<BitBoard, 3, 7> PieceBB {};
-        Array<BitBoard, 3   >  SideBB {};
+        Array<BitBoard, 2, 6> PieceBB {};
+        Array<BitBoard, 2   >  SideBB {};
 
         PieceArray PieceArray {};
 
@@ -183,6 +183,8 @@ namespace StockDory
 
                 const auto type = piece.Type();
                 const auto side = piece.Side();
+
+                if (side == InvalidSide || type == InvalidPieceType) continue;
 
                 Set<true>(PieceBB[side][type], sq);
                 Set<true>( SideBB[side]      , sq);
@@ -223,6 +225,8 @@ namespace StockDory
 
         PositionProperty PositionProperty() const { return Property; }
 
+        BitBoard Occupation() const { return SideBB[White] | SideBB[Black]; }
+
         template<Side Side>
         bool UnderCheck() const
         {
@@ -233,8 +237,7 @@ namespace StockDory
             if (Attack::Pawn  [Side][king] & PieceBB[~Side][Pawn  ]) return true;
             if (Attack::Knight      [king] & PieceBB[~Side][Knight]) return true;
 
-            // TODO: Replace usage of InvalidSide BB
-            const BitBoard occ = ~SideBB[InvalidSide];
+            const BitBoard occ = Occupation();
 
             if (Attack::Sliding<Bishop>(king, occ) & (PieceBB[~Side][Bishop] | PieceBB[~Side][Queen]))
                 return true;
@@ -262,8 +265,7 @@ namespace StockDory
             if (  pawnCheck) count++;
             if (knightCheck) count++;
 
-            // TODO: Replace usage of InvalidSide BB
-            const BitBoard occ = ~SideBB[InvalidSide];
+            const BitBoard occ = Occupation();
 
             const BitBoard diagonalCheck = Attack::Sliding<Bishop>(king, occ) &
                 (PieceBB[~Side][Bishop] | PieceBB[~Side][Queen]);
@@ -329,6 +331,7 @@ namespace StockDory
     };
 
     template<Side Side, PieceType Type, class EvaluationHandler = DefaultEvaluationHandler>
+    [[clang::always_inline]]
     BitBoard MoveGen(const Position<EvaluationHandler>& position, const PinBitBoard& pin, const CheckBitBoard& check,
                      const Square sq)
     {
@@ -342,11 +345,12 @@ namespace StockDory
 
             BitBoard pushes {};
 
+            BitBoard occ = position.Occupation();
+
             if (!Get(pin.DiagonalMask, sq)) {
-                // TODO: Replace usage of InvalidSide BB
-                pushes |= (Side == White ? AsBitBoard(sq) << 8 : AsBitBoard(sq) >> 8) & position[InvalidSide];
+                pushes |= (Side == White ? AsBitBoard(sq) << 8 : AsBitBoard(sq) >> 8) & ~occ;
                 if (pushes && pushes & (Side == White ? Ray::Rank[Ray::Rank3] : Ray::Rank[Ray::Rank6]))
-                    pushes |= (Side == White ? AsBitBoard(sq) << 16 : AsBitBoard(sq) >> 8) & position[InvalidSide];
+                    pushes |= (Side == White ? AsBitBoard(sq) << 16 : AsBitBoard(sq) >> 8) & ~occ;
 
                 pushes &= pin.StraightMask;
 
@@ -361,9 +365,6 @@ namespace StockDory
 
             if (epAttack) {
                 const auto target = static_cast<Square>(Side == White ? ep - 8 : ep + 8);
-
-                // TODO: Replace usage of InvalidSide BB
-                BitBoard occ = ~position[InvalidSide];
 
                 Set<false>(occ,     sq);
                 Set<false>(occ, target);
@@ -392,9 +393,11 @@ namespace StockDory
 
             if (Get(pin.StraightMask, sq)) return {};
 
+            const BitBoard occ = position.Occupation();
+
             return Get(pin.DiagonalMask, sq) ?
-                Attack::Sliding<Bishop>(sq, ~position[InvalidSide]) & ~position[Side] & pin.DiagonalMask & check.Mask :
-                Attack::Sliding<Bishop>(sq, ~position[InvalidSide]) & ~position[Side] &                    check.Mask ;
+                Attack::Sliding<Bishop>(sq, occ) & ~position[Side] & pin.DiagonalMask & check.Mask :
+                Attack::Sliding<Bishop>(sq, occ) & ~position[Side] &                    check.Mask ;
         }
 
         if (Type == Rook) {
@@ -402,9 +405,11 @@ namespace StockDory
 
             if (Get(pin.DiagonalMask, sq)) return {};
 
+            const BitBoard occ = position.Occupation();
+
             return Get(pin.StraightMask, sq) ?
-                Attack::Sliding<Rook>(sq, ~position[InvalidSide]) & ~position[Side] & pin.StraightMask & check.Mask :
-                Attack::Sliding<Rook>(sq, ~position[InvalidSide]) & ~position[Side] &                    check.Mask ;
+                Attack::Sliding<Rook>(sq, occ) & ~position[Side] & pin.StraightMask & check.Mask :
+                Attack::Sliding<Rook>(sq, occ) & ~position[Side] &                    check.Mask ;
         }
 
         if (Type == Queen) {
@@ -415,16 +420,17 @@ namespace StockDory
 
             if (straight && diagonal) return {};
 
+            const BitBoard occ = position.Occupation();
+
             BitBoard attack;
 
-            // TODO: Replace usage of InvalidSide BB
             if (diagonal)
-                attack = Attack::Sliding<Bishop>(sq, ~position[InvalidSide]) & pin.DiagonalMask;
+                attack = Attack::Sliding<Bishop>(sq, occ) & pin.DiagonalMask;
             else if (straight)
-                attack = Attack::Sliding< Rook >(sq, ~position[InvalidSide]) & pin.StraightMask;
+                attack = Attack::Sliding< Rook >(sq, occ) & pin.StraightMask;
             else
-                attack = Attack::Sliding<Bishop>(sq, ~position[InvalidSide]) |
-                         Attack::Sliding< Rook >(sq, ~position[InvalidSide]) ;
+                attack = Attack::Sliding<Bishop>(sq, occ) |
+                         Attack::Sliding< Rook >(sq, occ) ;
 
             return attack & ~position[Side] & check.Mask;
         }
@@ -434,8 +440,7 @@ namespace StockDory
 
             if (attack == 0) return {};
 
-            // TODO: Replace usage of InvalidSide BB
-            const BitBoard occ = ~position[InvalidSide];
+            const BitBoard occ = position.Occupation();
 
             const auto KingSquareLegal = [&](const Square target) -> bool
             {
