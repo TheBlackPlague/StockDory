@@ -49,6 +49,8 @@ namespace StockDory
         u16 Internal;
 
         public:
+        constexpr Move() = default;
+
         constexpr Move(const Square origin, const Square target, const MoveFlag flag)
         : Internal(origin | target << TargetShift | flag << FlagShift) {}
 
@@ -59,11 +61,13 @@ namespace StockDory
 
         constexpr bool IsCapture() const { return Flag() & Capture; }
 
-        constexpr bool IsPromotion() const { return Flag() >= QueenPromotionCapture; }
+        constexpr bool IsPromotion() const { return Flag() >= KnightPromotionCapture; }
 
         constexpr PieceType PromotionType() const { return static_cast<PieceType>((Flag() - 3) / 2); }
 
     };
+
+    auto InvalidMove = Move<>(A8, A8, static_cast<MoveFlag>(0b1110));
 
     static_assert(Move(E7, E8, KnightPromotion).PromotionType() == Knight, "Promotion Type is not Knight");
     static_assert(Move(A7, A8, BishopPromotion).PromotionType() == Bishop, "Promotion Type is not Bishop");

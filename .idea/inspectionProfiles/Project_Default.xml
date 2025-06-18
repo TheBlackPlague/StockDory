@@ -8,6 +8,7 @@
     <inspection_tool class="CppNonExplicitConvertingConstructor" enabled="false" level="HINT" enabled_by_default="false" />
     <inspection_tool class="CppNonInlineFunctionDefinitionInHeaderFile" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="CppNonInlineVariableDefinitionInHeaderFile" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="CppTooWideScope" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
     <inspection_tool class="CppTooWideScopeInitStatement" enabled="false" level="HINT" enabled_by_default="false" />
   </profile>
 </component>

@@ -328,6 +328,159 @@ namespace StockDory
 
     };
 
+    template<Side Side, PieceType Type, class EvaluationHandler = DefaultEvaluationHandler>
+    BitBoard MoveGen(const Position<EvaluationHandler>& position, const PinBitBoard& pin, const CheckBitBoard& check,
+                     const Square sq)
+    {
+        static_assert(Side != InvalidSide     , "Invalid Side"      );
+        static_assert(Type != InvalidPieceType, "Invalid Piece Type");
+
+        if (Type == Pawn) {
+            if (check.Double) return {};
+
+            const PositionProperty property = position.PositionProperty();
+
+            BitBoard pushes {};
+
+            if (!Get(pin.DiagonalMask, sq)) {
+                // TODO: Replace usage of InvalidSide BB
+                pushes |= (Side == White ? AsBitBoard(sq) << 8 : AsBitBoard(sq) >> 8) & position[InvalidSide];
+                if (pushes && pushes & (Side == White ? Ray::Rank[Ray::Rank3] : Ray::Rank[Ray::Rank6]))
+                    pushes |= (Side == White ? AsBitBoard(sq) << 16 : AsBitBoard(sq) >> 8) & position[InvalidSide];
+
+                pushes &= pin.StraightMask;
+
+                if (Get(pin.StraightMask, sq)) return pushes & check.Mask;
+            }
+
+            const BitBoard attack = Attack::Pawn[Side][sq];
+
+            const Square ep = property.EnPassantSquare();
+
+            BitBoard epAttack = attack & AsBitBoard(ep) & pin.DiagonalMask;
+
+            if (epAttack) {
+                const auto target = static_cast<Square>(Side == White ? ep - 8 : ep + 8);
+
+                // TODO: Replace usage of InvalidSide BB
+                BitBoard occ = ~position[InvalidSide];
+
+                Set<false>(occ,     sq);
+                Set<false>(occ, target);
+                Set<true >(occ,     ep);
+
+                const Square king = AsSquare(position[Side, King]);
+
+                if (Attack::Sliding<Bishop>(king, occ) & (position[~Side, Queen] | position[~Side, Bishop]) ||
+                    Attack::Sliding< Rook >(king, occ) & (position[~Side, Queen] | position[~Side,  Rook ]))
+                    epAttack = 0;
+            }
+
+            return (pushes | epAttack | attack & position[~Side] & pin.DiagonalMask) & check.Mask;
+        }
+
+        if (Type == Knight) {
+            if (check.Double) return {};
+
+            if (Get(pin.StraightMask | pin.DiagonalMask, sq)) return {};
+
+            return Attack::Knight[sq] & ~position[Side] & check.Mask;
+        }
+
+        if (Type == Bishop) {
+            if (check.Double) return {};
+
+            if (Get(pin.StraightMask, sq)) return {};
+
+            return Get(pin.DiagonalMask, sq) ?
+                Attack::Sliding<Bishop>(sq, ~position[InvalidSide]) & ~position[Side] & pin.DiagonalMask & check.Mask :
+                Attack::Sliding<Bishop>(sq, ~position[InvalidSide]) & ~position[Side] &                    check.Mask ;
+        }
+
+        if (Type == Rook) {
+            if (check.Double) return {};
+
+            if (Get(pin.DiagonalMask, sq)) return {};
+
+            return Get(pin.StraightMask, sq) ?
+                Attack::Sliding<Rook>(sq, ~position[InvalidSide]) & ~position[Side] & pin.StraightMask & check.Mask :
+                Attack::Sliding<Rook>(sq, ~position[InvalidSide]) & ~position[Side] &                    check.Mask ;
+        }
+
+        if (Type == Queen) {
+            if (check.Double) return {};
+
+            const bool straight = Get(pin.StraightMask, sq),
+                       diagonal = Get(pin.DiagonalMask, sq);
+
+            if (straight && diagonal) return {};
+
+            BitBoard attack;
+
+            // TODO: Replace usage of InvalidSide BB
+            if (diagonal)
+                attack = Attack::Sliding<Bishop>(sq, ~position[InvalidSide]) & pin.DiagonalMask;
+            else if (straight)
+                attack = Attack::Sliding< Rook >(sq, ~position[InvalidSide]) & pin.StraightMask;
+            else
+                attack = Attack::Sliding<Bishop>(sq, ~position[InvalidSide]) |
+                         Attack::Sliding< Rook >(sq, ~position[InvalidSide]) ;
+
+            return attack & ~position[Side] & check.Mask;
+        }
+
+        if (Type == King) {
+            BitBoard attack = Attack::King[sq] & ~position[Side];
+
+            if (attack == 0) return {};
+
+            // TODO: Replace usage of InvalidSide BB
+            const BitBoard occ = ~position[InvalidSide];
+
+            const auto KingSquareLegal = [&](const Square target) -> bool
+            {
+                const BitBoard occWK = occ & ~position[Side, King];
+
+                if (Attack::Pawn  [Side][target] & position[~Side,  Pawn ] ||
+                    Attack::Knight      [target] & position[~Side, Knight])
+                    return false;
+
+                if (Attack::Sliding<Bishop>(target, occWK) & (position[~Side, Queen] | position[~Side, Bishop]) ||
+                    Attack::Sliding< Rook >(target, occWK) & (position[~Side, Queen] | position[~Side,  Rook ]))
+                    return false;
+
+                return !(Attack::King[target] & position[~Side, King]);
+            };
+
+            for (const Square target : attack) if (!KingSquareLegal(target)) Set<false>(attack, target);
+
+            if (check.Mask != ~0ULL) return attack;
+
+            const PositionProperty property = position.PositionProperty();
+
+            const bool  kingSide = property.CanCastle<Side, K>(),
+                       queenSide = property.CanCastle<Side, Q>();
+
+            if (kingSide && Get(attack, static_cast<Square>(sq + 1)) &&
+                KingSquareLegal(        static_cast<Square>(sq + 2))) {
+                constexpr BitBoard path = 0b01100000 << (Side == White ? 0 : 56);
+
+                if (!(path & occ)) return attack | path;
+            }
+
+            if (queenSide && Get(attack, static_cast<Square>(sq - 1)) &&
+                 KingSquareLegal(        static_cast<Square>(sq - 2))) {
+                constexpr BitBoard path = 0b00001110 << (Side == White ? 0 : 56);
+
+                if (!(path & occ)) return attack | (path & 0b00001100 << (Side == White ? 0 : 56));
+            }
+
+            return attack;
+        }
+
+        std::unreachable();
+    }
+
 } // StockDory
 
 #endif //STOCKDORY_POSITION_H
