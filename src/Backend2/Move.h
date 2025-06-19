@@ -13,6 +13,8 @@
 namespace StockDory
 {
 
+    enum CastlingDirection : u08 { K, Q, InvalidCastlingDirection };
+
     enum MoveFlag : u08
     {
 
@@ -60,6 +62,21 @@ namespace StockDory
         constexpr MoveFlag Flag() const { return static_cast<MoveFlag>(Internal >> FlagShift); }
 
         constexpr bool IsCapture() const { return Flag() & Capture; }
+
+        constexpr bool IsEnPassant() const { return Flag() == EnPassant; }
+
+        template<CastlingDirection Direction>
+        constexpr bool IsCastling() const
+        {
+            static_assert(Direction == K || Direction == Q, "Invalid Castling Direction");
+
+            if (Direction == K) return Flag() == KSideCastling;
+            if (Direction == Q) return Flag() == QSideCastling;
+
+            std::unreachable();
+        }
+
+        constexpr bool IsCastling() const { return IsCastling<K>() || IsCastling<Q>(); }
 
         constexpr bool IsPromotion() const { return Flag() >= KnightPromotionCapture; }
 

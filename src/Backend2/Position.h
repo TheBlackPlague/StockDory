@@ -173,6 +173,8 @@ namespace StockDory
         PositionProperty Property {};
 
         public:
+        Position() : Position({}) {}
+
         explicit Position(const FEN& fen)
         {
             PieceArray = fen.ExtractPieceArray();

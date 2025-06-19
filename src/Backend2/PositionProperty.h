@@ -7,13 +7,12 @@
 #define STOCKDORY_POSITIONPROPERTY_H
 
 #include "Base.h"
+#include "Move.h"
 #include "Side.h"
 #include "Zobrist.h"
 
 namespace StockDory
 {
-
-    enum CastlingDirection : u08 { K, Q, InvalidCastlingDirection };
 
     class PositionProperty
     {
