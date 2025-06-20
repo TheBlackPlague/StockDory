@@ -52,20 +52,6 @@ namespace StockDory
 
     };
 
-    OutputStream& operator <<(OutputStream& os, const BitBoard bb)
-    {
-        for (u08 rank = 7; rank < 8; rank--)
-        for (u08 file = 0; file < 8; file++) {
-            const auto sq = static_cast<Square>(rank * 8 + file);
-
-            os << (Get(bb, sq) ? "1" : "0");
-        }
-
-        os << '\n' << AsHex(bb) << '\n';
-
-        return os;
-    }
-
     struct   PinBitBoard { BitBoard StraightMask = 0, DiagonalMask = 0; };
     struct CheckBitBoard { BitBoard Mask = 0; bool Double = false; };
 

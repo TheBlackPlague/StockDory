@@ -3,11 +3,10 @@
 // Licensed under LGPL-3.0.
 //
 
-#ifndef STOCKDORY_POSITIONPROPERTY_H
-#define STOCKDORY_POSITIONPROPERTY_H
+#ifndef STOCKDORY_POSITIONINFO_H
+#define STOCKDORY_POSITIONINFO_H
 
 #include "Base.h"
-#include "Move.h"
 #include "Side.h"
 #include "Zobrist.h"
 
@@ -118,11 +117,11 @@ namespace StockDory
 
         os << ' ';
 
-        os << strutil::to_string(info.HalfMoveClock) << ' ' << strutil::to_string(info.FullMoveNumber);
+        os << static_cast<u64>(info.HalfMoveClock) << ' ' << static_cast<u32>(info.FullMoveNumber);
 
         return os;
     }
 
 } // StockDory
 
-#endif //STOCKDORY_POSITIONPROPERTY_H
+#endif //STOCKDORY_POSITIONINFO_H

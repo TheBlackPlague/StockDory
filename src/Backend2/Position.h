@@ -12,7 +12,7 @@
 
 #include "BitBoard.h"
 #include "Piece.h"
-#include "PositionProperty.h"
+#include "PositionInfo.h"
 #include "Zobrist.h"
 
 namespace StockDory

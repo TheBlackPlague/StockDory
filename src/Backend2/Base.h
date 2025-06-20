@@ -70,6 +70,14 @@ namespace StockDory
         return ss.str();
     }
 
+    template<typename T>
+    String AsString(const T& value)
+    {
+        StringStream ss;
+        ss << value;
+        return ss.str();
+    }
+
 } // StockDory
 
 #endif //STOCKDORY_BASE_H
