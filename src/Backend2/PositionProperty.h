@@ -14,199 +14,91 @@
 namespace StockDory
 {
 
-    class PositionProperty
+    enum CastlingFlag : u08
     {
 
-        constexpr static u08 CastlingRightMask = 0b1111;
-
-        constexpr static u08 WhiteKSideCastlingRightMask = 0b1000;
-        constexpr static u08 WhiteQSideCastlingRightMask = 0b0100;
-        constexpr static u08 BlackKSideCastlingRightMask = 0b0010;
-        constexpr static u08 BlackQSideCastlingRightMask = 0b0001;
-
-        constexpr static u08 SideToMoveMask  = 0b00010000;
-        constexpr static u08 SideToMoveShift = 4;
-
-        // [ SIDE TO MOVE ] [ WHITE K CR ] [ WHITE Q CR ] [ BLACK K CR ] [ BLACK Q CR ]
-        u08    Internal0 = White << SideToMoveShift | WhiteKSideCastlingRightMask | WhiteQSideCastlingRightMask
-                                                    | BlackKSideCastlingRightMask | BlackQSideCastlingRightMask;
-
-        // [ EN PASSANT SQUARE ]
-        Square Internal1 = InvalidSquare;
-
-        // [ HALF-MOVE CLOCK ]
-        u08    Internal2 = 0;
-
-        // [ FULL-MOVE NUMBER ]
-        u16    Internal3 = 1;
-
-        public:
-        Zobrist HashCastlingRights(const Zobrist hash) const
-        {
-            return ZobristHash(hash, Internal0 & CastlingRightMask);
-        }
-
-        Zobrist HashEnPassantSquare(const Zobrist hash) const { return ZobristHash(hash, Internal1); }
-
-        template<Side Side>
-        bool CanCastle() const
-        {
-            static_assert(Side == White || Side == Black, "Invalid Side");
-
-            if (Side == White) return Internal0 & (WhiteKSideCastlingRightMask | WhiteQSideCastlingRightMask);
-            if (Side == Black) return Internal0 & (BlackKSideCastlingRightMask | BlackQSideCastlingRightMask);
-
-            std::unreachable();
-        }
-
-        template<Side Side, CastlingDirection Direction>
-        bool CanCastle() const
-        {
-            static_assert(Side      == White || Side      == Black, "Invalid Side"              );
-            static_assert(Direction == K     || Direction == Q    , "Invalid Castling Direction");
-
-            if (Side == White) {
-                if (Direction == K) return Internal0 & WhiteKSideCastlingRightMask;
-                if (Direction == Q) return Internal0 & WhiteQSideCastlingRightMask;
-            }
-
-            if (Side == Black) {
-                if (Direction == K) return Internal0 & BlackKSideCastlingRightMask;
-                if (Direction == Q) return Internal0 & BlackQSideCastlingRightMask;
-            }
-
-            std::unreachable();
-        }
-
-        template<Side Side>
-        void InvalidateCastlingRights()
-        {
-            static_assert(Side == White || Side == Black, "Invalid Side");
-
-            if (Side == White) Internal0 &= ~(WhiteKSideCastlingRightMask | WhiteQSideCastlingRightMask);
-            if (Side == Black) Internal0 &= ~(BlackKSideCastlingRightMask | BlackQSideCastlingRightMask);
-
-            std::unreachable();
-        }
-
-        template<Side Side, CastlingDirection Direction>
-        void InvalidateCastlingRights()
-        {
-            static_assert(Side      == White || Side      == Black, "Invalid Side"              );
-            static_assert(Direction == K     || Direction == Q    , "Invalid Castling Direction");
-
-            if (Side == White) {
-                if (Direction == K) Internal0 &= ~WhiteKSideCastlingRightMask;
-                if (Direction == Q) Internal0 &= ~WhiteQSideCastlingRightMask;
-            }
-
-            if (Side == Black) {
-                if (Direction == K) Internal0 &= ~BlackKSideCastlingRightMask;
-                if (Direction == Q) Internal0 &= ~BlackQSideCastlingRightMask;
-            }
-
-            std::unreachable();
-        }
-
-        template<Side Side>
-        void ValidateCastlingRights()
-        {
-            static_assert(Side == White || Side == Black, "Invalid Side");
-
-            if (Side == White) Internal0 |= WhiteKSideCastlingRightMask;
-            if (Side == Black) Internal0 |= BlackKSideCastlingRightMask;
-
-            std::unreachable();
-        }
-
-        template<Side Side, CastlingDirection Direction>
-        void ValidateCastlingRights()
-        {
-            static_assert(Side      == White || Side      == Black, "Invalid Side"              );
-            static_assert(Direction == K     || Direction == Q    , "Invalid Castling Direction");
-
-            if (Side == White) {
-                if (Direction == K) Internal0 |= WhiteKSideCastlingRightMask;
-                if (Direction == Q) Internal0 |= WhiteQSideCastlingRightMask;
-            }
-
-            if (Side == Black) {
-                if (Direction == K) Internal0 |= BlackKSideCastlingRightMask;
-                if (Direction == Q) Internal0 |= BlackQSideCastlingRightMask;
-            }
-
-            std::unreachable();
-        }
-
-        Side SideToMove() const { return static_cast<Side>(Internal0 >> SideToMoveShift); }
-
-        void FlipSideToMove() { Internal0 ^= SideToMoveMask; }
-
-        void SetSideToMove(const Side side)
-        {
-            assert(side == White || side == Black, "Invalid Side");
-
-            Internal0 = (Internal0 & ~SideToMoveMask) | (side << SideToMoveShift);
-        }
-
-        Square EnPassantSquare() const { return Internal1; }
-
-        void SetEnPassantSquare(const Square sq) { Internal1 = sq; }
-
-        u08 HalfMoveClock() const { return Internal2; }
-
-        void SetHalfMoveClock(const u08 c) { Internal2 = c; }
-
-        void IncrementHalfMoveClock() { Internal2++; }
-
-        void ResetHalfMoveClock() { Internal2 = 0; }
-
-        u16 FullMoveNumber() const { return Internal3; }
-
-        void SetFullMoveNumber(const u16 m) { Internal3 = m; }
-
-        void IncrementFullMoveNumber() { Internal3++; }
+        KWhite = 0b0001,
+        QWhite = 0b0010,
+        KBlack = 0b0100,
+        QBlack = 0b1000,
 
     };
 
-    InputStream& operator >>(InputStream& is, PositionProperty& property)
+    struct PositionInfo
+    {
+
+        constexpr static u08 CastlingMask = 0b1111;
+
+        constexpr static u08 SideToMoveShift = 4;
+        constexpr static u08 SideToMoveMask  = 0b1 << SideToMoveShift;
+
+        u08 CastlingSideToMove = SideToMoveMask | CastlingMask;
+
+        Square EnPassant = InvalidSquare;
+
+        u08 HalfMoveClock  = 0;
+        u16 FullMoveNumber = 1;
+
+        Side SideToMove() const { return static_cast<Side>(CastlingSideToMove >> SideToMoveShift); }
+
+        template<Side Side>
+        void SideToMove() { CastlingSideToMove |= (Side << SideToMoveShift); }
+
+        void FlipSideToMove() { CastlingSideToMove ^= SideToMoveMask; }
+
+        template<CastlingFlag Flag>
+        bool Castling() const { return CastlingSideToMove & Flag; }
+
+        template<CastlingFlag Flag, bool Enable>
+        void Castling()
+        {
+            if (Enable) CastlingSideToMove |=  Flag;
+            else        CastlingSideToMove &= ~Flag;
+        }
+
+        u08 CastlingRaw() const { return CastlingSideToMove | CastlingMask; }
+
+    };
+
+    InputStream& operator >>(InputStream& is, PositionInfo& info)
     {
         String sideStr, castlingRightsStr, epSquareStr, halfMoveClockStr, fullMoveNumberStr;
 
         is >> sideStr >> castlingRightsStr >> epSquareStr >> halfMoveClockStr >> fullMoveNumberStr;
 
-        property.SetSideToMove(sideStr == "w" ? White : Black);
+        (sideStr == "w" ? info.SideToMove<White>() : info.SideToMove<Black>());
 
         if (castlingRightsStr != "-") {
-            if (castlingRightsStr.find("K") != String::npos) property.ValidateCastlingRights<White, K>();
-            if (castlingRightsStr.find("Q") != String::npos) property.ValidateCastlingRights<White, Q>();
-            if (castlingRightsStr.find("k") != String::npos) property.ValidateCastlingRights<Black, K>();
-            if (castlingRightsStr.find("q") != String::npos) property.ValidateCastlingRights<Black, Q>();
+            (castlingRightsStr.find("K") != String::npos ? info.Castling<KWhite, true >() :
+                                                               info.Castling<KWhite, false>());
+            (castlingRightsStr.find("Q") != String::npos ? info.Castling<QWhite, true >() :
+                                                               info.Castling<QWhite, false>());
+            (castlingRightsStr.find("k") != String::npos ? info.Castling<KBlack, true >() :
+                                                               info.Castling<KBlack, false>());
+            (castlingRightsStr.find("q") != String::npos ? info.Castling<QBlack, true >() :
+                                                               info.Castling<QBlack, false>());
         }
 
         if (epSquareStr != "-") {
             InputStringStream iss (epSquareStr);
 
-            Square epSq;
-            iss >> epSq;
-
-            property.SetEnPassantSquare(epSq);
+            iss >> info.EnPassant;
         }
 
-        property.SetHalfMoveClock (strutil::parse_string<u64>(halfMoveClockStr ));
-        property.SetFullMoveNumber(strutil::parse_string<u64>(fullMoveNumberStr));
+        info.HalfMoveClock  = strutil::parse_string<u64>(halfMoveClockStr );
+        info.FullMoveNumber = strutil::parse_string<u64>(fullMoveNumberStr);
 
         return is;
     }
 
-    OutputStream& operator <<(OutputStream& os, const PositionProperty& property)
+    OutputStream& operator <<(OutputStream& os, const PositionInfo& info)
     {
-        const char side = property.SideToMove() ? 'w' : 'b';
+        const char side = info.SideToMove() ? 'w' : 'b';
 
-        const bool wKSC = property.CanCastle<White, K>();
-        const bool wQSC = property.CanCastle<White, Q>();
-        const bool bKSC = property.CanCastle<Black, K>();
-        const bool bQSC = property.CanCastle<Black, Q>();
+        const bool wKSC = info.Castling<KWhite>();
+        const bool wQSC = info.Castling<QWhite>();
+        const bool bKSC = info.Castling<KBlack>();
+        const bool bQSC = info.Castling<QBlack>();
 
         StringStream stream;
 
@@ -221,17 +113,12 @@ namespace StockDory
 
         os << side << ' ' << castlingRights << ' ';
 
-        const Square epSq = property.EnPassantSquare();
-
-        if (epSq != InvalidSquare) os << epSq;
-        else                       os << '-' ;
+        if (info.EnPassant != InvalidSquare) os << info.EnPassant;
+        else                                 os << '-';
 
         os << ' ';
 
-        const u64 halfMoveClock  = property.HalfMoveClock();
-        const u64 fullMoveNumber = property.FullMoveNumber();
-
-        os << strutil::to_string(halfMoveClock) << ' ' << strutil::to_string(fullMoveNumber);
+        os << strutil::to_string(info.HalfMoveClock) << ' ' << strutil::to_string(info.FullMoveNumber);
 
         return os;
     }

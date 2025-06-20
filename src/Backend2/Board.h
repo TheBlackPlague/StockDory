@@ -28,59 +28,86 @@ namespace StockDory
         {
             NullMovePriorState state;
 
-            if (this->Property.EnPassantSquare() != InvalidSquare) {
-                state.EnPassant = this->Property.EnPassantSquare();
-                this->Zobrist = this->Property.HashEnPassantSquare(this->Zobrist);
+            if (this->Info.EnPassant != InvalidSquare) {
+                state.EnPassant = this->Info.EnPassant;
+                this->Zobrist = ZobristHash(this->Zobrist, this->Info.EnPassant);
 
-                this->Property.SetEnPassantSquare(InvalidSquare);
+                this->Info.EnPassant = InvalidSquare;
             }
 
-            this->Property.FlipSideToMove();
+            this->Info.FlipSideToMove();
             this->Zobrist = ZobristHash(this->Zobrist);
         }
 
         void UndoNullMove(const NullMovePriorState& state)
         {
             if (state.EnPassant != InvalidSquare) {
-                this->Property.SetEnPassantSquare(state.EnPassant);
-                this->Zobrist = this->Property.HashEnPassantSquare(this->Zobrist);
+                this->Info.EnPassant = state.EnPassant;
+                this->Zobrist = ZobristHash(this->Zobrist, this->Info.EnPassant);
             }
 
-            this->Property.FlipSideToMove();
+            this->Info.FlipSideToMove();
             this->Zobrist = ZobristHash(this->Zobrist);
         }
 
         template<Side Side>
         void MakeMove(const Move<> move)
         {
+            assert(this->Info.SideToMove() == Side, "Provided side to move does not align with position info");
+
             const Square origin = move.Origin();
             const Square target = move.Target();
 
             const Piece originPiece = this->PieceArray[origin];
             const Piece targetPiece = this->PieceArray[target];
 
-            if (this->Property.template CanCastle<Side>()) {
+            const bool canCastle = Side == White ? this->Info.template Castling<KWhite | QWhite>() :
+                                                   this->Info.template Castling<KBlack | QBlack>() ;
+            if (canCastle) {
                 switch (originPiece.Type()) {
                     case King:
-                        this->Property.template InvalidateCastlingRights<Side>();
+                        this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
+
+                        (Side == White ? this->Info.template Castling<KWhite | QWhite, false>() :
+                                         this->Info.template Castling<KBlack | QBlack, false>());
+
+                        this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
                         break;
                     case Rook:
-                        if      (origin == (Side == White ? A1 : A8))
-                            this->Property.template InvalidateCastlingRights<Side, Q>();
-                        else if (origin == (Side == White ? H1 : H8))
-                            this->Property.template InvalidateCastlingRights<Side, K>();
+                        if        (origin == (Side == White ? A1 : A8)) {
+                            this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
+
+                            (Side == White ? this->Info.template Castling<QWhite, false>() :
+                                             this->Info.template Castling<QBlack, false>());
+
+                            this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
+                        } else if (origin == (Side == White ? H1 : H8)) {
+                            this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
+
+                            (Side == White ? this->Info.template Castling<KWhite, false>() :
+                                             this->Info.template Castling<KBlack, false>());
+
+                            this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
+                        }
                         break;
                     default: break;
                 }
             }
 
             if (!move.IsCapture()) {
-                if (move.IsCastling<K>()) {
-                    // TODO: Handle Hashing
-                    this->Property.template InvalidateCastlingRights<Side>();
+                auto HandleCastling = [&]<CastlingDirection Direction>()
+                {
+                    this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
 
-                    constexpr Square RookOrigin = (Side == White ? H1 : H8);
-                    constexpr Square RookTarget = (Side == White ? F1 : F8);
+                    (Side == White ? this->Info.template Castling<KWhite | QWhite, false>() :
+                                     this->Info.template Castling<KBlack | QBlack, false>());
+
+                    this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
+
+                    constexpr Square RookOrigin = Direction == K ? (Side == White ? H1 : H8) :
+                                                                   (Side == White ? A1 : A8) ;
+                    constexpr Square RookTarget = Direction == K ? (Side == White ? F1 : F8) :
+                                                                   (Side == White ? D1 : D8) ;
 
                     Set<false>(this->PieceBB[Side][King], origin);
                     Set<true >(this->PieceBB[Side][King], target);
@@ -99,33 +126,20 @@ namespace StockDory
                     this->PieceArray[    target] = { Side, King };
                     this->PieceArray[RookTarget] = { Side, Rook };
 
+                    this->Zobrist = ZobristHash(this->Zobrist, { Side, King }, origin);
+                    this->Zobrist = ZobristHash(this->Zobrist, { Side, King }, target);
+
+                    this->Zobrist = ZobristHash(this->Zobrist, { Side, Rook }, RookOrigin);
+                    this->Zobrist = ZobristHash(this->Zobrist, { Side, Rook }, RookTarget);
+                };
+
+                if (move.IsCastling<K>()) {
+                    HandleCastling.template operator()<K>();
                     return;
                 }
 
                 if (move.IsCastling<Q>()) {
-                    // TODO: Handle Hashing
-                    this->Property.template InvalidateCastlingRights<Side>();
-
-                    constexpr Square RookOrigin = (Side == White ? A1 : A8);
-                    constexpr Square RookTarget = (Side == White ? D1 : D8);
-
-                    Set<false>(this->PieceBB[Side][King], origin);
-                    Set<true >(this->PieceBB[Side][King], target);
-
-                    Set<false>(this->PieceBB[Side][Rook], RookOrigin);
-                    Set<true >(this->PieceBB[Side][Rook], RookTarget);
-
-                    Set<false>(this->SideBB[Side],     origin);
-                    Set<true >(this->SideBB[Side],     target);
-                    Set<false>(this->SideBB[Side], RookOrigin);
-                    Set<true >(this->SideBB[Side], RookTarget);
-
-                    this->PieceArray[    origin] = { InvalidSide, InvalidPieceType };
-                    this->PieceArray[RookOrigin] = { InvalidSide, InvalidPieceType };
-
-                    this->PieceArray[    target] = { Side, King };
-                    this->PieceArray[RookTarget] = { Side, Rook };
-
+                    HandleCastling.template operator()<Q>();
                     return;
                 }
 

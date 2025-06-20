@@ -32,7 +32,7 @@ namespace StockDory
 
         FEN(const String& str) : Internal(str) {}
 
-        FEN(const PieceArray& pieceArray, const PositionProperty property)
+        FEN(const PieceArray& pieceArray, const PositionInfo info)
         {
             OutputStringStream stream;
 
@@ -68,7 +68,7 @@ namespace StockDory
 
             stream << ' ';
 
-            stream << property;
+            stream << info;
         }
 
         PieceArray ExtractPieceArray() const
@@ -116,9 +116,9 @@ namespace StockDory
             return result;
         }
 
-        PositionProperty ExtractProperty() const
+        PositionInfo ExtractInfo() const
         {
-            PositionProperty result {};
+            PositionInfo result {};
 
             const usize idx = Internal.find(' ');
 
@@ -170,7 +170,7 @@ namespace StockDory
 
         PieceArray PieceArray {};
 
-        PositionProperty Property {};
+        PositionInfo Info {};
 
         public:
         Position() : Position({}) {}
@@ -178,7 +178,7 @@ namespace StockDory
         explicit Position(const FEN& fen)
         {
             PieceArray = fen.ExtractPieceArray();
-            Property   = fen.ExtractProperty()  ;
+            Info       = fen.ExtractInfo()      ;
 
             for (Square sq = A1; sq < InvalidSquare; ++sq) {
                 Piece piece = PieceArray[sq];
@@ -194,17 +194,18 @@ namespace StockDory
                 Zobrist = ZobristHash(Zobrist, piece, sq);
             }
 
-            Zobrist = Property.HashCastlingRights (Zobrist);
-            Zobrist = Property.HashEnPassantSquare(Zobrist);
+            Zobrist = ZobristHash(Zobrist, Info.CastlingRaw());
 
-            if (Property.SideToMove() != White) Zobrist = ZobristHash(Zobrist);
+            Zobrist = ZobristHash(Zobrist, Info.EnPassant);
+
+            if (Info.SideToMove() != White) Zobrist = ZobristHash(Zobrist);
         }
 
         // ReSharper disable once CppNonExplicitConversionOperator
-        operator FEN() const { return FEN(PieceArray, Property); }
+        operator FEN() const { return FEN(PieceArray, Info); }
 
         Score Evaluate(const TID threadId = 0)
-        { return EvaluationHandler::Evaluate(Property.SideToMove(), threadId); }
+        { return EvaluationHandler::Evaluate(Info.SideToMove(), threadId); }
 
         BitBoard operator [](const Piece piece) const { return operator[](piece.Side(), piece.Type()); }
 
@@ -225,7 +226,7 @@ namespace StockDory
 
         StockDory::Zobrist Hash() const { return Zobrist; }
 
-        PositionProperty PositionProperty() const { return Property; }
+        PositionInfo GetInfo() const { return Info; }
 
         BitBoard Occupation() const { return SideBB[White] | SideBB[Black]; }
 
@@ -343,7 +344,7 @@ namespace StockDory
         if (Type == Pawn) {
             if (check.Double) return {};
 
-            const PositionProperty property = position.PositionProperty();
+            const PositionInfo info = position.GetInfo();
 
             BitBoard pushes {};
 
@@ -361,16 +362,14 @@ namespace StockDory
 
             const BitBoard attack = Attack::Pawn[Side][sq];
 
-            const Square ep = property.EnPassantSquare();
-
-            BitBoard epAttack = attack & AsBitBoard(ep) & pin.DiagonalMask;
+            BitBoard epAttack = attack & AsBitBoard(info.EnPassant) & pin.DiagonalMask;
 
             if (epAttack) {
-                const auto target = static_cast<Square>(Side == White ? ep - 8 : ep + 8);
+                const auto target = static_cast<Square>(Side == White ? info.EnPassant - 8 : info.EnPassant + 8);
 
-                Set<false>(occ,     sq);
-                Set<false>(occ, target);
-                Set<true >(occ,     ep);
+                Set<false>(occ,             sq);
+                Set<false>(occ,         target);
+                Set<true >(occ, info.EnPassant);
 
                 const Square king = AsSquare(position[Side, King]);
 
@@ -463,20 +462,20 @@ namespace StockDory
 
             if (check.Mask != ~0ULL) return attack;
 
-            const PositionProperty property = position.PositionProperty();
+            const PositionInfo info = position.GetInfo();
 
-            const bool  kingSide = property.CanCastle<Side, K>(),
-                       queenSide = property.CanCastle<Side, Q>();
+            const bool kSide = Side == White ? info.Castling<KWhite>() : info.Castling<KBlack>(),
+                       qSide = Side == White ? info.Castling<QWhite>() : info.Castling<QBlack>();
 
-            if (kingSide && Get(attack, static_cast<Square>(sq + 1)) &&
+            if (kSide &&    Get(attack, static_cast<Square>(sq + 1)) &&
                 KingSquareLegal(        static_cast<Square>(sq + 2))) {
                 constexpr BitBoard path = 0b01100000 << (Side == White ? 0 : 56);
 
                 if (!(path & occ)) return attack | path;
             }
 
-            if (queenSide && Get(attack, static_cast<Square>(sq - 1)) &&
-                 KingSquareLegal(        static_cast<Square>(sq - 2))) {
+            if (qSide &&    Get(attack, static_cast<Square>(sq - 1)) &&
+                KingSquareLegal(        static_cast<Square>(sq - 2))) {
                 constexpr BitBoard path = 0b00001110 << (Side == White ? 0 : 56);
 
                 if (!(path & occ)) return attack | (path & 0b00001100 << (Side == White ? 0 : 56));
