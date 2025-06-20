@@ -55,6 +55,9 @@ namespace StockDory
         {
             assert(this->Info.SideToMove() == Side, "Provided side to move does not align with position info");
 
+            this->Info.FlipSideToMove();
+            this->Zobrist = ZobristHash(this->Zobrist);
+
             const Square origin = move.Origin();
             const Square target = move.Target();
 
@@ -68,8 +71,7 @@ namespace StockDory
                     case King:
                         this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
 
-                        (Side == White ? this->Info.template Castling<KWhite | QWhite, false>() :
-                                         this->Info.template Castling<KBlack | QBlack, false>());
+                        this->Info.template Castling<Side == White ? KWhite | QWhite : KBlack | QBlack, false>();
 
                         this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
                         break;
@@ -77,15 +79,13 @@ namespace StockDory
                         if        (origin == (Side == White ? A1 : A8)) {
                             this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
 
-                            (Side == White ? this->Info.template Castling<QWhite, false>() :
-                                             this->Info.template Castling<QBlack, false>());
+                            this->Info.template Castling<Side == White ? QWhite : QBlack, false>();
 
                             this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
                         } else if (origin == (Side == White ? H1 : H8)) {
                             this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
 
-                            (Side == White ? this->Info.template Castling<KWhite, false>() :
-                                             this->Info.template Castling<KBlack, false>());
+                            this->Info.template Castling<Side == White ? KWhite : KBlack, false>();
 
                             this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
                         }
@@ -95,15 +95,13 @@ namespace StockDory
             }
 
             if (!move.IsCapture()) {
+                if (this->Info.EnPassant != InvalidSquare) {
+                    this->Zobrist = ZobristHash(this->Zobrist, this->Info.EnPassant);
+                    this->Info.EnPassant = InvalidSquare;
+                }
+
                 auto HandleCastling = [&]<CastlingDirection Direction>()
                 {
-                    this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
-
-                    (Side == White ? this->Info.template Castling<KWhite | QWhite, false>() :
-                                     this->Info.template Castling<KBlack | QBlack, false>());
-
-                    this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
-
                     constexpr Square RookOrigin = Direction == K ? (Side == White ? H1 : H8) :
                                                                    (Side == White ? A1 : A8) ;
                     constexpr Square RookTarget = Direction == K ? (Side == White ? F1 : F8) :
@@ -144,8 +142,7 @@ namespace StockDory
                 }
 
                 if (move.IsPromotion()) {
-                    // TODO: Handle Hashing
-                    PieceType type = move.PromotionType();
+                    const PieceType type = move.PromotionType();
 
                     Set<false>(this->PieceBB[Side][Pawn], origin);
                     Set<true >(this->PieceBB[Side][type], target);
@@ -156,6 +153,9 @@ namespace StockDory
                     this->PieceArray[origin] = { InvalidSide, InvalidPieceType };
                     this->PieceArray[target] = {        Side,             type };
 
+                    this->Zobrist = ZobristHash(this->Zobrist, { Side, Pawn }, origin);
+                    this->Zobrist = ZobristHash(this->Zobrist, { Side, type }, target);
+
                     return;
                 }
 
@@ -165,38 +165,109 @@ namespace StockDory
 
                         if (Attack::Pawn[Side][ep] & this->PieceBB[~Side][Pawn]) {
                             this->Property.SetEnPassantSquare(ep);
-                            // TODO: Handle Hashing
+                            this->Zobrist = ZobristHash(this->Zobrist, ep);
                         }
                     }
                 }
-            } else {
-                if (this->Property.template CanCastle<~Side>() && targetPiece.Type() == Rook) {
-                    // TODO: Handle Hashing
-                    if      (target == (Side == White ? A8 : A1))
-                        this->Property.template InvalidateCastlingRights<~Side, Q>();
-                    else if (target == (Side == White ? H8 : H1))
-                        this->Property.template InvalidateCastlingRights<~Side, K>();
-                }
 
+                Set<false>(this->PieceBB[Side][originPiece.Type()], origin);
+                Set<true >(this->PieceBB[Side][originPiece.Type()], target);
 
+                Set<false>(this->SideBB[Side], origin);
+                Set<true >(this->SideBB[Side], target);
+
+                this->PieceArray[origin] = { InvalidSide, InvalidPieceType   };
+                this->PieceArray[target] = {        Side, originPiece.Type() };
+
+                this->Zobrist = ZobristHash(this->Zobrist, originPiece, origin);
+                this->Zobrist = ZobristHash(this->Zobrist, originPiece, target);
+
+                return;
             }
-        }
 
-        private:
-        void Remove(const Side side, const PieceType type, const Square sq)
-        {
-            Set<false>(this->PieceBB[side][type], sq);
-            Set<false>(this-> SideBB[side]      , sq);
+            if (move.IsEnPassant()) {
+                assert(target == this->Info.EnPassant, "Provided En Passant target does not match stored target");
 
-            this->PieceArray[sq] = { InvalidSide, InvalidPieceType };
-        }
+                const auto epTarget = static_cast<Square>(this->Info.EnPassant ^ 8);
 
-        void Insert(const Side side, const PieceType type, const Square sq)
-        {
-            Set<true>(this->PieceBB[side][type], sq);
-            Set<true>(this-> SideBB[side]      , sq);
+                this->Zobrist = ZobristHash(this->Zobrist, this->Info.EnPassant);
+                this->Info.EnPassant = InvalidSquare;
 
-            this->PieceArray[sq] = { side, type };
+                Set<false>(this->PieceBB[ Side][Pawn],   origin);
+                Set<true >(this->PieceBB[ Side][Pawn],   target);
+                Set<false>(this->PieceBB[~Side][Pawn], epTarget);
+
+                Set<false>(this->SideBB[ Side],   origin);
+                Set<true >(this->SideBB[ Side],   target);
+                Set<false>(this->SideBB[~Side], epTarget);
+
+                this->PieceArray[  origin] = { InvalidSide, InvalidPieceType };
+                this->PieceArray[  target] = {        Side,             Pawn };
+                this->PieceArray[epTarget] = { InvalidSide, InvalidPieceType };
+
+                this->Zobrist = ZobristHash(this->Zobrist, {  Side, Pawn },   origin);
+                this->Zobrist = ZobristHash(this->Zobrist, {  Side, Pawn },   target);
+                this->Zobrist = ZobristHash(this->Zobrist, { ~Side, Pawn }, epTarget);
+
+                return;
+            }
+
+            if (this->Info.EnPassant != InvalidSquare) {
+                this->Zobrist = ZobristHash(this->Zobrist, this->Info.EnPassant);
+                this->Info.EnPassant = InvalidSquare;
+            }
+
+            if (move.IsPromotion()) {
+                const PieceType type = move.PromotionType();
+
+                Set<false>(this->PieceBB[ Side][            Pawn  ], origin);
+                Set<true >(this->PieceBB[ Side][            type  ], target);
+                Set<false>(this->PieceBB[~Side][targetPiece.Type()], target);
+
+                Set<false>(this->SideBB[ Side], origin);
+                Set<true >(this->SideBB[ Side], target);
+                Set<false>(this->SideBB[~Side], target);
+
+                this->PieceArray[origin] = { InvalidSide, InvalidPieceType };
+                this->PieceArray[target] = {        Side,             type };
+
+                this->Zobrist = ZobristHash(this->Zobrist, { Side, Pawn }, origin);
+                this->Zobrist = ZobristHash(this->Zobrist, { Side, type }, target);
+                this->Zobrist = ZobristHash(this->Zobrist,    targetPiece, target);
+
+                return;
+            }
+
+            if (this->Property.template CanCastle<~Side>() && targetPiece.Type() == Rook) {
+                if        (target == (Side == White ? A8 : A1)) {
+                    this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
+
+                    this->Info.template Castling<Side == White ? QBlack : QWhite, false>();
+
+                    this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
+                } else if (target == (Side == White ? H8 : H1)) {
+                    this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
+
+                    this->Info.template Castling<Side == White ? KBlack : KWhite, false>();
+
+                    this->Zobrist = ZobristHash(this->Zobrist, this->Info.CastlingRaw());
+                }
+            }
+
+            Set<false>(this->PieceBB[ Side][originPiece.Type()], origin);
+            Set<true >(this->PieceBB[ Side][originPiece.Type()], target);
+            Set<false>(this->PieceBB[~Side][targetPiece.Type()], target);
+
+            Set<false>(this->SideBB[ Side], origin);
+            Set<true >(this->SideBB[ Side], target);
+            Set<false>(this->SideBB[~Side], target);
+
+            this->PieceArray[origin] = { InvalidSide, InvalidPieceType };
+            this->PieceArray[target] = originPiece;
+
+            this->Zobrist = ZobristHash(this->Zobrist, originPiece, origin);
+            this->Zobrist = ZobristHash(this->Zobrist, originPiece, target);
+            this->Zobrist = ZobristHash(this->Zobrist, targetPiece, target);
         }
 
     };
