@@ -308,6 +308,15 @@ namespace StockDory
 
     };
 
+    enum class NodeType : uint8_t { Root, PV, NonPV };
+
+    constexpr NodeType operator *(const NodeType type)
+    {
+        if (type == NodeType::Root) return NodeType::PV;
+
+        return type;
+    }
+
     template<SearchThreadType ThreadType = Main, class EventHandler = DefaultSearchEventHandler>
     class SearchTask
     {
@@ -508,7 +517,7 @@ namespace StockDory
                 if (alpha < -AspirationWindowFallbackBound) alpha = -Infinity;
                 if (beta  >  AspirationWindowFallbackBound) beta  =  Infinity;
 
-                const Score bestEvaluation = PVS<Color, true, true>(0, depth, alpha, beta);
+                const Score bestEvaluation = PVS<Color, NodeType::Root>(0, depth, alpha, beta);
 
                 // Possible Search Window Extending:
                 //
@@ -539,11 +548,14 @@ namespace StockDory
             }
         }
 
-        template<Color Color, bool PV, bool Root>
+        template<Color Color, NodeType NodeType>
         Score PVS(const uint8_t ply, int16_t depth, Score alpha, Score beta)
         {
             // Opponent's color for recursive calls
             constexpr auto OColor = Opposite(Color);
+
+            constexpr bool Root =         NodeType == NodeType::Root;
+            constexpr bool PV   = Root || NodeType == NodeType::PV  ;
 
             if (ThreadType == Main) {
                 // If we are in the main thread, we should regularly (every 4096 nodes) check if the search's limits
@@ -567,7 +579,7 @@ namespace StockDory
             // over the horizon. In the case there are, our evaluation at this point is not truly accurate, and we must
             // get a more accurate evaluation by stepping through to the end of the tactical sequence - this is handled
             // by the Quiescence search
-            if (depth <= 0) return Quiescence<Color, PV>(ply, alpha, beta);
+            if (depth <= 0) return Quiescence<Color, *NodeType>(ply, alpha, beta);
 
             const ZobristHash hash = Board.Zobrist();
 
@@ -769,7 +781,7 @@ namespace StockDory
                 // miss them. As such, we can step through the tactical sequences (if any are available) in Quiescence
                 // search and return the resulting evaluation
                 if (depth == RazoringDepth && staticEvaluation + RazoringEvaluationMargin < alpha)
-                    return Quiescence<Color, false>(ply, alpha, beta);
+                    return Quiescence<Color, NodeType::NonPV>(ply, alpha, beta);
 
                 // Null Move Pruning (NMP):
                 //
@@ -813,7 +825,7 @@ namespace StockDory
 
                     const PreviousStateNull state = Board.Move();
 
-                    const auto evaluation = -PVS<OColor, false, false>(
+                    const auto evaluation = -PVS<OColor, NodeType::NonPV>(
                         ply + 1,
                         reducedDepth,
                         -beta,
@@ -922,7 +934,7 @@ namespace StockDory
 
                 Score evaluation = 0;
 
-                if (i == 0) evaluation = -PVS<OColor, PV, false>(ply + 1, depth - 1, -beta, -alpha);
+                if (i == 0) evaluation = -PVS<OColor, *NodeType>(ply + 1, depth - 1, -beta, -alpha);
                 else {
                     // Assume we are not in a PV branch and use a reduced window search. If the reduced window search
                     // shows potential to improve our position, we will research with a full window search assuming
@@ -968,7 +980,7 @@ namespace StockDory
                         // mapped to discrete reduction
                         r /= LMRQuantization;
 
-                        evaluation = -PVS<OColor, false, false>(
+                        evaluation = -PVS<OColor, NodeType::NonPV>(
                             ply + 1,
                             std::clamp<int16_t>(depth - r, 1, depth),
                             -alpha - 1,
@@ -977,10 +989,10 @@ namespace StockDory
                     } else evaluation = alpha + 1;
 
                     if (evaluation > alpha) {
-                        evaluation = -PVS<OColor, false, false>(ply + 1, depth - 1, -alpha - 1, -alpha);
+                        evaluation = -PVS<OColor, NodeType::NonPV>(ply + 1, depth - 1, -alpha - 1, -alpha);
 
                         if (evaluation > alpha && evaluation < beta)
-                            evaluation = -PVS<OColor, true, false>(ply + 1, depth - 1, -beta, -alpha);
+                            evaluation = -PVS<OColor, NodeType::PV>(ply + 1, depth - 1, -beta, -alpha);
                     }
                 }
 
@@ -1050,11 +1062,13 @@ namespace StockDory
             return bestEvaluation;
         }
 
-        template<Color Color, bool PV>
+        template<Color Color, NodeType NodeType>
         Score Quiescence(const uint8_t ply, Score alpha, const Score beta)
         {
             // Opponent's color for recursive calls
             constexpr auto OColor = Opposite(Color);
+
+            constexpr bool PV = NodeType == NodeType::PV;
 
             // The main thread is responsible for ensuring that the correct selective depth is reported
             if (ThreadType == Main && PV) SelectiveDepth = std::max(SelectiveDepth, ply);
@@ -1076,7 +1090,7 @@ namespace StockDory
                 if (ttEntry.Hash == CompressHash(hash)) {
                     const Score ttEvaluation = DecompressScore(ttEntry.Evaluation, ply);
 
-                    if (ttEntry.Type == Exact                               ) return ttEvaluation;
+                    if (ttEntry.Type == Exact                         ) return ttEvaluation;
                     if (ttEntry.Type == Beta  && ttEvaluation >= beta ) return ttEvaluation;
                     if (ttEntry.Type == Alpha && ttEvaluation <= alpha) return ttEvaluation;
                 }
@@ -1113,7 +1127,7 @@ namespace StockDory
 
                 const PreviousState state = DoMove<false>(move, ply);
 
-                const Score evaluation = -Quiescence<OColor, PV>(ply + 1, -beta, -alpha);
+                const Score evaluation = -Quiescence<OColor, *NodeType>(ply + 1, -beta, -alpha);
 
                 UndoMove<false>(state, move);
 
