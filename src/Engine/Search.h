@@ -751,13 +751,14 @@ namespace StockDory
                 // upper bound of the search (beta) and if the static evaluation is significantly better, then it is
                 // likely below the lower bound of the search (alpha) for the opponent. The word "likely" is used here
                 // as static evaluation is in most cases just an approximation of an actual search, so we cannot say
-                // for sure. However, in most cases, static evaluation is a good enough approximation and representative
-                // of an actual search
+                // for sure. Taking the average between the static evaluation and the upper bound of the search (beta)
+                // allows us to get a more representative evaluation of the position that isn't too optimistic or one
+                // that underestimates the position
                 if (depth < ReverseFutilityMaximumDepth && abs(beta) < Mate) {
                     const Score     depthMargin = depth     * ReverseFutilityDepthFactor;
                     const Score improvingMargin = improving * ReverseFutilityImprovingFactor;
 
-                    if (staticEvaluation - depthMargin + improvingMargin >= beta) return beta;
+                    if (staticEvaluation - depthMargin + improvingMargin >= beta) return (staticEvaluation + beta) / 2;
                 }
 
                 // Razoring:
@@ -1076,7 +1077,7 @@ namespace StockDory
                 if (ttEntry.Hash == CompressHash(hash)) {
                     const Score ttEvaluation = DecompressScore(ttEntry.Evaluation, ply);
 
-                    if (ttEntry.Type == Exact                               ) return ttEvaluation;
+                    if (ttEntry.Type == Exact                         ) return ttEvaluation;
                     if (ttEntry.Type == Beta  && ttEvaluation >= beta ) return ttEvaluation;
                     if (ttEntry.Type == Alpha && ttEvaluation <= alpha) return ttEvaluation;
                 }
