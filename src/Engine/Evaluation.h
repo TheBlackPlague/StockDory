@@ -21,7 +21,13 @@ namespace StockDory
     class Evaluation
     {
 
-        static inline std::vector<Aurora> NNs;
+        static inline Aurora NN = [] -> Aurora
+        {
+            MantaRay::BinaryMemoryStream stream (_NeuralNetworkBinaryData, sizeof _NeuralNetworkBinaryData);
+            return Aurora(stream);
+        }();
+
+        static inline std::vector<AuroraStack> ThreadLocalStack;
 
         public:
         static std::string Name()
@@ -31,58 +37,70 @@ namespace StockDory
 
         static void Initialize()
         {
-            const size_t threadCount = ThreadPool.Size() + 1;
+            const size_t threadCount = ThreadPool.Size();
 
-            NNs.clear();
-            NNs.reserve(threadCount);
+            ThreadLocalStack.clear();
+            ThreadLocalStack.reserve(threadCount);
 
             for (size_t i = 0; i < threadCount; i++) {
-                MantaRay::BinaryMemoryStream stream (_NeuralNetworkBinaryData, sizeof _NeuralNetworkBinaryData);
-                NNs.emplace_back(stream);
+                ThreadLocalStack.emplace_back();
+                NN.Refresh(*ThreadLocalStack[i]);
             }
         }
 
         static void ResetNetworkState(const size_t threadId = 0)
         {
-            NNs[threadId].Reset();
-            NNs[threadId].Refresh();
+            AuroraStack& stack = ThreadLocalStack[threadId];
+
+            stack.Reset();
+            NN.Refresh(*stack);
         }
 
         [[clang::always_inline]]
         static void PreMove(const size_t threadId = 0)
         {
-            NNs[threadId].Push();
+            AuroraStack& stack = ThreadLocalStack[threadId];
+            stack++;
         }
 
         [[clang::always_inline]]
         static void PreUndoMove(const size_t threadId = 0)
         {
-            NNs[threadId].Pop();
+            AuroraStack& stack = ThreadLocalStack[threadId];
+            stack--;
         }
 
         [[clang::always_inline]]
         static void Activate(const Piece piece, const Color color, const Square sq, const size_t threadId = 0)
         {
-            NNs[threadId].Insert(piece, color, sq);
+            AuroraStack& stack = ThreadLocalStack[threadId];
+
+            NN.Insert(piece, color, sq, *stack);
         }
 
         [[clang::always_inline]]
         static void Deactivate(const Piece piece, const Color color, const Square sq, const size_t threadId = 0)
         {
-            NNs[threadId].Remove(piece, color, sq);
+            AuroraStack& stack = ThreadLocalStack[threadId];
+
+            NN.Remove(piece, color, sq, *stack);
         }
 
         [[clang::always_inline]]
         static void Transition(const Piece piece, const Color color, const Square from, const Square to,
                                const size_t threadId = 0)
         {
-            NNs[threadId].Move(piece, color, from, to);
+            AuroraStack& stack = ThreadLocalStack[threadId];
+
+            NN.Move(piece, color, from, to, *stack);
         }
 
         [[clang::always_inline]]
         static Score Evaluate(const Color color, const size_t threadId = 0)
         {
-            return NNs[threadId].Evaluate(color);
+            AuroraStack& stack = ThreadLocalStack[threadId];
+
+            return NN.Evaluate(color, *stack);
         }
 
     };
