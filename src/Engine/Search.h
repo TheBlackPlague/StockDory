@@ -310,12 +310,7 @@ namespace StockDory
 
     enum class NodeType : uint8_t { Root, PV, NonPV };
 
-    constexpr NodeType operator *(const NodeType type)
-    {
-        if (type == NodeType::Root) return NodeType::PV;
-
-        return type;
-    }
+    constexpr NodeType operator *(const NodeType type) { return type == NodeType::Root ? NodeType::PV : type; }
 
     template<SearchThreadType ThreadType = Main, class EventHandler = DefaultSearchEventHandler>
     class SearchTask
