@@ -12,10 +12,21 @@
 namespace StockDory
 {
 
-    struct NullMovePriorState { Square EnPassant = InvalidSquare; };
+    struct NullMoveUndoData { Square EnPassant = InvalidSquare; };
 
-    struct MovePriorState
+    struct RegularMoveUndoData
     {
+
+        Zobrist Zobrist;
+
+        Move<> Move;
+
+        Piece OriginPiece;
+        Piece TargetPiece;
+
+        Square EnPassant = InvalidSquare;
+
+        u08 RawCastling;
 
     };
 
@@ -24,12 +35,12 @@ namespace StockDory
     {
 
         public:
-        void MakeNullMove()
+        NullMoveUndoData MakeNullMove()
         {
-            NullMovePriorState state;
+            NullMoveUndoData data;
 
             if (this->Info.EnPassant != InvalidSquare) {
-                state.EnPassant = this->Info.EnPassant;
+                data.EnPassant = this->Info.EnPassant;
                 this->Zobrist = ZobristHash(this->Zobrist, this->Info.EnPassant);
 
                 this->Info.EnPassant = InvalidSquare;
@@ -37,12 +48,14 @@ namespace StockDory
 
             this->Info.FlipSideToMove();
             this->Zobrist = ZobristHash(this->Zobrist);
+
+            return data;
         }
 
-        void UndoNullMove(const NullMovePriorState& state)
+        void UndoNullMove(const NullMoveUndoData& data)
         {
-            if (state.EnPassant != InvalidSquare) {
-                this->Info.EnPassant = state.EnPassant;
+            if (data.EnPassant != InvalidSquare) {
+                this->Info.EnPassant = data.EnPassant;
                 this->Zobrist = ZobristHash(this->Zobrist, this->Info.EnPassant);
             }
 

@@ -57,6 +57,13 @@ namespace StockDory
 
         u08 CastlingRaw() const { return CastlingSideToMove | CastlingMask; }
 
+        template<bool Enable>
+        void CastlingRaw(const u08 castling)
+        {
+            if (Enable) CastlingSideToMove |=  castling;
+            else        CastlingSideToMove &= ~castling;
+        }
+
     };
 
     InputStream& operator >>(InputStream& is, PositionInfo& info)

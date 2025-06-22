@@ -18,7 +18,8 @@ namespace StockDory
     enum MoveFlag : u08
     {
 
-        Normal  = 0b0000,
+        Invalid = 0b0000,
+        Normal  = 0b1110,
         Capture = 0b0001,
 
         EnPassant = 0b0011,
@@ -82,9 +83,12 @@ namespace StockDory
 
         constexpr PieceType PromotionType() const { return static_cast<PieceType>((Flag() - 3) / 2); }
 
+        // ReSharper disable once CppNonExplicitConversionOperator
+        constexpr operator bool() const { return Internal != 0; }
+
     };
 
-    auto InvalidMove = Move<>(A8, A8, static_cast<MoveFlag>(0b1110));
+    auto InvalidMove = Move<>(A1, A1, Invalid);
 
     static_assert(Move(E7, E8, KnightPromotion).PromotionType() == Knight, "Promotion Type is not Knight");
     static_assert(Move(A7, A8, BishopPromotion).PromotionType() == Bishop, "Promotion Type is not Bishop");
