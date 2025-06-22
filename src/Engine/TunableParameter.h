@@ -59,7 +59,7 @@ namespace StockDory
     constexpr uint8_t FutilityDepthFactor = 150;
 
     constexpr uint16_t HistoryMultiplier = 300;
-    constexpr uint16_t HistoryShiftDown  = 250;
+    constexpr uint16_t HistoryShiftDown  = 450;
 
     constexpr uint16_t MaterialScalingWeightedStartValue =  6688;
     constexpr uint16_t MaterialScalingQuantization       = 16384;
