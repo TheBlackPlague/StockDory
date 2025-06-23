@@ -24,9 +24,11 @@ namespace StockDory
         Piece OriginPiece;
         Piece TargetPiece;
 
-        Square EnPassant = InvalidSquare;
+        u08 CastlingSideToMove;
 
-        u08 RawCastling;
+        Square EnPassant;
+
+        u08 HalfMoveClock;
 
     };
 
@@ -64,18 +66,33 @@ namespace StockDory
         }
 
         template<Side Side>
-        void MakeMove(const Move<> move)
+        RegularMoveUndoData MakeMove(const Move<> move)
         {
             assert(this->Info.SideToMove() == Side, "Provided side to move does not align with position info");
-
-            this->Info.FlipSideToMove();
-            this->Zobrist = ZobristHash(this->Zobrist);
 
             const Square origin = move.Origin();
             const Square target = move.Target();
 
             const Piece originPiece = this->PieceArray[origin];
             const Piece targetPiece = this->PieceArray[target];
+
+            const RegularMoveUndoData data {
+                .Zobrist = this->Zobrist,
+
+                .Move = move,
+
+                .OriginPiece = originPiece,
+                .TargetPiece = targetPiece,
+
+                .CastlingSideToMove = this->Info.CastlingSideToMove,
+
+                .EnPassant = this->Info.EnPassant,
+
+                .HalfMoveClock  = this->Info.HalfMoveClock
+            };
+
+            this->Info.FlipSideToMove();
+            this->Zobrist = ZobristHash(this->Zobrist);
 
             const bool canCastle = Side == White ? this->Info.template Castling<KWhite | QWhite>() :
                                                    this->Info.template Castling<KBlack | QBlack>() ;
@@ -108,6 +125,8 @@ namespace StockDory
             }
 
             if (!move.IsCapture()) {
+                ++this->Info.HalfMoveClock;
+
                 if (this->Info.EnPassant != InvalidSquare) {
                     this->Zobrist = ZobristHash(this->Zobrist, this->Info.EnPassant);
                     this->Info.EnPassant = InvalidSquare;
@@ -146,12 +165,12 @@ namespace StockDory
 
                 if (move.IsCastling<K>()) {
                     HandleCastling.template operator()<K>();
-                    return;
+                    return data;
                 }
 
                 if (move.IsCastling<Q>()) {
                     HandleCastling.template operator()<Q>();
-                    return;
+                    return data;
                 }
 
                 if (move.IsPromotion()) {
@@ -169,7 +188,7 @@ namespace StockDory
                     this->Zobrist = ZobristHash(this->Zobrist, { Side, Pawn }, origin);
                     this->Zobrist = ZobristHash(this->Zobrist, { Side, type }, target);
 
-                    return;
+                    return data;
                 }
 
                 if (originPiece.Type() == Pawn) {
@@ -195,8 +214,10 @@ namespace StockDory
                 this->Zobrist = ZobristHash(this->Zobrist, originPiece, origin);
                 this->Zobrist = ZobristHash(this->Zobrist, originPiece, target);
 
-                return;
+                return data;
             }
+
+            this->Info.HalfMoveClock = 0;
 
             if (move.IsEnPassant()) {
                 assert(target == this->Info.EnPassant, "Provided En Passant target does not match stored target");
@@ -222,7 +243,7 @@ namespace StockDory
                 this->Zobrist = ZobristHash(this->Zobrist, {  Side, Pawn },   target);
                 this->Zobrist = ZobristHash(this->Zobrist, { ~Side, Pawn }, epTarget);
 
-                return;
+                return data;
             }
 
             if (this->Info.EnPassant != InvalidSquare) {
@@ -248,7 +269,7 @@ namespace StockDory
                 this->Zobrist = ZobristHash(this->Zobrist, { Side, type }, target);
                 this->Zobrist = ZobristHash(this->Zobrist,    targetPiece, target);
 
-                return;
+                return data;
             }
 
             if (this->Property.template CanCastle<~Side>() && targetPiece.Type() == Rook) {
@@ -281,6 +302,76 @@ namespace StockDory
             this->Zobrist = ZobristHash(this->Zobrist, originPiece, origin);
             this->Zobrist = ZobristHash(this->Zobrist, originPiece, target);
             this->Zobrist = ZobristHash(this->Zobrist, targetPiece, target);
+
+            return data;
+        }
+
+        template<Side Side>
+        void UndoMove(const RegularMoveUndoData& data)
+        {
+            this->Zobrist = data.Zobrist;
+
+            this->Info.CastlingSideToMove = data.CastlingSideToMove;
+
+            this->Info.EnPassant = data.EnPassant;
+
+            this->Info.HalfMoveClock = data.HalfMoveClock;
+
+            const Square origin = data.Move.Origin();
+            const Square target = data.Move.Target();
+
+            const Piece originPiece = data.OriginPiece;
+            const Piece targetPiece = data.TargetPiece;
+
+            if (data.Move.IsCapture()) {
+                if (data.Move.IsEnPassant()) {
+                    const auto epTarget = static_cast<Square>(data.EnPassant ^ 8);
+
+                    Set<false>(this->PieceBB[ Side][Pawn],   target);
+                    Set<true >(this->PieceBB[ Side][Pawn],   origin);
+                    Set<true >(this->PieceBB[~Side][Pawn], epTarget);
+
+                    Set<false >(this->SideBB[ Side],   target);
+                    Set<true  >(this->SideBB[ Side],   origin);
+                    Set<true  >(this->SideBB[~Side], epTarget);
+
+                    this->PieceArray[  origin] = {        Side,             Pawn };
+                    this->PieceArray[  target] = { InvalidSide, InvalidPieceType };
+                    this->PieceArray[epTarget] = {       ~Side,             Pawn };
+
+                    return;
+                }
+
+                if (data.Move.IsPromotion()) {
+                    const PieceType type = data.Move.PromotionType();
+
+                    Set<false>(this->PieceBB[ Side][            type  ], target);
+                    Set<true >(this->PieceBB[ Side][            Pawn  ], origin);
+                    Set<true >(this->PieceBB[~Side][targetPiece.Type()], target);
+
+                    Set<false>(this->SideBB[ Side], target);
+                    Set<true >(this->SideBB[ Side], origin);
+                    Set<true >(this->SideBB[~Side], target);
+
+                    this->PieceArray[origin] = { Side, Pawn };
+                    this->PieceArray[target] = targetPiece;
+
+                    return;
+                }
+
+                Set<false>(this->PieceBB[ Side][originPiece.Type()], target);
+                Set<true >(this->PieceBB[ Side][originPiece.Type()], origin);
+                Set<true >(this->PieceBB[~Side][targetPiece.Type()], target);
+
+                Set<false >(this->SideBB[ Side], target);
+                Set<true  >(this->SideBB[ Side], origin);
+                Set<true  >(this->SideBB[~Side], target);
+
+                this->PieceArray[origin] = originPiece;
+                this->PieceArray[target] = targetPiece;
+
+                return;
+            }
         }
 
     };
