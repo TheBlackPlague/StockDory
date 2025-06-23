@@ -404,7 +404,7 @@ namespace StockDory
                     EventHandler::HandleIterativeDeepeningIterationCompletion({
                         .Depth          = IDepth,
                         .SelectiveDepth = SelectiveDepth,
-                        .Evaluation     = WDLCalculator::S(Board, Evaluation),
+                        .Evaluation     = Evaluation,
                         .WDL            = WDL(Board, Evaluation),
                         .Nodes          = Nodes,
                         .Time           = time,
@@ -431,7 +431,7 @@ namespace StockDory
 
         bool Stopped() const { return Status == SearchThreadStatus::Stopped; }
 
-        Score GetEvaluation() const { return WDLCalculator::S(Board, Evaluation); }
+        Score GetEvaluation() const { return Evaluation; }
 
         WDL GetWDL() const { return WDL(Board, Evaluation); }
 
