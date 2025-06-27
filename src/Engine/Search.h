@@ -309,7 +309,7 @@ namespace StockDory
     };
 
     template<SearchThreadType ThreadType = Main, class EventHandler = DefaultSearchEventHandler>
-    class SearchTask
+    class alignas(CacheLineSize) SearchTask
     {
 
         Board Board {};
