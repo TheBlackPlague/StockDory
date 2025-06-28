@@ -31,6 +31,8 @@ namespace StockDory
 
     constexpr size_t MB = 1024 * 1024;
 
+    constexpr size_t CacheLineSize = 64;
+
     using MS = std::chrono::milliseconds;
     using TP = std::chrono::time_point<std::chrono::steady_clock>;
 
