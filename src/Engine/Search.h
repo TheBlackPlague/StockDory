@@ -563,11 +563,13 @@ namespace StockDory
                 if (PV) SelectiveDepth = std::max(SelectiveDepth, ply);
             }
 
+            const bool checked = Board.Checked<Color>();
+
             // If we've exhausted our search depth, we should check if there are any tactical sequences available
             // over the horizon. In the case there are, our evaluation at this point is not truly accurate, and we must
             // get a more accurate evaluation by stepping through to the end of the tactical sequence - this is handled
             // by the Quiescence search
-            if (depth <= 0) return Quiescence<Color, PV>(ply, alpha, beta);
+            if (depth <= 0 && !checked) return Quiescence<Color, PV>(ply, alpha, beta);
 
             const ZobristHash hash = Board.Zobrist();
 
@@ -661,8 +663,6 @@ namespace StockDory
 
             Score staticEvaluation;
             bool  improving       ;
-
-            const bool checked = Board.Checked<Color>();
 
             if (checked) {
                 // Last non-checked Static Evaluation:
