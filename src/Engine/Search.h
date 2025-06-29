@@ -565,10 +565,10 @@ namespace StockDory
 
             const bool checked = Board.Checked<Color>();
 
-            // If we've exhausted our search depth, we should check if there are any tactical sequences available
-            // over the horizon. In the case there are, our evaluation at this point is not truly accurate, and we must
-            // get a more accurate evaluation by stepping through to the end of the tactical sequence - this is handled
-            // by the Quiescence search
+            // If we've exhausted our search depth and aren't in check, we should check if there are any tactical
+            // sequences just over the horizon. If there are, we should get a more accurate evaluation through a
+            // Quiescence search. If we are in check, we should go down the normal search path, extending as needed to
+            // ensure we find a suitable evasion
             if (depth <= 0 && !checked) return Quiescence<Color, PV>(ply, alpha, beta);
 
             const ZobristHash hash = Board.Zobrist();
