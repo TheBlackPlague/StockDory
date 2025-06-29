@@ -22,7 +22,7 @@ using Aurora    = MantaRay::Perspective<
 >;
 
 // Accumulator Stack:
-constexpr size_t AccumulatorStackSize = StockDory::MaxDepth * 4;
+constexpr size_t AccumulatorStackSize = StockDory::MaxDepth;
 
 using StarshardStack = MantaRay::AccumulatorStack<MantaRay::i16, 256, AccumulatorStackSize>;
 using    AuroraStack = MantaRay::AccumulatorStack<MantaRay::i16, 384, AccumulatorStackSize>;

@@ -65,7 +65,7 @@ namespace StockDory
     inline auto LMRTable =
     [] -> Array<int32_t, MaxDepth, MaxMove>
     {
-        const auto formula = [](const uint8_t depth, const uint8_t move) -> int32_t
+        const auto formula = [](const uint16_t depth, const uint8_t move) -> int32_t
         {
             const int32_t value = (std::log(depth) * std::log(move) / 2 - 0.2) * LMRQuantization;
 
@@ -74,8 +74,8 @@ namespace StockDory
 
         Array<int32_t, MaxDepth, MaxMove> temp {};
 
-        for (uint8_t depth = 1; depth < MaxDepth; depth++)
-        for (uint8_t move  = 1; move  < MaxMove ;  move++) temp[depth][move] = formula(depth, move);
+        for (uint16_t depth = 1; depth < MaxDepth; depth++)
+        for (uint8_t  move  = 1; move  < MaxMove ;  move++) temp[depth][move] = formula(depth, move);
 
         return temp;
     }();
@@ -166,7 +166,7 @@ namespace StockDory
     {
 
         uint64_t Nodes = std::numeric_limits<uint64_t>::max();
-        uint8_t  Depth = MaxDepth / 2;
+        uint16_t Depth = MaxDepth / 2;
 
         bool Timed = false;
         bool Fixed = false;
@@ -848,10 +848,12 @@ namespace StockDory
 
             SearchTranspositionEntry ttEntryNew
             {
-                .Hash       = CompressHash(hash),
-                .Move       = ttMove,
-                .Depth      = static_cast<uint8_t>(depth),
-                .Type       = Alpha
+                .Hash  = CompressHash(hash),
+                .Move  = ttMove,
+                .Depth = static_cast<uint8_t>(std::clamp<uint16_t>(
+                                depth, std::numeric_limits<uint8_t>::min(), std::numeric_limits<uint8_t>::max()
+                         )),
+                .Type  = Alpha
             };
 
             const uint8_t lmpLastQuiet = LMPLastQuietBase +   depth * depth;

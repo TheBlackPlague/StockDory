@@ -22,10 +22,10 @@ namespace StockDory
     constexpr Score Infinity = Mate + 1;
     constexpr Score     None = Mate + 2;
 
-    constexpr uint8_t MaxDepth = 128;
-    constexpr uint8_t MaxMove  = 218;
+    constexpr uint16_t MaxDepth = 512;
+    constexpr uint8_t  MaxMove  = 218;
 
-    constexpr Score MateInMaxDepth = Mate - MaxDepth * 4;
+    constexpr Score MateInMaxDepth = Mate - MaxDepth * 2;
 
     constexpr uint16_t HistoryLimit = 16384;
 
