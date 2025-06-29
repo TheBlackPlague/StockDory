@@ -659,6 +659,13 @@ namespace StockDory
                 }
             }
 
+            // Internal Iterative Reduction (IIR):
+            //
+            // If we are at a high enough depth but there is no valid transposition table move, we can reduce the search
+            // depth by a small amount to speed up the search
+            if (depth >= IIRMinimumDepth && !ttMove)
+                depth -= IIRDepthReduction;
+
             Score staticEvaluation;
             bool  improving       ;
 
@@ -829,13 +836,6 @@ namespace StockDory
 
             // We continue from here if we are in check
             Checked:
-
-            // Internal Iterative Reduction (IIR):
-            //
-            // If we are at a high enough depth but have no transposition table entry, we can reduce the depth of the
-            // search by a small amount - good positions are normally reached by a lot of different sequences and
-            // usually have a transposition table entry
-            if (depth >= IIRMinimumDepth && !ttHit) depth -= IIRDepthReduction;
 
             using MoveList = OrderedMoveList<Color>;
 
