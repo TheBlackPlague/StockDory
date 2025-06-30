@@ -35,12 +35,16 @@ namespace StockDory
     using CompressedHash  = uint16_t;
     using CompressedScore =  int16_t;
 
-    constexpr CompressedScore CompressedInfinity = 32000;
-
     CompressedHash  CompressHash (const ZobristHash hash) { return hash; }
-    CompressedScore CompressScore(const Score      score)
+
+    CompressedScore CompressScore(const Score score, const uint8_t ply)
     {
-        return std::clamp<Score>(score, -CompressedInfinity, CompressedInfinity);
+        return IsWin(score) ? score + ply : IsLoss(score) ? score - ply : score;
+    }
+
+    Score DecompressScore(const CompressedScore score, const uint8_t ply)
+    {
+        return IsWin(score) ? score - ply : IsLoss(score) ? score + ply : score;
     }
 
     struct SearchTranspositionEntry
@@ -58,16 +62,14 @@ namespace StockDory
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
 
-    constexpr uint16_t LMRGranularityFactor = 1024;
-
     inline auto LMRTable =
     [] -> Array<int32_t, MaxDepth, MaxMove>
     {
         const auto formula = [](const uint8_t depth, const uint8_t move) -> int32_t
         {
-            const int32_t value = (std::log(depth) * std::log(move) / 2 - 0.2) * LMRGranularityFactor;
+            const int32_t value = (std::log(depth) * std::log(move) / 2 - 0.2) * LMRQuantization;
 
-            return value / LMRGranularityFactor > 0 ? value : 0;
+            return value / LMRQuantization > 0 ? value : 0;
         };
 
         Array<int32_t, MaxDepth, MaxMove> temp {};
@@ -85,8 +87,8 @@ namespace StockDory
         struct Frame
         {
 
-            Score   StaticEvaluation = 0;
-            uint8_t HalfMoveCounter  = 0;
+            Score   StaticEvaluation = None;
+            uint8_t HalfMoveCounter  =    0;
 
         };
 
@@ -202,8 +204,8 @@ namespace StockDory
         enum Weight : uint8_t { A, B };
 
         constexpr static Array<double, 2, 4> WValue = {{
-            {  190.541, -461.949,  185.975,  334.376 },
-            {  106.738, -285.539,  297.152, -  9.669 }
+            {  60.09285654, -67.89307926, -74.69971460, 320.80620991 },
+            {  49.46329816, -80.84815967,  90.55170639,  38.37540637 }
         }};
 
         template<Weight W>
@@ -307,7 +309,7 @@ namespace StockDory
     };
 
     template<SearchThreadType ThreadType = Main, class EventHandler = DefaultSearchEventHandler>
-    class SearchTask
+    class alignas(CacheLineSize) SearchTask
     {
 
         Board Board {};
@@ -561,11 +563,13 @@ namespace StockDory
                 if (PV) SelectiveDepth = std::max(SelectiveDepth, ply);
             }
 
-            // If we've exhausted our search depth, we should check if there are any tactical sequences available
-            // over the horizon. In the case there are, our evaluation at this point is not truly accurate, and we must
-            // get a more accurate evaluation by stepping through to the end of the tactical sequence - this is handled
-            // by the Quiescence search
-            if (depth <= 0) return Quiescence<Color, PV>(ply, alpha, beta);
+            const bool checked = Board.Checked<Color>();
+
+            // If we've exhausted our search depth and aren't in check, we should check if there are any tactical
+            // sequences just over the horizon. If there are, we should get a more accurate evaluation through a
+            // Quiescence search. If we are in check, we should go down the normal search path, extending as needed to
+            // ensure we find a suitable evasion
+            if (depth <= 0 && !checked) return Quiescence<Color, PV>(ply, alpha, beta);
 
             const ZobristHash hash = Board.Zobrist();
 
@@ -614,8 +618,8 @@ namespace StockDory
                 // evaluation will be Mate - ply - 1. If our alpha is greater or equal to this evaluation, then we know
                 // that an equally short or shorter mate was already found at some previous ply, and thus there is not
                 // much point in continuing further since we will not find a shorter mate in this branch
-                alpha = std::max<Score>(alpha, -Mate + ply    );
-                beta  = std::min<Score>(beta ,  Mate - ply - 1);
+                alpha = std::max<Score>(alpha, LossIn(ply    ));
+                beta  = std::min<Score>(beta ,  WinIn(ply + 1));
                 if (alpha >= beta) return alpha;
             }
 
@@ -625,13 +629,16 @@ namespace StockDory
             // exists a transposition entry - if the entry is valid, depending on the quality of the entry, we can
             // return the evaluation from the entry. Even if the entry isn't of sufficient quality to return directly,
             // we can still search the move in the entry first, since it most likely is the best move in the position
-            SearchTranspositionEntry& ttEntry = TT[hash];
-            Move                      ttMove  = {};
-            bool                      ttHit   = false;
+            SearchTranspositionEntry& ttEntry      = TT[hash];
+            Move                      ttMove       = {};
+            bool                      ttHit        = false;
+            Score                     ttEvaluation = None;
 
             if (ttEntry.Type != Invalid && ttEntry.Hash == CompressHash(hash)) {
                 ttHit  = true;
                 ttMove = ttEntry.Move;
+
+                ttEvaluation = DecompressScore(ttEntry.Evaluation, ply);
 
                 if (!PV && ttEntry.Depth >= depth) {
                     // If the entry is of sufficient quality, depending on the bounding type of the entry, we can
@@ -648,16 +655,21 @@ namespace StockDory
                     // - Alpha: The evaluation never exceeded alpha in the producing search, but we should only return
                     //          if we know it isn't exceeding alpha in the current search
 
-                    if (ttEntry.Type == Exact                               ) return ttEntry.Evaluation;
-                    if (ttEntry.Type == Beta  && ttEntry.Evaluation >= beta ) return ttEntry.Evaluation;
-                    if (ttEntry.Type == Alpha && ttEntry.Evaluation <= alpha) return ttEntry.Evaluation;
+                    if (ttEntry.Type == Exact                         ) return ttEvaluation;
+                    if (ttEntry.Type == Beta  && ttEvaluation >= beta ) return ttEvaluation;
+                    if (ttEntry.Type == Alpha && ttEvaluation <= alpha) return ttEvaluation;
                 }
             }
 
+            // Internal Iterative Reduction (IIR):
+            //
+            // If we are at a high enough depth but there is no valid transposition table move, we can reduce the search
+            // depth by a small amount to speed up the search
+            if (depth >= IIRMinimumDepth && !ttMove)
+                depth -= IIRDepthReduction;
+
             Score staticEvaluation;
             bool  improving       ;
-
-            const bool checked = Board.Checked<Color>();
 
             if (checked) {
                 // Last non-checked Static Evaluation:
@@ -707,15 +719,15 @@ namespace StockDory
             //     unlikely to exceed alpha - in simple terms, use whichever evaluation is more pessimistic
             // - If we do not have a valid transposition table entry, use the neural network evaluation
             if (ttHit) {
-                staticEvaluation = ttEntry.Evaluation;
+                staticEvaluation = ttEvaluation;
 
                 if (ttEntry.Type != Exact) {
-                    const Score nnEvaluation = Evaluation::Evaluate(Color, ThreadId);
+                    const Score nnEvaluation = EvaluateScaled<Color>();
 
                     if      (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, nnEvaluation);
                     else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, nnEvaluation);
                 }
-            } else staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
+            } else staticEvaluation = EvaluateScaled<Color>();
 
             Stack[ply].StaticEvaluation = staticEvaluation;
 
@@ -728,7 +740,6 @@ namespace StockDory
             // ago if we were not under check, or the static evaluation from N * 2 plies ago if we were under check.
             // This is explained more in detail in the "Last non-checked Static Evaluation" comment above
             improving = staticEvaluation > Stack[ply - 2].StaticEvaluation;
-
 
             if (!PV) {
                 // Risky Pruning:
@@ -747,13 +758,14 @@ namespace StockDory
                 // upper bound of the search (beta) and if the static evaluation is significantly better, then it is
                 // likely below the lower bound of the search (alpha) for the opponent. The word "likely" is used here
                 // as static evaluation is in most cases just an approximation of an actual search, so we cannot say
-                // for sure. However, in most cases, static evaluation is a good enough approximation and representative
-                // of an actual search
+                // for sure. Taking the average between the static evaluation and the upper bound of the search (beta)
+                // allows us to get a more representative evaluation of the position that isn't too optimistic or one
+                // that underestimates the position
                 if (depth < ReverseFutilityMaximumDepth && abs(beta) < Mate) {
                     const Score     depthMargin = depth     * ReverseFutilityDepthFactor;
                     const Score improvingMargin = improving * ReverseFutilityImprovingFactor;
 
-                    if (staticEvaluation - depthMargin + improvingMargin >= beta) return beta;
+                    if (staticEvaluation - depthMargin + improvingMargin >= beta) return (staticEvaluation + beta) / 2;
                 }
 
                 // Razoring:
@@ -825,13 +837,6 @@ namespace StockDory
             // We continue from here if we are in check
             Checked:
 
-            // Internal Iterative Reduction (IIR):
-            //
-            // If we are at a high enough depth but have no transposition table entry, we can reduce the depth of the
-            // search by a small amount - good positions are normally reached by a lot of different sequences and
-            // usually have a transposition table entry
-            if (depth >= IIRMinimumDepth && !ttHit) depth -= IIRDepthReduction;
-
             using MoveList = OrderedMoveList<Color>;
 
             MoveList moves (Board, ply, Killer, History, ttMove);
@@ -839,12 +844,11 @@ namespace StockDory
             // Out of Moves:
             //
             // If we have no moves to search at this point, it is either because we are in checkmate or stalemate
-            if (moves.Count() == 0) return checked ? -Mate + ply : Draw;
+            if (moves.Count() == 0) return checked ? LossIn(ply) : Draw;
 
             SearchTranspositionEntry ttEntryNew
             {
                 .Hash       = CompressHash(hash),
-                .Evaluation = -CompressedInfinity,
                 .Move       = ttMove,
                 .Depth      = static_cast<uint8_t>(depth),
                 .Type       = Alpha
@@ -963,7 +967,7 @@ namespace StockDory
 
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
                         // mapped to discrete reduction
-                        r /= LMRGranularityFactor;
+                        r /= LMRQuantization;
 
                         evaluation = -PVS<OColor, false, false>(
                             ply + 1,
@@ -1036,13 +1040,13 @@ namespace StockDory
                 break;
             }
 
-            ttEntryNew.Evaluation = CompressScore(bestEvaluation);
+            ttEntryNew.Evaluation = CompressScore(bestEvaluation, ply);
 
             // Transposition Table Writing:
             //
             // As long as the search has not stopped, we should try to insert/replace the transposition table entry
             // with the new entry as it is most likely more relevant than the old entry
-            if (Status != SearchThreadStatus::Stopped) TryWriteTT(ttEntry, ttEntryNew);
+            if (Status != SearchThreadStatus::Stopped) TryReplaceTT(ttEntry, ttEntryNew);
 
             return bestEvaluation;
         }
@@ -1071,16 +1075,18 @@ namespace StockDory
                 const SearchTranspositionEntry& ttEntry = TT[hash];
 
                 if (ttEntry.Hash == CompressHash(hash)) {
-                    if (ttEntry.Type == Exact                               ) return ttEntry.Evaluation;
-                    if (ttEntry.Type == Beta  && ttEntry.Evaluation >= beta ) return ttEntry.Evaluation;
-                    if (ttEntry.Type == Alpha && ttEntry.Evaluation <= alpha) return ttEntry.Evaluation;
+                    const Score ttEvaluation = DecompressScore(ttEntry.Evaluation, ply);
+
+                    if (ttEntry.Type == Exact                         ) return ttEvaluation;
+                    if (ttEntry.Type == Beta  && ttEvaluation >= beta ) return ttEvaluation;
+                    if (ttEntry.Type == Alpha && ttEvaluation <= alpha) return ttEvaluation;
                 }
             }
 
             // Static Evaluation:
             //
             // In Quiescence search, we use the neural network evaluation directly as the static evaluation
-            const Score staticEvaluation = Evaluation::Evaluate(Color, ThreadId);
+            const Score staticEvaluation = EvaluateScaled<Color>();
 
             // Window Adjustment:
             //
@@ -1168,7 +1174,27 @@ namespace StockDory
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
         }
 
-        static void TryWriteTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
+        template<Color Color>
+        Score EvaluateScaled() const
+        {
+            const BitBoard pawn   = Board.PieceBoard(Pawn  , White) | Board.PieceBoard(Pawn  , Black);
+            const BitBoard knight = Board.PieceBoard(Knight, White) | Board.PieceBoard(Knight, Black);
+            const BitBoard bishop = Board.PieceBoard(Bishop, White) | Board.PieceBoard(Bishop, Black);
+            const BitBoard rook   = Board.PieceBoard(Rook  , White) | Board.PieceBoard(Rook  , Black);
+            const BitBoard queen  = Board.PieceBoard(Queen , White) | Board.PieceBoard(Queen , Black);
+
+            uint16_t weightedMaterial = Count(pawn  ) * MaterialScalingWeightPawn   +
+                                        Count(knight) * MaterialScalingWeightKnight +
+                                        Count(bishop) * MaterialScalingWeightBishop +
+                                        Count(rook  ) * MaterialScalingWeightRook   +
+                                        Count(queen ) * MaterialScalingWeightQueen  ;
+
+            weightedMaterial += MaterialScalingQuantization - MaterialScalingWeightedStartValue;
+
+            return (Evaluation::Evaluate(Color, ThreadId) * weightedMaterial) / MaterialScalingQuantization;
+        }
+
+        static void TryReplaceTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
         {
             if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
                (pEntry.Type == Alpha &&

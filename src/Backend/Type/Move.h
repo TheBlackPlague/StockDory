@@ -86,6 +86,9 @@ struct Move
         return Internal == other.Internal;
     }
 
+    // ReSharper disable once CppNonExplicitConversionOperator
+    constexpr operator bool() const { return Internal != 0; }
+
     [[nodiscard]]
     std::string ToString() const
     {
