@@ -46,7 +46,7 @@ namespace StockDory
     constexpr uint8_t LMPMaximumDepth  = 3;
     constexpr uint8_t LMPLastQuietBase = 3;
 
-    constexpr uint16_t SEEThresholdDepthWeight = -112;
+    constexpr int16_t SEEThresholdDepthWeight = -112;
 
     constexpr uint16_t LMRQuantization      = 1024;
     constexpr  uint8_t LMRMinimumDepth      =    3;
