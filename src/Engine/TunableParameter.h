@@ -26,6 +26,9 @@ namespace StockDory
     constexpr uint8_t  AspirationWindowMarginDelta   = 23;
     constexpr uint8_t  AspirationWindowMinimumDepth  = 5;
 
+    constexpr uint8_t IIRMinimumDepth   = 4;
+    constexpr uint8_t IIRDepthReduction = 1;
+
     constexpr uint8_t CheckExtension = 1;
 
     constexpr uint8_t ReverseFutilityMaximumDepth    = 7;
@@ -40,11 +43,10 @@ namespace StockDory
     constexpr uint8_t NullMoveDepthFactor      = 3;
     constexpr uint8_t NullMoveEvaluationFactor = 180;
 
-    constexpr uint8_t IIRMinimumDepth   = 4;
-    constexpr uint8_t IIRDepthReduction = 1;
-
     constexpr uint8_t LMPMaximumDepth  = 3;
     constexpr uint8_t LMPLastQuietBase = 3;
+
+    constexpr uint16_t SEEThresholdDepthWeight = -112;
 
     constexpr uint16_t LMRQuantization      = 1024;
     constexpr  uint8_t LMRMinimumDepth      =    3;

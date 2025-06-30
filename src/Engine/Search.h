@@ -888,6 +888,13 @@ namespace StockDory
                     if (staticEvaluation + margin <= alpha) break;
                 }
 
+                // Static Exchange Evaluation (SEE) Pruning:
+                //
+                // SEE is essentially an evaluation that determines if an exchange of pieces is materially favorable for
+                // us or not, and if it is not, then that tactical sequence is not worth searching further, and we can
+                // prune that branch entirely
+                if (i > 0 && !quiet && !SEE::Accurate(Board, move, SEEThresholdDepthWeight * depth)) continue;
+
                 if (!PV) {
                     // Risky Pruning:
                     //
