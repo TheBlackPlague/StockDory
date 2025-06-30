@@ -1201,6 +1201,7 @@ namespace StockDory
                 nEntry.Type == Beta) ||
                 nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
                 pEntry = nEntry;
+            else if (nEntry.Hash == pEntry.Hash && !pEntry.Move) pEntry.Move = nEntry.Move;
         }
 
     };
