@@ -862,7 +862,7 @@ namespace StockDory
 
             uint8_t quietMoves = 0;
             for (uint8_t i = 0; i < moves.Count(); i++) {
-                const Move move  = moves[i];
+                const Move move = moves[i];
 
                 const Piece movingPiece = Board[move.From()].Piece();
                 const Piece targetPiece = Board[move.  To()].Piece();
