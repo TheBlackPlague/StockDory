@@ -165,6 +165,8 @@ namespace StockDory
     struct Limit
     {
 
+        enum TimeType : uint8_t { Actual, Optimal };
+
         uint64_t Nodes = std::numeric_limits<uint64_t>::max();
         uint8_t  Depth = MaxDepth / 2;
 
@@ -294,8 +296,6 @@ namespace StockDory
     class alignas(CacheLineSize) SearchTask
     {
 
-        enum TimeLimitType : uint8_t { Actual, Optimal };
-
         Board Board {};
 
         KTable Killer  {};
@@ -362,15 +362,14 @@ namespace StockDory
             Board.LoadForEvaluation(ThreadId);
 
             IDepth = 1;
-            while (IDepth <= Limit.Depth && !OutOfTime<Optimal>()) {
+            while (IDepth <= Limit.Depth && !OutOfTime<Limit::Optimal>()) {
                 const Move lastBestMove = BestMove;
 
                 if (Board.ColorToMove() ==   White)
                      Evaluation = Aspiration<White>(IDepth);
                 else Evaluation = Aspiration<Black>(IDepth);
 
-                // In the case that the search was stopped, we should not use its result as the search is most likely
-                // incomplete and the evaluation is not valid
+                // In the case that the search was stopped, we should just proceed to fire the completion event
                 if (Status == SearchThreadStatus::Stopped) break;
 
                 if (ThreadType == Main) {
@@ -381,8 +380,6 @@ namespace StockDory
                     // to choose from
 
                     const auto time = ElapsedTime();
-
-                    BestMove = PVTable[0].PV[0];
 
                     SearchStabilityTimeOptimization(lastBestMove);
 
@@ -424,13 +421,13 @@ namespace StockDory
         MS ElapsedTime() const
         { return std::chrono::duration_cast<MS>(std::chrono::steady_clock::now() - StartTime); }
 
-        template<TimeLimitType LimitType>
+        template<Limit::TimeType Type>
         bool OutOfTime() const
         {
             if (!Limit.Timed) return false;
 
-            return LimitType == Actual ? ElapsedTime() > Limit. ActualTime
-                                       : ElapsedTime() > Limit.OptimalTime;
+            return Type == Limit::Actual ? ElapsedTime() > Limit. ActualTime
+                                         : ElapsedTime() > Limit.OptimalTime;
         }
 
         void SearchSingleMoveTimeOptimization()
@@ -491,7 +488,8 @@ namespace StockDory
                 if (ThreadType == Main) {
                     // If we are in the main thread, we should regularly (every search/research) check if the search's
                     // limits have been crossed. If they have, we should stop searching/researching
-                    if (OutOfTime<Actual>()) [[unlikely]] { Status = SearchThreadStatus::Stopped; }
+                    if (OutOfTime<Limit::Actual>()) [[unlikely]]
+                        Status = SearchThreadStatus::Stopped;
                 }
 
                 // If the search was stopped, we should return a draw score immediately
@@ -532,7 +530,10 @@ namespace StockDory
                     beta  = std::min<Score>(beta  + research * research * AspirationWindowMarginDelta,  Infinity);
 
                     BestMove = PVTable[0].PV[0];
-                } else return bestEvaluation;
+                } else {
+                    BestMove = PVTable[0].PV[0];
+                    return bestEvaluation;
+                }
             }
         }
 
@@ -545,10 +546,12 @@ namespace StockDory
             if (ThreadType == Main) {
                 // If we are in the main thread, we should regularly (every 4096 nodes) check if the search's limits
                 // have been crossed. If they have, we should stop searching
-                if ((Nodes & 4095) == 0 && OutOfTime<Actual>()) [[unlikely]] { Status = SearchThreadStatus::Stopped; }
+                if ((Nodes & 4095) == 0 && OutOfTime<Limit::Actual>()) [[unlikely]]
+                    Status = SearchThreadStatus::Stopped;
 
                 // If we have exceeded the maximum node limit, we should stop searching
-                if (Nodes >= Limit.Nodes) [[unlikely]] { Status = SearchThreadStatus::Stopped; }
+                if (Nodes >= Limit.Nodes) [[unlikely]]
+                    Status = SearchThreadStatus::Stopped;
             }
 
             // If the search was stopped, we should return a draw score immediately
