@@ -417,10 +417,10 @@ namespace StockDory
 
         WDL GetWDL() const { return WDL(Board, Evaluation); }
 
-        private:
         MS ElapsedTime() const
         { return std::chrono::duration_cast<MS>(std::chrono::steady_clock::now() - StartTime); }
 
+        private:
         template<Limit::TimeType Type>
         bool OutOfTime() const
         {

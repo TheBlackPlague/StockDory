@@ -43,16 +43,15 @@ namespace StockDory
                 repetition.Push(board.Zobrist());
 
                 SearchTask<> search (BenchLimit, board, repetition, hmc);
-
-                const auto t0 = std::chrono::high_resolution_clock::now();
                 search.IterativeDeepening();
-                const auto t1 = std::chrono::high_resolution_clock::now();
 
+                times[i] = search.ElapsedTime();
                 nodes[i] = search.GetNodes();
-                times[i] = std::chrono::duration_cast<MS>(t1 - t0);
 
                 const Score evaluation = search.GetEvaluation();
                 std::cout << " -> " << evaluation << " cp " << nodes[i] << " nodes" << std::endl;
+
+                TT.Clear();
             }
 
             const auto nodeC = std::accumulate(nodes.begin(), nodes.end(),    0ULL);
