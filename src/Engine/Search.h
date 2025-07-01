@@ -951,7 +951,7 @@ namespace StockDory
 
                         // Increase the reduction for moves if we have a transposition table move since it's most likely
                         // the best move in the position and the others are likely worse
-                        if (ttHit && ttEntry.Type != Alpha) r += LMRTTMoveBonus;
+                        if (ttMove) r += LMRTTMoveBonus;
 
                         // If we are not improving positionally, we can afford to reduce the search depth further
                         if (!improving) r += LMRNotImprovingBonus;
