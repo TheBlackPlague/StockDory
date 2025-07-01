@@ -53,7 +53,7 @@ namespace StockDory
         using EntryType = SearchTranspositionEntryType;
 
         CompressedHash  Hash       = 0;
-        CompressedScore Evaluation = 0;
+        CompressedScore Evaluation = None;
         Move            Move       = ::Move();
         uint8_t         Depth      = 0;
         EntryType       Type       = Invalid;
