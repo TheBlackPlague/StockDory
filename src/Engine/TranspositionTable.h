@@ -8,10 +8,7 @@
 
 #include <vector>
 
-#ifdef __x86_64__
-#include <xmmintrin.h>
-#endif
-
+#include "../Backend/ThreadPool.h"
 #include "../Backend/Type/Zobrist.h"
 
 #include "../External/fastrange.h"

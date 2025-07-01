@@ -137,7 +137,6 @@ namespace StockDory
                         }
                     };
 
-                    using Block = drjit::blocked_range<uint8_t>;
                     ThreadPool.For(
                         Block(0, 6),
                         [&perftLoops](const Block block) -> void
@@ -241,8 +240,6 @@ namespace StockDory
                 std::array<uint64_t, 8> result = {};
 
                 const uint8_t count  = pIterator.ToArray(psq);
-
-                using Block = drjit::blocked_range<uint8_t>;
 
                 auto Loop = [depth, &board, &pin, &check, &psq](const Block block) -> uint64_t
                 {
