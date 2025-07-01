@@ -171,26 +171,8 @@ namespace StockDory
         bool Timed = false;
         bool Fixed = false;
 
-        TP Origin = std::chrono::steady_clock::now();
-
         MS ActualTime  {};
         MS OptimalTime {};
-
-        void Start() { Origin = std::chrono::steady_clock::now(); }
-
-        MS Elapsed() const
-        {
-            return std::chrono::duration_cast<MS>(std::chrono::steady_clock::now() - Origin);
-        }
-
-        bool Crossed(const uint64_t nodes, const uint8_t depth) const
-        {
-            const auto result = nodes > Nodes || depth > Depth;
-
-            return Timed ? Elapsed() > OptimalTime || result : result;
-        }
-
-        bool Crossed() const { return Timed ? Elapsed() > ActualTime : false; }
 
     };
 
@@ -312,6 +294,8 @@ namespace StockDory
     class alignas(CacheLineSize) SearchTask
     {
 
+        enum TimeLimitType : uint8_t { Actual, Optimal };
+
         Board Board {};
 
         KTable Killer  {};
@@ -334,6 +318,8 @@ namespace StockDory
         Score Evaluation = -Infinity;
 
         Move BestMove {};
+
+        TP StartTime = {};
 
         uint8_t SearchStability = 0;
 
@@ -367,9 +353,8 @@ namespace StockDory
                 // have more choices
                 SearchSingleMoveTimeOptimization();
 
-                // If we are in the main thread, we need to start the limit state such that if it's timed, we can track
-                // the time elapsed and make sure we don't exceed the time allocation
-                Limit.Start();
+                // Set the starting point for all time measurements
+                StartTime = std::chrono::steady_clock::now();
             }
 
             // Load the board state for evaluation purposes (this needs to be done for all threads with their respective
@@ -377,7 +362,7 @@ namespace StockDory
             Board.LoadForEvaluation(ThreadId);
 
             IDepth = 1;
-            while (!Limit.Crossed(Nodes, IDepth)) {
+            while (IDepth <= Limit.Depth && !OutOfTime<Optimal>()) {
                 const Move lastBestMove = BestMove;
 
                 if (Board.ColorToMove() ==   White)
@@ -395,7 +380,7 @@ namespace StockDory
                     // spending much more time on the search and instead save time for when we have multiple good moves
                     // to choose from
 
-                    const auto time = Limit.Elapsed();
+                    const auto time = ElapsedTime();
 
                     BestMove = PVTable[0].PV[0];
 
@@ -436,6 +421,18 @@ namespace StockDory
         WDL GetWDL() const { return WDL(Board, Evaluation); }
 
         private:
+        MS ElapsedTime() const
+        { return std::chrono::duration_cast<MS>(std::chrono::steady_clock::now() - StartTime); }
+
+        template<TimeLimitType LimitType>
+        bool OutOfTime() const
+        {
+            if (!Limit.Timed) return false;
+
+            return LimitType == Actual ? ElapsedTime() > Limit. ActualTime
+                                       : ElapsedTime() > Limit.OptimalTime;
+        }
+
         void SearchSingleMoveTimeOptimization()
         {
             if (!Limit.Timed) return;
@@ -494,7 +491,7 @@ namespace StockDory
                 if (ThreadType == Main) {
                     // If we are in the main thread, we should regularly (every search/research) check if the search's
                     // limits have been crossed. If they have, we should stop searching/researching
-                    if (Limit.Crossed()) [[unlikely]] { Status = SearchThreadStatus::Stopped; }
+                    if (OutOfTime<Actual>()) [[unlikely]] { Status = SearchThreadStatus::Stopped; }
                 }
 
                 // If the search was stopped, we should return a draw score immediately
@@ -548,7 +545,10 @@ namespace StockDory
             if (ThreadType == Main) {
                 // If we are in the main thread, we should regularly (every 4096 nodes) check if the search's limits
                 // have been crossed. If they have, we should stop searching
-                if ((Nodes & 4095) == 0 && Limit.Crossed()) [[unlikely]] { Status = SearchThreadStatus::Stopped; }
+                if ((Nodes & 4095) == 0 && OutOfTime<Actual>()) [[unlikely]] { Status = SearchThreadStatus::Stopped; }
+
+                // If we have exceeded the maximum node limit, we should stop searching
+                if (Nodes >= Limit.Nodes) [[unlikely]] { Status = SearchThreadStatus::Stopped; }
             }
 
             // If the search was stopped, we should return a draw score immediately
