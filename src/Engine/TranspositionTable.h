@@ -56,13 +56,11 @@ namespace StockDory
 
         void Prefetch(const ZobristHash hash) const
         {
-#ifdef __x86_64__
-            _mm_prefetch(reinterpret_cast<const char*>(&Internal[fastrange64(hash, Count)]), _MM_HINT_T0);
-#else
-#ifdef __aarch64__
-            __builtin_prefetch(reinterpret_cast<const char*>(&Internal[fastrange64(hash, Count)]), 0, 3);
-#endif
-#endif
+            __builtin_prefetch(
+                static_cast<const void*>(reinterpret_cast<const char*>(&Internal[fastrange64(hash, Count)])),
+                0,
+                3
+            );
         }
 
         [[nodiscard]]
