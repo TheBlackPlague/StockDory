@@ -83,14 +83,14 @@ namespace StockDory
         {
             auto hash =
                 std::make_shared<UCIOption<size_t>>
-                ("Hash", 16, 1, 16384, [](const size_t& value) -> void
+                ("Hash", 16, 1, 4194304, [](const size_t& value) -> void
                     {
                         if (value < 1) {
                             std::cerr << "ERROR: Hash must be at least 1 MB" << std::endl;
                             return;
                         }
-                        if (value > 16384) {
-                            std::cerr << "ERROR: Hash must be at most 16 GB" << std::endl;
+                        if (value > 4194304) {
+                            std::cerr << "ERROR: Hash must be at most 4 TB" << std::endl;
                             return;
                         }
 
