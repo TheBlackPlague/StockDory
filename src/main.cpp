@@ -13,8 +13,9 @@
 void DisplayTitle()
 {
     std::stringstream ss;
-    ss << NAME << " " << VERSION << " - Neural Architecture: " << StockDory::Evaluation::Name() << "\n";
-    ss << "Provided by " << AUTHOR << " under the " << LICENSE << " license.";
+
+    ss << NAME << " " << VERSION << " (" << CODENAME << ")" << "\n";
+    ss << "Copyright (c) 2025 " << AUTHOR << " - Licensed under the " << LICENSE;
 
     std::cerr << ss.str() << std::endl;
 }
