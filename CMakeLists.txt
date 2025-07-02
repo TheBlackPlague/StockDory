@@ -4,6 +4,7 @@ project(StockDory)
 
 set(CMAKE_CXX_STANDARD 23)
 
+set(CMAKE_CXX_FLAGS         "-mno-avx512vnni"               )
 set(CMAKE_CXX_FLAGS_DEBUG   "-Wall -Wextra -g -ftime-report")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG"                  )
 
