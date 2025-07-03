@@ -109,7 +109,7 @@ jobs:
     - if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
       name: Extract Version Identifier (Linux and MacOS)
       run: |
-        VERSION=$(grep 'const std::string VERSION' ${{ github.workspace }}/build/Information.h | cut -d'"' -f2)
+        VERSION=$(grep 'const std::string VERSION' ${{ github.workspace }}/build/BuildSystem/Information.h | cut -d'"' -f2)
         echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
     - if: matrix.os == 'windows-latest'
