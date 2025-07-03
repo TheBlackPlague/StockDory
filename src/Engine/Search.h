@@ -550,7 +550,7 @@ namespace StockDory
                     Status = SearchThreadStatus::Stopped;
 
                 // If we have exceeded the maximum node limit, we should stop searching
-                if (Nodes >= Limit.Nodes) [[unlikely]]
+                if (Nodes > Limit.Nodes) [[unlikely]]
                     Status = SearchThreadStatus::Stopped;
             }
 
