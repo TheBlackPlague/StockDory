@@ -4,9 +4,13 @@ project(StockDory)
 
 set(CMAKE_CXX_STANDARD 23)
 
-set(CMAKE_CXX_FLAGS         "-mno-avx512vnni -flto=full"    )
+set(CMAKE_CXX_FLAGS         "-flto=full"                    )
 set(CMAKE_CXX_FLAGS_DEBUG   "-Wall -Wextra -g -ftime-report")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG"                  )
+
+if (NOT APPLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-avx512vnni")
+endif ()
 
 set(VERSION  "0.2"    )
 set(CODENAME "Piranha")
@@ -48,7 +52,13 @@ if (BUILD_NATIVE)
     set(ARCHITECTURE "native")
 endif ()
 
-if (ARCHITECTURE)
+if (APPLE)
+    if (NOT ARCHITECTURE MATCHES "native")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=${ARCHITECTURE}")
+    elseif (ARCHITECTURE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mtune=native")
+    endif ()
+elseif (ARCHITECTURE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${ARCHITECTURE} -mtune=${ARCHITECTURE}")
 endif ()
 
