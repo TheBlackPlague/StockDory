@@ -116,7 +116,7 @@ jobs:
       name: Extract Version Identifier (Windows)
       shell: powershell
       run: |
-        $VERSION = (Get-Content -Path ${{ github.workspace }}/build/Information.h | Select-String -Pattern 'const std::string VERSION' -SimpleMatch).ToString().Split('"')[1]
+        $VERSION = (Get-Content -Path ${{ github.workspace }}/build/BuildSystem/Information.h | Select-String -Pattern 'const std::string VERSION' -SimpleMatch).ToString().Split('"')[1]
         echo "VERSION=${VERSION}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Rename Binary
