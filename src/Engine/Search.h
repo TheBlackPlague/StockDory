@@ -1049,7 +1049,7 @@ namespace StockDory
             //
             // As long as the search has not stopped, we should try to insert/replace the transposition table entry
             // with the new entry as it is most likely more relevant than the old entry
-            if (Status != SearchThreadStatus::Stopped) TryReplaceTT(ttEntry, ttEntryNew);
+            if (!Root && Status != SearchThreadStatus::Stopped) TryReplaceTT(ttEntry, ttEntryNew);
 
             return bestEvaluation;
         }
