@@ -45,11 +45,8 @@ namespace StockDory
 
             output << "score ";
 
-
-            if (abs(event.Evaluation) > Infinity - MaxDepth) {
-                const auto mateScore = ((event.Evaluation > 0 ? Infinity : -Infinity) - event.Evaluation) / 2;
-
-                output << "mate " << mateScore << " ";
+            if (IsMate(event.Evaluation)) {
+                output << "mate " << (PlyToMate(event.Evaluation) + 1) / 2 << " ";
             } else {
                 output << "cp " << event.Evaluation << " ";
             }

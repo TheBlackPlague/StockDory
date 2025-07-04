@@ -10,6 +10,8 @@
 
 #include <nanothread/nanothread.h>
 
+using Block = drjit::blocked_range<uint8_t>;
+
 class ThreadPool
 {
 

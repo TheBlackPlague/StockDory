@@ -74,7 +74,7 @@ jobs:
     - if: matrix.os == 'windows-latest'
       name: Install Clang 20 (Windows)
       run: |
-        choco install llvm --version 20.1.0 -y
+        choco install llvm --version 20.1.7 -y
     - if: matrix.os == 'macos-latest'
       name: Install Clang 20 (MacOS)
       run: |
@@ -100,13 +100,8 @@ jobs:
         echo "CXX=/opt/homebrew/opt/llvm@20/bin/clang++" >> $GITHUB_ENV
         echo "PATH=/opt/homebrew/opt/llvm@20/bin:$PATH" >> $GITHUB_ENV
 
-    - if: matrix.os == 'macos-latest'
-      name: Configure CMake for Apple (ARM64)
-      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCI=ON -DCMAKE_CXX_FLAGS="-mcpu=${{ matrix.arch }}" -G Ninja
-
-    - if: matrix.os != 'macos-latest'
-      name: Configure CMake
-      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCI=ON -DCMAKE_CXX_FLAGS="-march=${{ matrix.arch }}" -G Ninja
+    - name: Configure CMake
+      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCI=ON -DARCHITECTURE=${{ matrix.arch }} -G Ninja
 
     - name: Build
       run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }}
@@ -114,14 +109,14 @@ jobs:
     - if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
       name: Extract Version Identifier (Linux and MacOS)
       run: |
-        VERSION=$(grep 'const std::string VERSION' ${{ github.workspace }}/build/Information.h | cut -d'"' -f2)
+        VERSION=$(grep 'const std::string VERSION' ${{ github.workspace }}/build/BuildSystem/Information.h | cut -d'"' -f2)
         echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
     - if: matrix.os == 'windows-latest'
       name: Extract Version Identifier (Windows)
       shell: powershell
       run: |
-        $VERSION = (Get-Content -Path ${{ github.workspace }}/build/Information.h | Select-String -Pattern 'const std::string VERSION' -SimpleMatch).ToString().Split('"')[1]
+        $VERSION = (Get-Content -Path ${{ github.workspace }}/build/BuildSystem/Information.h | Select-String -Pattern 'const std::string VERSION' -SimpleMatch).ToString().Split('"')[1]
         echo "VERSION=${VERSION}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Rename Binary

@@ -47,6 +47,12 @@ namespace StockDory
     Score  WinIn(const uint8_t ply) { return  Mate - ply; }
     Score LossIn(const uint8_t ply) { return -Mate + ply; }
 
+    uint8_t PlyToMate(const Score score)
+    {
+        return IsWin (score) ?  Mate - score :
+               IsLoss(score) ? -Mate - score : 0;
+    }
+
 } // StockDory
 
 #endif //STOCKDORY_COMMON_H

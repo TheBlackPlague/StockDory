@@ -27,7 +27,7 @@ namespace StockDory
         {
 
             uint32_t Score;
-            Move    Move ;
+            Move     Move ;
 
             OrderedMove() = default;
 
