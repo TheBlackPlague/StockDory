@@ -53,6 +53,8 @@ namespace StockDory
                IsLoss(score) ? -Mate - score : 0;
     }
 
+    TP Now() { return std::chrono::steady_clock::now(); }
+
 } // StockDory
 
 #endif //STOCKDORY_COMMON_H

@@ -25,8 +25,7 @@ namespace StockDory
             limit.Timed = true;
             limit.Fixed = true;
 
-            limit.ActualTime  = MS(Time);
-            limit.OptimalTime = MS(Time);
+            limit.Time = MS(Time);
         }
 
     };
@@ -52,16 +51,15 @@ namespace StockDory
             const uint64_t time = ColorToMove == White ? WhiteTime : BlackTime;
             const uint64_t inc  = ColorToMove == White ? WhiteInc  : BlackInc ;
 
-            uint64_t actualTime = time * TimeBasePartitionNumerator / TimeBasePartitionDenominator;
+            uint64_t allocatedTime = time * TimeBasePartitionNumerator / TimeBasePartitionDenominator;
 
-            actualTime = MovesToGo > 0 ? std::max(actualTime, time / MovesToGo) : actualTime;
+            allocatedTime = MovesToGo > 0 ? std::max(allocatedTime, time / MovesToGo) : allocatedTime;
 
-            actualTime += inc * TimeIncrementPartitionNumerator / TimeIncrementPartitionDenominator;
+            allocatedTime += inc * TimeIncrementPartitionNumerator / TimeIncrementPartitionDenominator;
 
-            actualTime -= TimeProcessingOverhead;
+            allocatedTime -= TimeProcessingOverhead;
 
-            limit.ActualTime  = MS(actualTime);
-            limit.OptimalTime = MS(actualTime);
+            limit.Time = MS(allocatedTime);
         }
 
     };

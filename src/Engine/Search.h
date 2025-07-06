@@ -173,8 +173,7 @@ namespace StockDory
         bool Timed = false;
         bool Fixed = false;
 
-        MS ActualTime  {};
-        MS OptimalTime {};
+        MS Time {};
 
     };
 
@@ -319,9 +318,10 @@ namespace StockDory
 
         Move BestMove {};
 
-        TP StartTime = {};
+        TP StartTime {};
+        MS DepthTime {};
 
-        uint8_t SearchStability = 0;
+        size_t StableIDepthIterations = 0;
 
         size_t ThreadId = 0;
 
@@ -365,31 +365,33 @@ namespace StockDory
             while (IDepth <= Limit.Depth && !OutOfTime<Limit::Optimal>()) {
                 const Move lastBestMove = BestMove;
 
+                const auto t0 = Now();
+
                 if (Board.ColorToMove() ==   White)
                      Evaluation = Aspiration<White>(IDepth);
                 else Evaluation = Aspiration<Black>(IDepth);
+
+                const auto t1 = Now();
 
                 // In the case that the search was stopped, we should just proceed to fire the completion event
                 if (Status == SearchThreadStatus::Stopped) break;
 
                 if (ThreadType == Main) {
+                    const MS elapsed = ElapsedTime();
+                    DepthTime = std::chrono::duration_cast<MS>(t1 - t0);
+
+                    StableIDepthIterations++;
+                    if (lastBestMove != BestMove) StableIDepthIterations = 0;
+
                     // On the main thread, we need to fire events to notify handlers about the completion of the
-                    // iterative deepening iteration and provide them with the results. Furthermore, if we are on the
-                    // main thread, we should also try to see if our search is stable enough. If it is, we can avoid
-                    // spending much more time on the search and instead save time for when we have multiple good moves
-                    // to choose from
-
-                    const auto time = ElapsedTime();
-
-                    SearchStabilityTimeOptimization(lastBestMove);
-
+                    // iterative deepening iteration and provide them with the results
                     EventHandler::HandleIterativeDeepeningIterationCompletion({
                         .Depth          = IDepth,
                         .SelectiveDepth = SelectiveDepth,
                         .Evaluation     = WDLCalculator::S(Board, Evaluation),
                         .WDL            = WDL(Board, Evaluation),
                         .Nodes          = Nodes,
-                        .Time           = time,
+                        .Time           = elapsed,
                         .PVEntry        = PVTable[0]
                     });
                 }
@@ -424,10 +426,29 @@ namespace StockDory
         template<Limit::TimeType Type>
         bool OutOfTime() const
         {
+            if (ThreadType != Main) return false;
+
             if (!Limit.Timed) return false;
 
-            return Type == Limit::Actual ? ElapsedTime() > Limit. ActualTime
-                                         : ElapsedTime() > Limit.OptimalTime;
+            if (Type == Limit::Actual || Limit.Fixed) return ElapsedTime() > Limit.Time;
+
+            const double    time = Limit.Time   .count();
+            const double elapsed = ElapsedTime().count();
+
+            if (time - elapsed < DepthTime.count() * 1.2) return false;
+
+            const auto searchStabilityTime = [&] -> double
+            {
+                double t = time;
+
+                for (size_t i = 0; i < StableIDepthIterations; i++) t *= 0.95 - 0.001 * IDepth;
+
+                return t;
+            }();
+
+            if (elapsed > searchStabilityTime) return true;
+
+            return elapsed > time;
         }
 
         void SearchSingleMoveTimeOptimization()
@@ -447,24 +468,7 @@ namespace StockDory
 
             if (moveCount > 1) return;
 
-            const uint64_t time = Limit.OptimalTime.count();
-
-            Limit.OptimalTime = MS(time * TimeBasePartitionNumerator / TimeBasePartitionDenominator);
-        }
-
-        void SearchStabilityTimeOptimization(const Move lastBestMove)
-        {
-            if (!Limit.Timed) return;
-            if ( Limit.Fixed) return;
-
-            if (lastBestMove == BestMove) SearchStability = std::min<uint8_t>(SearchStability + 1, 4);
-            else                          SearchStability = 0;
-
-            const auto factor = SearchStabilityTimeOptimizationFactor[SearchStability];
-
-            const uint64_t time = Limit.OptimalTime.count();
-
-            Limit.OptimalTime = MS(std::min<uint64_t>(time * factor / 100, Limit.ActualTime.count()));
+            Limit.Time = MS(Limit.Time / 10);
         }
 
         template<Color Color>
