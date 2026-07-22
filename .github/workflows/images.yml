@@ -83,6 +83,6 @@ jobs:
                       org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
                   build-args: |
                       BOTLI_REF=6916a09825067862009393250be9dbd39f442dc8
-                      STOCKDORY_IMAGE=${{ env.REGISTRY }}/${{ env.STOCKDORY_IMAGE }}:${{ steps.vars.outputs.sha_tag }}
+                      STOCKDORY_IMAGE=${{ env.REGISTRY }}/${{ env.STOCKDORY_IMAGE }}:${{ steps.tags.outputs.sha_tag }}
                   cache-from: type=gha,scope=stockdory-lichess
                   cache-to: type=gha,mode=max,scope=stockdory-lichess
