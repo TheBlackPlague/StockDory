@@ -1,0 +1,11 @@
+.git
+Build
+build
+cmake-build-*
+.idea
+.vscode
+*.zip
+src
+*.md
+Dockerfile
+Dockerfile.dockerignore

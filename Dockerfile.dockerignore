@@ -1,0 +1,8 @@
+.git
+.github
+Build
+build
+cmake-build-*
+.idea
+.vscode
+*.zip
