@@ -14,7 +14,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /src_data
 
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 
 RUN git init BotLi && \
     cd BotLi && \
