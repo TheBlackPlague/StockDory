@@ -38,18 +38,17 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV TZ=America/Chicago
 
+RUN mkdir -p /config && chown -R 1000:1000 /config
+VOLUME ["/config"]
+
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates python3 && rm -rf /var/lib/apt/lists/*
 
 COPY --from=botli_prep /src_data/BotLi /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-RUN uv pip install --system --no-cache --break-system-packages .
+COPY --from=botli_prep /src_data/BotLi/config.yml.default /config/config.yml
 
-RUN mkdir -p /config && chown -R 1000:1000 /config
-VOLUME ["/config"]
-
-COPY /app/config.yml.default /config/config.yml
-
-ENTRYPOINT ["uv", "/app/user_interface.py --config /config/config.yml"]
+ENTRYPOINT ["uv", "run", "/app/user_interface.py"]
+CMD ["--config", "/config/config.yml"]
