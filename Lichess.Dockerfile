@@ -45,7 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -
 COPY --from=botli_prep /src_data/BotLi /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-RUN uv pip install --system --no-cache .
+RUN uv pip install --system --no-cache --break-system-packages .
 
 COPY .docker/lichess-entrypoint.py /usr/local/bin/lichess-entrypoint.py
 
