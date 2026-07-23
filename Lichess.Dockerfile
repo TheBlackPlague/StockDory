@@ -47,11 +47,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 RUN uv pip install --system --no-cache --break-system-packages .
 
-COPY .docker/lichess-entrypoint.py /usr/local/bin/lichess-entrypoint.py
-
-RUN chmod 0755 /usr/local/bin/lichess-entrypoint.py
-
 RUN mkdir -p /config && chown -R 1000:1000 /config
 VOLUME ["/config"]
 
-ENTRYPOINT ["python3", "/usr/local/bin/lichess-entrypoint.py"]
+COPY /app/config.yml.default /config/config.yml
+
+ENTRYPOINT ["uv", "/app/user_interface.py --config /config/config.yml"]
