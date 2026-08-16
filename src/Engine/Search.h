@@ -424,6 +424,8 @@ namespace StockDory
         template<Limit::TimeType Type>
         bool OutOfTime() const
         {
+            if (ThreadType != Main) return false;
+
             if (!Limit.Timed) return false;
 
             return Type == Limit::Actual ? ElapsedTime() > Limit. ActualTime
