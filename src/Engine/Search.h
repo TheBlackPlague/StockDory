@@ -426,6 +426,8 @@ namespace StockDory
         {
             if (!Limit.Timed) return false;
 
+            if (ThreadType != Main) return false;
+
             return Type == Limit::Actual ? ElapsedTime() > Limit. ActualTime
                                          : ElapsedTime() > Limit.OptimalTime;
         }
