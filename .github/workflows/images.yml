@@ -5,6 +5,7 @@ on:
         branches: [ master, lichess ]
         paths:
             - "src/**"
+            - "docker/**"
             - "CMakeLists.txt"
             - "*.cmake"
             - "Dockerfile"
@@ -17,6 +18,7 @@ on:
         types: [ opened, synchronize, reopened ]
         paths:
             - "src/**"
+            - "docker/**"
             - "CMakeLists.txt"
             - "*.cmake"
             - "Dockerfile"
@@ -95,9 +97,6 @@ jobs:
                   platforms: linux/amd64
                   push: true
                   tags: ${{ steps.image_info.outputs.stockdory }}:${{ steps.image_info.outputs.tag }}
-                  build-args: |
-                      BUILD_JOBS=1
-                      BUILD_NATIVE=OFF
                   cache-from: type=gha,scope=stockdory
                   cache-to: type=gha,mode=max,scope=stockdory
                   labels: |

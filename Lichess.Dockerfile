@@ -50,5 +50,5 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 COPY --from=botli_prep /src_data/BotLi/config.yml.default /config/config.yml
 
-ENTRYPOINT ["uv", "run", "/app/user_interface.py"]
-CMD ["--config", "/config/config.yml"]
+ENTRYPOINT ["/usr/local/bin/stockdory-entrypoint", "--"]
+CMD ["uv", "run", "/app/user_interface.py", "--config", "/config/config.yml"]
