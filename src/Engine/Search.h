@@ -7,6 +7,7 @@
 #define STOCKDORY_SEARCH_H
 
 #include <cmath>
+#include <ranges>
 
 #include "../Backend/Board.h"
 #include "../Backend/Misc.h"
@@ -98,8 +99,8 @@ namespace StockDory
         Array<Frame, Padding + MaxDepth> Internal {};
 
         public:
-              Frame& operator[](const size_t index)       { return Internal[index + Padding]; }
-        const Frame& operator[](const size_t index) const { return Internal[index + Padding]; }
+              Frame& operator [](const size_t index)       { return Internal[index + Padding]; }
+        const Frame& operator [](const size_t index) const { return Internal[index + Padding]; }
 
     };
 
@@ -1215,7 +1216,8 @@ namespace StockDory
 
         using ParallelTask = SearchTask<Parallel>;
 
-        std::vector<ParallelTask> Internal;
+        std::vector<ParallelTask> SearchTaskPool;
+        std::vector<ThreadedTask> ThreadTaskPool;
 
         size_t TaskCount = 0;
 
@@ -1230,17 +1232,37 @@ namespace StockDory
         {
             TaskCount = ThreadPool.Size() - 1;
 
-            Internal.reserve(TaskCount);
+            SearchTaskPool.reserve(TaskCount);
+            ThreadTaskPool.reserve(TaskCount);
         }
 
-        void Clear() { Internal.clear(); }
+        void Clear()
+        {
+            SearchTaskPool.clear();
+            ThreadTaskPool.clear();
+        }
 
         size_t Size() const { return TaskCount; }
 
         void Fill(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc)
-        { for (size_t i = 0; i < TaskCount; i++) Internal.emplace_back(l, b, r, hmc, i + 1); }
+        {
+            for (size_t i = 0; i < TaskCount; i++) SearchTaskPool.emplace_back(l, b, r, hmc, i + 1);
+        }
 
-        constexpr std::vector<ParallelTask>& operator &(){ return Internal; }
+        void Execute()
+        {
+            for (auto& task : SearchTaskPool) ThreadTaskPool.emplace_back(ThreadPool.Execute(
+                [&task] -> void { task.IterativeDeepening(); }
+            ));
+        }
+
+        void Stop()
+        {
+            for (auto &task : SearchTaskPool) task.Stop();
+            for (auto &task : ThreadTaskPool) task.Wait();
+        }
+
+        auto Tasks() const { return std::views::zip(SearchTaskPool, ThreadTaskPool); }
 
     };
 
@@ -1257,7 +1279,7 @@ namespace StockDory
             {
                 IterativeDeepeningIterationCompletionEvent event = e;
 
-                for (const auto& task : &ParallelTaskPool) event.Nodes += task.GetNodes();
+                for (const auto& [task, _] : ParallelTaskPool.Tasks()) event.Nodes += task.GetNodes();
 
                 return MainEventHandler::HandleIterativeDeepeningIterationCompletion(event);
             }
@@ -1313,13 +1335,7 @@ namespace StockDory
 
             if (ParallelTaskPool.Size()) {
                 ParallelTaskPool.Fill(l, b, r, hmc);
-
-                for (auto& task : &ParallelTaskPool) ThreadPool.Execute(
-                    [&task] -> void
-                    {
-                        task.IterativeDeepening();
-                    }
-                );
+                ParallelTaskPool.Execute();
             }
 
             MainTask = MainSearchTask(l, b, r, hmc, 0);
@@ -1332,12 +1348,10 @@ namespace StockDory
                     // The main thread is responsible for ensuring that it stops all the parallel tasks when it has
                     // concluded searching
                     if (ParallelTaskPool.Size()) {
-                        for (auto& task : &ParallelTaskPool) task.Stop();
-
-                        for (auto& task : &ParallelTaskPool) if (!task.Stopped()) Sleep(1);
+                        ParallelTaskPool.Stop();
+                        ParallelTaskPool.Clear();
                     }
 
-                    ParallelTaskPool.Clear();
                     Searching = false;
                 }
             );

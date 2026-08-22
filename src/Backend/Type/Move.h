@@ -81,7 +81,7 @@ struct Move
     }
 
     [[nodiscard]]
-    constexpr bool operator==(const Move other) const
+    constexpr bool operator ==(const Move other) const
     {
         return Internal == other.Internal;
     }
