@@ -3,8 +3,8 @@
 // Licensed under LGPL-3.0.
 //
 
-#ifndef STOCKDORY_UCIINTERFACE_H
-#define STOCKDORY_UCIINTERFACE_H
+#ifndef STOCKDORY_UCI_H
+#define STOCKDORY_UCI_H
 
 #include <functional>
 #include <iostream>
@@ -30,7 +30,7 @@
 namespace StockDory
 {
 
-    class UCIInterface
+    class UCI
     {
 
         using UCISearch = ThreadedSearch<UCISearchEventHandler>;
@@ -177,8 +177,8 @@ namespace StockDory
         {
             if (!UCIPrompted) return;
 
-            if (UCISearch::Searching) UCISearch::MainTask.Stop();
-            while (UCISearch::Searching) Sleep(1);
+            if (UCISearch::Searching.load(std::memory_order::acquire)) UCISearch::MainTask.Stop();
+            UCISearch::Searching.wait(true, std::memory_order::acquire);
 
             Board           = {};
             Repetition      = {};
@@ -198,15 +198,17 @@ namespace StockDory
 
         static void Quit()
         {
-            if (UCISearch::Searching) UCISearch::MainTask.Stop();
-            while (UCISearch::Searching) Sleep(1);
+            if (UCISearch::Searching.load(std::memory_order::acquire)) UCISearch::MainTask.Stop();
+            UCISearch::Searching.wait(true, std::memory_order::acquire);
 
             Running = false;
         }
 
         static void Info(const Arguments& args)
         {
-            if (!UCIPrompted || UCISearch::Searching) return;
+            if (!UCIPrompted) return;
+
+            if (UCISearch::Searching.load(std::memory_order::acquire)) return;
 
             Board.LoadForEvaluation();
 
@@ -287,10 +289,12 @@ namespace StockDory
         {
             if (!UCIPrompted) return;
 
-            if (UCISearch::Searching) {
-                std::cerr << "ERROR: The engine is already searching" << std::endl;
-                return;
-            }
+            // if (UCISearch::Searching) {
+            //     std::cerr << "ERROR: The engine is already searching" << std::endl;
+            //     return;
+            // }
+
+            UCISearch::Searching.wait(true, std::memory_order::acquire);
 
             if (args.size() > 1 && strutil::compare_ignore_case(args[0], "perft")) {
                 const auto depth = static_cast<uint8_t>(std::stoull(args[1]));
@@ -338,4 +342,4 @@ namespace StockDory
 
 } // StockDory
 
-#endif //STOCKDORY_UCIINTERFACE_H
+#endif //STOCKDORY_UCI_H

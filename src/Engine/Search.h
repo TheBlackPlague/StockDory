@@ -1293,13 +1293,11 @@ namespace StockDory
 
         static inline MainSearchTask MainTask;
 
-        static inline bool Searching = false;
+        static inline std::atomic_bool Searching = false;
 
         static void Run(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc)
         {
-            if (Searching) return;
-
-            Searching = true;
+            if (Searching.exchange(true, std::memory_order::acq_rel)) return;
 
             // Symmetric MultiProcessing (SMP):
             //
@@ -1352,7 +1350,8 @@ namespace StockDory
                         ParallelTaskPool.Clear();
                     }
 
-                    Searching = false;
+                    Searching.store(false, std::memory_order::release);
+                    Searching.notify_all();
                 }
             );
         }
