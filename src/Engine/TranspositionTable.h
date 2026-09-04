@@ -67,8 +67,6 @@ namespace StockDory
         void Clear()
         {
             Internal = std::vector<Atomic>(Count);
-
-            for (Atomic& entry : Internal) entry.store(T {}, std::memory_order::relaxed);
         }
 
         Reference operator [](const ZobristHash hash)
