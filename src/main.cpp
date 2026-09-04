@@ -8,7 +8,7 @@
 #include "Information.h"
 
 #include "Terminal/BenchHash.h"
-#include "Terminal/UCI/UCIInterface.h"
+#include "Terminal/UCI/UCI.h"
 
 void DisplayTitle()
 {
@@ -33,7 +33,7 @@ int main(const int argc, const char* argv[])
         }
     }
 
-    StockDory::UCIInterface::Launch();
+    StockDory::UCI::Launch();
 
     return EXIT_SUCCESS;
 }
