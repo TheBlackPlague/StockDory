@@ -635,10 +635,10 @@ namespace StockDory
             // exists a transposition entry - if the entry is valid, depending on the quality of the entry, we can
             // return the evaluation from the entry. Even if the entry isn't of sufficient quality to return directly,
             // we can still search the move in the entry first, since it most likely is the best move in the position
-            SearchTranspositionEntry& ttEntry      = TT[hash];
-            Move                      ttMove       = {};
-            bool                      ttHit        = false;
-            Score                     ttEvaluation = None;
+            SearchTranspositionEntry ttEntry      = TT[hash];
+            Move                     ttMove       = {};
+            bool                     ttHit        = false;
+            Score                    ttEvaluation = None;
 
             if (ttEntry.Type != Invalid && ttEntry.Hash == CompressHash(hash)) {
                 ttHit  = true;
@@ -1052,7 +1052,7 @@ namespace StockDory
             //
             // As long as the search has not stopped, we should try to insert/replace the transposition table entry
             // with the new entry as it is most likely more relevant than the old entry
-            if (Status != SearchThreadStatus::Stopped) TryReplaceTT(ttEntry, ttEntryNew);
+            if (Status != SearchThreadStatus::Stopped) TryReplaceTT(hash, ttEntryNew);
 
             return bestEvaluation;
         }
@@ -1078,7 +1078,7 @@ namespace StockDory
 
                 const ZobristHash hash = Board.Zobrist();
 
-                const SearchTranspositionEntry& ttEntry = TT[hash];
+                const SearchTranspositionEntry ttEntry = TT[hash];
 
                 if (ttEntry.Hash == CompressHash(hash)) {
                     const Score ttEvaluation = DecompressScore(ttEntry.Evaluation, ply);
@@ -1200,13 +1200,15 @@ namespace StockDory
             return (Evaluation::Evaluate(Color, ThreadId) * weightedMaterial) / MaterialScalingQuantization;
         }
 
-        static void TryReplaceTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
+        static void TryReplaceTT(const ZobristHash hash, const SearchTranspositionEntry nEntry)
         {
+            const SearchTranspositionEntry pEntry = TT[hash];
+
             if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
                (pEntry.Type == Alpha &&
                 nEntry.Type == Beta) ||
                 nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
-                pEntry = nEntry;
+                TT[hash] = nEntry;
         }
 
     };
