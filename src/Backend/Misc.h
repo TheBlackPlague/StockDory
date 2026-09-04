@@ -1,7 +1,5 @@
-//
-// Copyright (c) 2025 StockDory authors. See the list of authors for more details.
-// Licensed under LGPL-3.0.
-//
+// Copyright (c) 2025-2026 Shaheryar Sohail
+// SPDX-License-Identifier: AGPL-3.0-only
 
 #ifndef STOCKDORY_MISC_H
 #define STOCKDORY_MISC_H

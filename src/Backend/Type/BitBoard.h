@@ -1,7 +1,5 @@
-//
-// Copyright (c) 2023 StockDory authors. See the list of authors for more details.
-// Licensed under MIT.
-//
+// Copyright (c) 2023-2026 Shaheryar Sohail
+// SPDX-License-Identifier: AGPL-3.0-only
 
 #ifndef STOCKDORY_BITBOARD_H
 #define STOCKDORY_BITBOARD_H
