@@ -61,7 +61,7 @@ is:
 > integration.
 
 **Compilation Steps:**
-```shell
+```bash
 # Run these commands from a directory that does not already contain a
 # directory named "StockDory"
 
