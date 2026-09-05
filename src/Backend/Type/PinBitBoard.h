@@ -1,5 +1,7 @@
-// Copyright (c) 2023-2026 Shaheryar Sohail
-// SPDX-License-Identifier: AGPL-3.0-only
+/*
+ * Copyright (c) 2023-2026 Shaheryar Sohail
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
 
 #ifndef STOCKDORY_PINBITBOARD_H
 #define STOCKDORY_PINBITBOARD_H
