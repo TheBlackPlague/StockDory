@@ -16,111 +16,109 @@
 </p>
 
 ### 🌐 Overview
-- 🧠 **Powerful and Deep Analysis**
-- 🚀 **High Performance**
-- 📦 **Lightweight**
-- 💻 **Cross Platform**
-- 🔄 **UCI Compatible**
-- 👌 **Free and Open Source**
 
-StockDory, the mark of strength and efficiency, emerges as a proficient chess engine reengineered
-in C++ from its popular and mighty C# predecessor, StockNemo.
-Striving to ascend the peaks of excellence, StockDory serves as a testament to the spirit of 
-continuous improvement, eliminating bugs and performance issues that blemished its otherwise
-remarkable predecessor.
+- 🧠 Exceptional Tactical Analysis
+- 🚀 Blazing Performance
+- 📦 Lightweight and Scalable
+- 💻 Cross Platform
+- 🔄 UCI Compatible
+- 👌 Free and Open Source
 
-Download the latest release and try it out for yourself! 
-For maximum performance, compile the engine specifically for your hardware using the
-instructions below.
+StockDory is a modern C++ chess engine combining neural-network evaluation with a deeply optimized tree search. Capable 
+of analyzing millions of positions every second with remarkable accuracy, StockDory plays chess at a level far beyond 
+human ability.
 
-### 🛠️ Compiling
-StockDory is written in C++ and uses CMake as its build system.
+### 🎮 Building & Using
 
-**Requirements**:
-- 🏭 CMake >= 3.21
-- 🐉 Clang (LLVM) >= 20.0.0
-- 🥷 Ninja >= 1.10.2
+For the quickest way to get started, it is recommended to use one of the
+[official release binaries](https://github.com/TheBlackPlague/StockDory/releases). These builds target the three major
+desktop operating systems and common CPU architecture levels, making them suitable for most systems likely to run
+StockDory.
 
-**Steps**:
-- 💾 Clone the repository
+> [!NOTE]
+> StockDory is a command-line program that communicates through the **standard input and output streams** using the
+> **Universal Chess Interface (UCI)** protocol. For normal use, it is recommended to pair StockDory with a
+> **UCI-compatible** graphical interface such as [En Croissant](https://encroissant.org/).
+
+For maximum performance, however, the best StockDory build is generally one compiled specifically for your native
+hardware. The official releases cannot reasonably cover every processor or architecture combination, particularly for
+new, uncommon, or recently introduced hardware. Compiling StockDory locally is therefore recommended when no suitable
+release binary exists, when targeting a specialized platform, or when you simply want the best possible performance
+from your system.
+
+StockDory currently targets **C++23** and officially supports the **LLVM toolchain**. The recommended build environment
+is:
+
+* 👽 Git >= 2.30
+* 🏗️ CMake >= 3.21 (recommended: 4.0.x)
+* 🥷 Ninja >= 1.10 (recommended: 1.12)
+* 🐉 LLVM >= 22 (recommended: 22.1.8)
+
+> [!CAUTION]
+> Other toolchains or build-system substitutions may work, but they are not officially supported and may produce builds
+> with different behavior or performance characteristics. Maintaining equivalent support across multiple compiler
+> toolchains is impractical due to differences in compiler behavior, optimization capabilities, and platform 
+> integration.
+
+**Compilation Steps:**
 ```bash
+# Run these commands from a directory that does not already contain a
+# directory named "StockDory"
+
+# Clone the StockDory repository.
 git clone https://github.com/TheBlackPlague/StockDory.git
-```
-- 🔦 Setup Build Process
-```bash
 cd StockDory
-cmake -B Build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -G Ninja
+
+# Ensure the required toolchain is available through your system PATH
+# before continuing...
+
+# Choose one of the configurations below:
+
+# OPTION A ---
+# Native Build
+#
+# Recommended for local use. This build targets the capabilities of the
+# current system and will generally provide the best performance on the
+# machine on which it is compiled. 
+# 
+# The resulting binary may not be portable to systems with different CPU 
+# capabilities.
+cmake -B Build -G Ninja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_C_COMPILER=clang \
+      -DCMAKE_CXX_COMPILER=clang++
+
+# OPTION B ---
+# Architecture-Targeted Build
+#
+# Recommended when building for redistribution. This disables native CPU
+# targeting and instead generates a binary for the explicitly selected
+# architecture or architecture level, such as x86-64-v3.
+#
+# Such a build is more portable across compatible systems, although it
+# may not achieve the maximum possible performance on any one machine.
+cmake -B Build -G Ninja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_C_COMPILER=clang \
+      -DCMAKE_CXX_COMPILER=clang++ \
+      -DBUILD_NATIVE=OFF \
+      -DARCHITECTURE=<architecture>
+
+# After running one of the above options, build StockDory using the 
+# selected configuration
+cmake --build Build
+
+# The resulting executable will be available under:
+# StockDory/Build
+
+# It is recommended to test that it is working by running the bench command
+cd Build
+./StockDory bench
 ```
-- 🪛 Compile
-```bash
-cmake --build Build --config Release
-```
-- 🏃‍♂️ Run
-```bash
-./Build/StockDory
-```
-
-### 🤝 Contributing
-🖥 **Hardware Contributions:**
-
-StockDory requires a lot of computational power to be tested and improved.
-As such, the [FindingChess Testing Framework](http://tests.findingchess.com/)
-was created.
-This framework allows anyone to contribute to the development of StockDory
-by donating their computational power.
-It works by letting you run a Python script on your computer that will
-automatically download and test StockDory on your hardware, relaying the
-results back to the framework.
-
-If you would like to contribute hardware for the development of StockDory,
-please download the Client Worker from the
-[FindingChess Testing Framework](http://tests.findingchess.com/) and run it.
-
-📝 **Pull Requests and Bug Reports:**
-
-StockDory is a community project, and as such, we welcome any and all contributors
-looking to improve the codebase or report bugs.
-
-If you would like to report a bug, please open an issue on this GitHub repository.
-
-If you would like to contribute to the codebase, please fork this repository,
-create a new branch (naming it appropriately for the changes you are making),
-make your changes.
-Then, create an account on [Verdict](http://verdict.shaheryarsohail.com/).
-Once your account is approved, appropriately set the source repository on your profile, and
-create a test for your branch.
-
-StockDory requires two tests to pass before a pull request can be merged: STC and LTC.
-
-Once your STC test has passed, only then can you request a LTC test.
-Given that the LTC test also passes, you may then open a pull request on this repository.
-
-Please understand that at times your pull request may require some changes before it can be merged,
-and that this is not a reflection of your work, but rather a reflection of the high standards
-that StockDory is held to.
 
 ### 📑 Terms of Use
-🚂 **StockDory Engine:**
 
-The StockDory engine is licensed under the [LGPL-3.0](LICENSE). 
-This is a very permissive license that allows you to use the engine
-in almost any way you want.
-This includes being able to send the engine to your friends, and
-even being able to use the engine in your own projects.
+StockDory is licensed under [GNU AGPL v3.0](LICENSE).
 
-The only requirement is that you must make the source code of your
-project available to the public, and that StockDory's License is
-included in your project.
-This is to ensure that the engine, all the improvements made to it,
-and all the works derived from it, remain free, open-source, and for
-the benefit of the public.
-
-StockNemo or StockDory would've never existed if it wasn't for the
-generosity of the open-source community, and it's now our turn to
-carry on that tradition.
-
-🎀 **StockDory Logo:**
-The StockDory Logo is licensed under the 
-[CC BY-NC-ND 4.0 License](https://creativecommons.org/licenses/by-nc-nd/4.0/).
-
-The Logo must be used in its entirety, and cannot be modified in any way.
+The StockDory logo is licensed separately under the
+[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/) license.

@@ -1,6 +1,6 @@
 //
-// Copyright (c) 2023 StockDory authors. See the list of authors for more details.
-// Licensed under LGPL-3.0.
+// Copyright (c) 2023-2026 Shaheryar Sohail
+// SPDX-License-Identifier: AGPL-3.0-only
 //
 
 #ifndef STOCKDORY_POLICY_H
