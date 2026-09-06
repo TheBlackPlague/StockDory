@@ -8,7 +8,6 @@
 
 #include <vector>
 
-#include "../Backend/ThreadPool.h"
 #include "../Backend/Type/Zobrist.h"
 
 #include "../External/fastrange.h"
@@ -81,11 +80,7 @@ namespace StockDory
 
         void Prefetch(const ZobristHash hash) const
         {
-            __builtin_prefetch(
-                static_cast<const void*>(&Internal[fastrange64(hash, Count)]),
-                0,
-                3
-            );
+            __builtin_prefetch(static_cast<const void*>(&Internal[fastrange64(hash, Count)]), 0, 3);
         }
 
         [[nodiscard]]
