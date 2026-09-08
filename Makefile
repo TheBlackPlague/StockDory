@@ -18,7 +18,7 @@ else
     CP            = cp
     RM            = rm -rf
     EXT           =
-    LLVM_PROFDATA = llvm-profdata-20
+    LLVM_PROFDATA = llvm-profdata-22
     SLASH         = /
 
     ifeq ($(UNIX_OS), Darwin)
