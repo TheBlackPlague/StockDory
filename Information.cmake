@@ -6,11 +6,11 @@ set(INFORMATION_HEADER_CONTENT "
 
 #include <string>
 
-const std::string NAME     = \"StockDory\"             \;
-const std::string AUTHOR   = \"StockDory Contributors\"\;
-const std::string VERSION  = \"${VERSION}\"            \;
-const std::string CODENAME = \"${CODENAME}\"           \;
-const std::string LICENSE  = \"LGPL-3.0\"              \;
+const std::string NAME     = \"StockDory\"                        \;
+const std::string AUTHOR   = \"Shaheryar Sohail and Lee Durbin\"  \;
+const std::string VERSION  = \"${VERSION}\"                       \;
+const std::string CODENAME = \"${CODENAME}\"                      \;
+const std::string LICENSE  = \"AGPL-3.0\"                         \;
 
 #endif // INFORMATION_H
 ")
