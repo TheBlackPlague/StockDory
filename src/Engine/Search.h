@@ -871,10 +871,8 @@ namespace StockDory
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move = moves[i];
 
-                const Piece movingPiece = Board[move.From()].Piece();
-                const Piece targetPiece = Board[move.  To()].Piece();
-
-                const bool quiet = targetPiece == NAP;
+                const bool capture = move.Capture();
+                const bool quiet   = !capture && move.Promotion() == NAP;
 
                 quietMoves += quiet;
 
@@ -969,7 +967,7 @@ namespace StockDory
 
                         // Increase reduction for bad history moves and reduce for good history moves (possibly
                         // extending the search depth)
-                        const int16_t history = History[Color][movingPiece][move.To()];
+                        const int16_t history = History[Color][Board[move.From()].Piece()][move.To()];
                         r -= history / ((HistoryLimit / LMRHistoryPartition) / LMRHistoryWeight);
 
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
@@ -1039,8 +1037,16 @@ namespace StockDory
 
                     // Reduce the history value for all other quiet moves that were searched, since they didn't
                     // cause a beta cut-off
-                    for (uint8_t q = 1; q < quietMoves; q++)
-                        UpdateHistory<Color, false>(moves.UnsortedAccess(i - q), depth);
+
+                    uint8_t updated = 0;
+                    for (uint8_t j = 1; updated < quietMoves; j++) {
+                        const Move m = moves.UnsortedAccess(i - j);
+
+                        if (m.Capture() || m.Promotion() != NAP) continue;
+
+                        UpdateHistory<Color, false>(m, depth);
+                        updated++;
+                    }
                 }
 
                 ttEntryNew.Type = Beta;

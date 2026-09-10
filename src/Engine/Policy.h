@@ -72,16 +72,12 @@ namespace StockDory
 
             if (move == TTMove) return MaximumScore;
 
-            constexpr bool Promotion = PromotionPiece != NAP;
-
-            const bool     capture = board[move.To()].Piece() != NAP;
-            const bool goodCapture = capture ? SEE::Accurate(board, move, 0) : false;
-
             uint32_t score = ScoreAnchor;
 
-            if (Promotion) score += PromotionFactor[PromotionPiece] * PromotionMultiplier;
+            if (PromotionPiece != NAP) score += PromotionFactor[PromotionPiece] * PromotionMultiplier;
 
-            if (CaptureOnly || capture) {
+            if (CaptureOnly || move.Capture()) {
+                const bool goodCapture = SEE::Accurate(board, move, 0);
                 score += MvvLva[board[move.To()].Piece()][Piece] * (goodCapture ? 20 : 1);
 
                 return score;
