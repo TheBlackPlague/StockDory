@@ -913,6 +913,8 @@ namespace StockDory
                     if (doLMP && quietMoves > lmpLastQuiet && bestEvaluation > -Infinity) break;
                 }
 
+                const Piece movingPiece = Board[move.From()].Piece();
+
                 const PreviousState state = DoMove<true>(move, ply, quiet);
 
                 // Principle Variation Search (PVS):
@@ -967,7 +969,7 @@ namespace StockDory
 
                         // Increase reduction for bad history moves and reduce for good history moves (possibly
                         // extending the search depth)
-                        const int16_t history = History[Color][Board[move.From()].Piece()][move.To()];
+                        const int16_t history = History[Color][movingPiece][move.To()];
                         r -= history / ((HistoryLimit / LMRHistoryPartition) / LMRHistoryWeight);
 
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
@@ -1039,7 +1041,7 @@ namespace StockDory
                     // cause a beta cut-off
 
                     uint8_t updated = 0;
-                    for (uint8_t j = 1; updated < quietMoves; j++) {
+                    for (uint8_t j = 1; updated < quietMoves - 1; j++) {
                         const Move m = moves.UnsortedAccess(i - j);
 
                         if (m.Capture() || m.Promotion() != NAP) continue;
