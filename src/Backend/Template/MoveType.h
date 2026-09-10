@@ -3,8 +3,6 @@
 // Licensed under LGPL-3.0.
 //
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 #ifndef STOCKDORY_MOVETYPE_H
 #define STOCKDORY_MOVETYPE_H
 
@@ -17,5 +15,3 @@ constexpr MoveType PERFT    = 0x00000F00;
 constexpr MoveType NNUE     = 0x0000F000;
 
 #endif //STOCKDORY_MOVETYPE_H
-
-#pragma clang diagnostic pop

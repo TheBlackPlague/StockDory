@@ -3,8 +3,6 @@
 // Licensed under MIT.
 //
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 #ifndef STOCKDORY_PIECE_H
 #define STOCKDORY_PIECE_H
 
@@ -60,5 +58,3 @@ inline std::string ToString(const Piece p)
 }
 
 #endif //STOCKDORY_PIECE_H
-
-#pragma clang diagnostic pop
