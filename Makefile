@@ -8,7 +8,7 @@ else
     CP = cp
     RM = rm
     EXTENSION =
-    LLVM_PROFDATA = llvm-profdata-16
+    LLVM_PROFDATA = llvm-profdata-20
     SLASH = /
 endif
 
