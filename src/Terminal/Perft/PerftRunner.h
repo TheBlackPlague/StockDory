@@ -181,34 +181,34 @@ namespace StockDory
 
                     for (Square m = mIterator.Value(); m != NASQ; m = mIterator.Value()) {
                         if (moves.Promotion(sq)) {
-                            const ::Move   queenMove   = board.CreateMove<Piece>(sq, m, Queen );
-                            PreviousState  state       = BLayer::Move(board, queenMove);
+                            ::Move move                = board.CreateMove<Pawn>(sq, m, Queen );
+                            PreviousState  state       = BLayer::Move(board, move);
                             const uint64_t queenNodes  = PLayer::Perft(board, depth - 1);
-                            BLayer::UndoMove(board, state, queenMove);
+                            BLayer::UndoMove(board, state, move);
                             nodes += queenNodes;
 
                             if (Divide) LogMove<Queen >(sq, m,  queenNodes);
 
-                            const ::Move   rookMove    = board.CreateMove<Piece>(sq, m, Rook  );
-                            state                      = BLayer::Move(board, rookMove);
+                            move                       = board.CreateMove<Pawn>(sq, m, Rook  );
+                            state                      = BLayer::Move(board, move);
                             const uint64_t rookNodes   = PLayer::Perft(board, depth - 1);
-                            BLayer::UndoMove(board, state, rookMove);
+                            BLayer::UndoMove(board, state, move);
                             nodes += rookNodes;
 
                             if (Divide) LogMove<Rook  >(sq, m,   rookNodes);
 
-                            const ::Move   bishopMove  = board.CreateMove<Piece>(sq, m, Bishop);
-                            state                      = BLayer::Move(board, bishopMove);
+                            move                       = board.CreateMove<Pawn>(sq, m, Bishop);
+                            state                      = BLayer::Move(board, move);
                             const uint64_t bishopNodes = PLayer::Perft(board, depth - 1);
-                            BLayer::UndoMove(board, state, bishopMove);
+                            BLayer::UndoMove(board, state, move);
                             nodes += bishopNodes;
 
                             if (Divide) LogMove<Bishop>(sq, m, bishopNodes);
 
-                            const ::Move   knightMove  = board.CreateMove<Piece>(sq, m, Knight);
-                            state                      = BLayer::Move(board, knightMove);
+                            move                       = board.CreateMove<Pawn>(sq, m, Knight);
+                            state                      = BLayer::Move(board, move);
                             const uint64_t knightNodes = PLayer::Perft(board, depth - 1);
-                            BLayer::UndoMove(board, state, knightMove);
+                            BLayer::UndoMove(board, state, move);
                             nodes += knightNodes;
 
                             if (Divide) LogMove<Knight>(sq, m, knightNodes);
