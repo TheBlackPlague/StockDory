@@ -915,7 +915,7 @@ namespace StockDory
 
                 const Piece movingPiece = Board[move.From()].Piece();
 
-                const PreviousState state = DoMove<true>(move, ply, quiet);
+                const PreviousState state = DoMove<true>(move, ply);
 
                 // Principle Variation Search (PVS):
                 //
@@ -1148,14 +1148,13 @@ namespace StockDory
         }
 
         template<bool UpdateRepetitionHistory>
-        PreviousState DoMove(const Move move, const uint8_t ply, const bool quiet = false)
+        PreviousState DoMove(const Move move, const uint8_t ply)
         {
             constexpr MoveType MT = NNUE | ZOBRIST;
 
-            if (!quiet || Board[move.From()].Piece() == Pawn) {
-                Stack[ply + 1].HalfMoveCounter = 1;
-            } else
-                Stack[ply + 1].HalfMoveCounter = Stack[ply].HalfMoveCounter + 1;
+            const bool resetHalfMoveCounter = move.Capture() || Board[move.From()].Piece() == Pawn;
+
+            Stack[ply + 1].HalfMoveCounter = resetHalfMoveCounter ? 1 : Stack[ply + 1].HalfMoveCounter + 1;
 
             const PreviousState state = Board.Move<MT>(move, ThreadId);
             Nodes++;

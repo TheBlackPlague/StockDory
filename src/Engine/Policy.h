@@ -78,7 +78,7 @@ namespace StockDory
 
             if (CaptureOnly || move.Capture()) {
                 const bool goodCapture = SEE::Accurate(board, move, 0);
-                score += MvvLva[board[move.To()].Piece()][Piece] * (goodCapture ? 20 : 1);
+                score += MvvLva[move.EnPassant() ? Pawn : board[move.To()].Piece()][Piece] * (goodCapture ? 20 : 1);
 
                 return score;
             }

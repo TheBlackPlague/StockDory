@@ -305,8 +305,7 @@ namespace StockDory
                         ? ValidateMove<White>(parsed) : ValidateMove<Black>(parsed);
                     if (!move) return;
 
-                    if (Board[move.To()].Piece() != NAP || Board[move.From()].Piece() == Pawn) HalfMoveCounter = 1;
-                    else                                                                       HalfMoveCounter++;
+                    HalfMoveCounter = move.Capture() || Board[move.From()].Piece() == Pawn ? 1 : HalfMoveCounter + 1;
 
                     Board.Move<ZOBRIST>(move);
 
@@ -328,11 +327,6 @@ namespace StockDory
         static void HandleGo(const Arguments& args)
         {
             if (!UCIPrompted) return;
-
-            // if (UCISearch::Searching) {
-            //     std::cerr << "ERROR: The engine is already searching" << std::endl;
-            //     return;
-            // }
 
             UCISearch::Searching.wait(true, std::memory_order::acquire);
 

@@ -24,13 +24,10 @@ namespace StockDory
         public:
         static bool Accurate(const Board& board, const Move move, const int32_t threshold)
         {
-            if (move.Promotion() != NAP) return true;
+            if (move.Promotion() != NAP || move.EnPassant() || move.Castling()) return true;
 
             const Square from = move.From();
             const Square to   = move.  To();
-
-            if (board[from].Piece() == Pawn &&  to == board.EnPassantSquare()                ) return true;
-            if (board[from].Piece() == King && (to == C1 || to == C8 || to == G1 || to == G8)) return true;
 
             int32_t value = Internal[board[to].Piece()] - threshold;
             if (value < 0) return false;
