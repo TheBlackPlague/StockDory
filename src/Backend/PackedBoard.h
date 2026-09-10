@@ -104,8 +104,8 @@ namespace StockDory
                 throw std::invalid_argument("PackedBoard requires orthodox castling rights");
 
             if (ep != NASQ) {
-                const Piece piece = board[ep].Piece();
-                if (ep >= NASQ || (color == White ? ep < A6 || ep > H6 : ep < A3 || ep > H3) || piece != NAP)
+                if (ep >= NASQ || (color == White ? ep < A6 || ep > H6 : ep < A3 || ep > H3) ||
+                    board[ep].Piece() != NAP)
                     throw std::invalid_argument("PackedBoard requires a valid en passant target");
 
                 const PieceColor opposing = board[static_cast<Square>(ep ^ 8)];
