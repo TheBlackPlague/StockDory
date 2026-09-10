@@ -6,6 +6,7 @@
 #ifndef STOCKDORY_SEARCH_H
 #define STOCKDORY_SEARCH_H
 
+#include <algorithm>
 #include <cmath>
 #include <ranges>
 

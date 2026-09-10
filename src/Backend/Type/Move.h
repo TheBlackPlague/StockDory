@@ -44,7 +44,7 @@ struct Move
     constexpr static uint8_t  ToPos         =      6;
     constexpr static uint8_t  FlagPos       =     12;
 
-    // [     FLAGS      ] [     TO     ] [    FROM    ]
+    // [      FLAGS      ] [     TO     ] [    FROM    ]
     // [     4 BITS      ] [   6 BITS   ] [   6 BITS   ]
     uint16_t Internal = 0;
 
@@ -86,8 +86,7 @@ struct Move
     constexpr Move() = default;
 
     constexpr Move(const Square from, const Square to, const Piece promotion = NAP) noexcept
-        : Move(from, to, promotion == NAP ? MoveFlag::Quiet
-                                        : static_cast<MoveFlag>(8 + promotion - Knight))
+        : Move(from, to, promotion == NAP ? MoveFlag::Quiet : static_cast<MoveFlag>(8 + promotion - Knight))
     {
         assert(promotion == NAP || (promotion >= Knight && promotion <= Queen));
     }

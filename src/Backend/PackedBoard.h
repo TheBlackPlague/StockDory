@@ -9,7 +9,7 @@
  *
  * MIT License
  *
- * Copyright (c) 2023 disservin
+ * Copyright (c) 2023 Disservin
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,8 +49,8 @@ namespace StockDory
     class BasicBoard<BoardType::Packed>
     {
 
-        // Eight occupancy bytes followed by up to 32 piece nibbles, in square order.
-        // Codes 12, 13, 14 and 15 carry en passant, castling and side-to-move state.
+        // Eight occupancy bytes followed by up to 32 piece nibbles, in square order
+        // Codes 12, 13, 14 and 15 carry en passant, castling and side-to-move state
         Array<uint8_t, 24> Internal {};
 
         constexpr static uint8_t CastlingMask(const Square sq, const Color color)
@@ -73,10 +73,11 @@ namespace StockDory
 
         constexpr static PieceColor Decode(const uint8_t code, const Square sq)
         {
-            if (code < 12) return PieceColor(static_cast<Piece>(code % 6), static_cast<Color>(code / 6));
+            if (code  < 12) return PieceColor(static_cast<::Piece>(code % 6), static_cast<Color>(code / 6));
             if (code == 12) return PieceColor(Pawn, sq < A5 ? White : Black);
             if (code == 13) return PieceColor(Rook, White);
             if (code == 14) return PieceColor(Rook, Black);
+
             return PieceColor(King, Black);
         }
 
@@ -88,37 +89,39 @@ namespace StockDory
         template<BoardType Other>
         explicit BasicBoard(const BasicBoard<Other>& board)
         {
-            const BitBoard occupied = ~board[NAC];
-            const Color    color    = board.ColorToMove();
-            const uint8_t  castling = board.CastlingRights();
-            const Square   ep       = board.EnPassantSquare();
+            const BitBoard occ      = ~board[NAC];
+            const Color    color    =  board.ColorToMove();
+            const uint8_t  castling =  board.CastlingRights();
+            const Square   ep       =  board.EnPassantSquare();
 
-            if (Count(occupied) > 32)
+            if (Count(occ) > 32)
                 throw std::invalid_argument("PackedBoard supports at most 32 pieces");
+
             if (color != White && color != Black)
                 throw std::invalid_argument("PackedBoard requires a valid side to move");
+
             if (castling & ~0xF)
                 throw std::invalid_argument("PackedBoard requires orthodox castling rights");
 
             if (ep != NASQ) {
-                if (ep >= NASQ || (color == White ? ep < A6 || ep > H6 : ep < A3 || ep > H3) ||
-                    board[ep].Piece() != NAP)
+                const Piece piece = board[ep].Piece();
+                if (ep >= NASQ || (color == White ? ep < A6 || ep > H6 : ep < A3 || ep > H3) || piece != NAP)
                     throw std::invalid_argument("PackedBoard requires a valid en passant target");
 
-                const PieceColor pawn = board[static_cast<Square>(ep ^ 8)];
-                if (pawn.Piece() != Pawn || pawn.Color() != Opposite(color))
+                const PieceColor opposing = board[static_cast<Square>(ep ^ 8)];
+                if (opposing.Piece() != Pawn || opposing.Color() != Opposite(color))
                     throw std::invalid_argument("PackedBoard requires the en passant pawn");
             }
 
-            for (uint8_t i = 0; i < 8; i++) Internal[i] = occupied >> (56 - i * 8);
+            for (uint8_t i = 0; i < 8; i++) Internal[i] = occ >> (56 - i * 8);
 
-            Array<uint8_t, 2> kings {};
+            Array<uint8_t, 2> kings      {          };
             Array<Square , 2> kingSquare {NASQ, NASQ};
 
             uint8_t encodedCastling = 0;
             uint8_t index           = 0;
 
-            BitBoardIterator iterator (occupied);
+            BitBoardIterator iterator (occ);
             for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
                 const PieceColor pc = board[sq];
                 const Piece       p = pc.Piece();
@@ -130,13 +133,14 @@ namespace StockDory
                 uint8_t code = p + c * 6;
 
                 if (p == King) {
-                    kings[c]++;
+                    kings     [c]   ++;
                     kingSquare[c] = sq;
+
                     if (c == Black && color == Black) code = 15;
                 } else if (p == Pawn && ep != NASQ && sq == static_cast<Square>(ep ^ 8)) {
                     code = 12;
                 } else if (p == Rook) {
-                    if (const uint8_t right = CastlingMask(sq, c) & castling; right) {
+                    if (const uint8_t right = CastlingMask(sq, c) & castling) {
                         encodedCastling |= right;
                         code = c == White ? 13 : 14;
                     }
@@ -148,9 +152,12 @@ namespace StockDory
 
             if (kings[White] != 1 || kings[Black] != 1)
                 throw std::invalid_argument("PackedBoard requires one king of each color");
+
             if (castling != encodedCastling || (castling & 0xC && kingSquare[White] != E1) ||
                                                (castling & 0x3 && kingSquare[Black] != E8))
-                throw std::invalid_argument("PackedBoard requires castling kings and rooks on their home squares");
+                throw std::invalid_argument(
+                    "PackedBoard requires castling kings and rooks on their home squares"
+                );
         }
 
         [[nodiscard]]
@@ -180,10 +187,11 @@ namespace StockDory
         constexpr BitBoard operator [](const Color color) const
         {
             const BitBoard occupied = Occupied();
+
             if (color == NAC) return ~occupied;
 
             BitBoard result = BBDefault;
-            uint8_t  index  = 0;
+            uint8_t  index  =         0;
 
             BitBoardIterator iterator (occupied);
             for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
@@ -201,12 +209,14 @@ namespace StockDory
             assert(color < NAC);
 
             BitBoard result = BBDefault;
-            uint8_t  index  = 0;
+            uint8_t  index  =         0;
 
             BitBoardIterator iterator (Occupied());
             for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
                 const PieceColor pc = Decode(Code(index), sq);
+
                 if (pc.Piece() == piece && pc.Color() == color) result |= FromSquare(sq);
+
                 index++;
             }
 
@@ -224,7 +234,8 @@ namespace StockDory
         constexpr Color ColorToMove() const
         {
             for (uint8_t i = 8; i < Internal.size(); i++)
-                if ((Internal[i] & 0xF) == 15 || Internal[i] >> 4 == 15) return Black;
+                if ((Internal[i]  & 0xF) == 15 ||
+                     Internal[i] >>   4  == 15  ) return Black;
 
             return White;
         }
@@ -238,7 +249,9 @@ namespace StockDory
             BitBoardIterator iterator (Occupied());
             for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
                 const uint8_t code = Code(index);
+
                 if (code == 13 || code == 14) result |= CastlingMask(sq, code == 13 ? White : Black);
+
                 index++;
             }
 
@@ -250,6 +263,7 @@ namespace StockDory
         constexpr bool CastlingRightK() const
         {
             static_assert(Color == White || Color == Black);
+
             return CastlingRights() & (Color == White ? 0x8 : 0x2);
         }
 
@@ -258,6 +272,7 @@ namespace StockDory
         constexpr bool CastlingRightQ() const
         {
             static_assert(Color == White || Color == Black);
+
             return CastlingRights() & (Color == White ? 0x4 : 0x1);
         }
 
@@ -269,6 +284,7 @@ namespace StockDory
             BitBoardIterator iterator (Occupied());
             for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
                 if (Code(index) == 12) return static_cast<Square>(sq ^ 8);
+
                 index++;
             }
 

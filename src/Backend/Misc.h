@@ -13,6 +13,12 @@
 #include <string>
 #include <type_traits>
 
+#if defined(_MSC_VER)
+#define NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+#else
+#define NO_UNIQUE_ADDRESS [[no_unique_address]]
+#endif
+
 template<typename T, typename = std::enable_if_t<std::is_fundamental_v<T>>>
 std::string ToHex(const T v)
 {
