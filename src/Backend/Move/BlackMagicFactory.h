@@ -21,9 +21,9 @@ namespace StockDory
     class BlackMagicFactory
     {
 
-        constexpr static std::array<uint8_t, 2> PieceValue {9, 12};
+        constexpr static Array<uint8_t, 2> PieceValue {9, 12};
 
-        constexpr static std::array<std::pair<BitBoard, uint32_t>, 64> RookMagicConst {
+        constexpr static Array<std::pair<BitBoard, uint32_t>, 64> RookMagicConst {
             std::pair(0x80280013FF84FFFF, 10890), std::pair(0x5FFBFEFDFEF67FFF, 50579),
             std::pair(0xFFEFFAFFEFFDFFFF, 62020), std::pair(0x003000900300008A, 67322),
             std::pair(0x0050028010500023, 80251), std::pair(0x0020012120A00020, 58503),
@@ -58,7 +58,7 @@ namespace StockDory
             std::pair(0xEE73FFFBFFBB77FE,  8555), std::pair(0x0002000308482882,  1009)
         };
 
-        constexpr static std::array<std::pair<BitBoard, uint32_t>, 64> BishopMagicConst {
+        constexpr static Array<std::pair<BitBoard, uint32_t>, 64> BishopMagicConst {
             std::pair(0xA7020080601803D8, 60984), std::pair(0x13802040400801F1, 66046),
             std::pair(0x0A0080181001F60C, 32910), std::pair(0x1840802004238008, 16369),
             std::pair(0xC03FE00100000000, 42115), std::pair(0x24C00BFFFF400000,   835),
@@ -127,10 +127,10 @@ namespace StockDory
         };
 
         public:
-        constexpr static std::array<std::array<std::pair<MagicPair, uint32_t>, 64>, 2> Magic =
-        [] constexpr ->  std::array<std::array<std::pair<MagicPair, uint32_t>, 64>, 2>
+        constexpr static Array<std::pair<MagicPair, uint32_t>, 2, 64> Magic =
+        [] constexpr ->  Array<std::pair<MagicPair, uint32_t>, 2, 64>
         {
-            std::array<std::array<std::pair<MagicPair, uint32_t>, 64>, 2> temp = {};
+            Array<std::pair<MagicPair, uint32_t>, 2, 64> temp = {};
 
             for (int h = 0; h < 8; h++)
             for (int v = 0; v < 8; v++) {
@@ -167,12 +167,12 @@ namespace StockDory
 
 } // StockDory
 
-auto StockDory::AttackTable::Sliding = [] -> std::array<BitBoard, 87988>
+inline auto StockDory::AttackTable::Sliding = [] -> Array<BitBoard, 87988>
 {
-    auto temp = std::array<BitBoard, 87988>();
+    Array<BitBoard, 87988> temp {};
 
     for (uint8_t i = 0; i < 2; i++) {
-        constexpr std::array<std::array<std::pair<int8_t, int8_t>, 4>, 2> deltaStride = {{
+        constexpr Array<std::pair<int8_t, int8_t>, 2, 4> deltaStride = {{
             {{
                 {1, 1}, {1, -1}, {-1, -1}, {-1, 1}
             }}, {{
@@ -230,9 +230,9 @@ auto StockDory::AttackTable::Sliding = [] -> std::array<BitBoard, 87988>
     return temp;
 }();
 
-auto StockDory::RayTable::Between = [] -> std::array<std::array<BitBoard, 64>, 64>
+inline auto StockDory::RayTable::Between = [] -> Array<BitBoard, 64, 64>
 {
-    std::array<std::array<BitBoard, 64>, 64> temp = {};
+    Array<BitBoard, 64, 64> temp = {};
 
     for (Square f = A1; f != NASQ; f = Next(f)) {
         const uint8_t fH = f % 8;

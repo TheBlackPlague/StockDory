@@ -87,8 +87,8 @@ namespace StockDory
                 return score;
             }
 
-            if (move == KillerOne) score += HistoryLimit    ;
-            if (move == KillerTwo) score += HistoryLimit / 2;
+            if (move.SameIdentity(KillerOne)) score += HistoryLimit    ;
+            if (move.SameIdentity(KillerTwo)) score += HistoryLimit / 2;
 
             score += history[Color][Piece][move.To()];
 

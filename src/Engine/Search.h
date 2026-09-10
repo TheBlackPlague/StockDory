@@ -1028,7 +1028,7 @@ namespace StockDory
                     // If Killer Move 0 is different from the current move:
                     //    Killer Move 0 -> Killer Move 1
                     //   Current Move   -> Killer Move 0
-                    if (Killer[0][ply] != move) {
+                    if (!Killer[0][ply].SameIdentity(move)) {
                         Killer[1][ply] = Killer[0][ply];
                         Killer[0][ply] = move;
                     }
@@ -1148,7 +1148,7 @@ namespace StockDory
             } else
                 Stack[ply + 1].HalfMoveCounter = Stack[ply].HalfMoveCounter + 1;
 
-            const PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion(), ThreadId);
+            const PreviousState state = Board.Move<MT>(move, ThreadId);
             Nodes++;
 
             const ZobristHash hash = Board.Zobrist();
@@ -1165,7 +1165,7 @@ namespace StockDory
         {
             constexpr MoveType MT = NNUE | ZOBRIST;
 
-            Board.UndoMove<MT>(state, move.From(), move.To(), ThreadId);
+            Board.UndoMove<MT>(state, move, ThreadId);
 
             if (UpdateRepetitionHistory) Repetition.Pop();
         }

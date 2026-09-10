@@ -11,6 +11,7 @@
 #include <string>
 
 #include "../Engine/Search.h"
+#include "../External/strutil.h"
 
 namespace StockDory
 {

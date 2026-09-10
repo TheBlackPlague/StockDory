@@ -7,7 +7,9 @@
 #define STOCKDORY_PIECE_H
 
 #include <cstdint>
-#include <map>
+#include <string_view>
+
+#include "../Misc.h"
 
 enum Piece : uint8_t
 {
@@ -27,7 +29,7 @@ constexpr Piece Next(const Piece p)
     return static_cast<Piece>(static_cast<uint8_t>(p) + 1);
 }
 
-constexpr std::array P_CHAR = {
+constexpr Array<char, 7> P_CHAR {
     'P',
     'N',
     'B',
@@ -42,19 +44,19 @@ constexpr char FirstLetter(const Piece p)
     return P_CHAR[p];
 }
 
-std::map<Piece, std::string> P_STRING = {
-    {Pawn  , "Pawn"  },
-    {Knight, "Knight"},
-    {Bishop, "Bishop"},
-    {Rook  , "Rook"  },
-    {Queen , "Queen" },
-    {King  , "King"  },
-    {NAP   , "NAP"   }
+constexpr Array<std::string_view, 7> P_STRING {
+    "Pawn",
+    "Knight",
+    "Bishop",
+    "Rook",
+    "Queen",
+    "King",
+    "NAP"
 };
 
-std::string ToString(const Piece p)
+inline std::string ToString(const Piece p)
 {
-    return P_STRING[p];
+    return std::string(P_STRING[p]);
 }
 
 #endif //STOCKDORY_PIECE_H
