@@ -66,8 +66,6 @@ namespace StockDory
         template<Color Color, bool Divide, bool Sync = false>
         static inline uint64_t Perft(PerftBoard& board, const uint8_t depth)
         {
-            if (depth == 0) return 1;
-
             uint64_t nodes = 0;
             using PLayer   = PerftLayer<Color, Divide, Sync>;
 
@@ -342,14 +340,16 @@ namespace StockDory
             const auto     start = std::chrono::high_resolution_clock::now();
                   uint64_t nodes = 0;
 
-            if (ThreadPool.Size() > 1)
-                nodes = InternalBoard.ColorToMove() == White
-                    ? Perft<White, Divide, false>(InternalBoard, depth)
-                    : Perft<Black, Divide, false>(InternalBoard, depth);
-            else
-                nodes = InternalBoard.ColorToMove() == White
-                    ? Perft<White, Divide, true >(InternalBoard, depth)
-                    : Perft<Black, Divide, true >(InternalBoard, depth);
+            if (depth != 0) {
+                if (ThreadPool.Size() > 1)
+                    nodes = InternalBoard.ColorToMove() == White
+                        ? Perft<White, Divide, false>(InternalBoard, depth)
+                        : Perft<Black, Divide, false>(InternalBoard, depth);
+                else
+                    nodes = InternalBoard.ColorToMove() == White
+                        ? Perft<White, Divide, true >(InternalBoard, depth)
+                        : Perft<Black, Divide, true >(InternalBoard, depth);
+            } else  nodes = 1;
 
             const auto     stop  = std::chrono::high_resolution_clock::now();
             const auto     time  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();

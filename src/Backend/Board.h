@@ -288,7 +288,12 @@ namespace StockDory
         PieceColor operator [](const Square sq) const { return PieceAndColor[sq]; }
 
         [[nodiscard]]
-        BitBoard operator [](const Color color) const { return color == NAC ? Empty() : ColorBB[color]; }
+        BitBoard operator [](const Color color) const
+        {
+            if (Engine) return ColorBB[color];
+
+            return color == NAC ? Empty() : ColorBB[color];
+        }
 
         template<Color Color>
         [[nodiscard]]
@@ -685,8 +690,7 @@ namespace StockDory
         BitBoard Empty() const
         {
             if (Engine) return ColorBB[NAC];
-
-            else return ~(ColorBB[White] | ColorBB[Black]);
+            return ~(ColorBB[White] | ColorBB[Black]);
         }
 
         void SetEnPassant(const Square sq)
