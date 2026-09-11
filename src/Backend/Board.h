@@ -195,7 +195,7 @@ namespace StockDory
                 PieceAndColor  = other.PieceAndColor;
 
                 for (::Piece piece = Pawn; piece != NAP; piece = Next(piece)) {
-                    if constexpr (Engine) {
+                    if (Engine) {
                         BB[White][piece] = other.PieceBoard(piece, White) ;
                         BB[Black][piece] = other.PieceBoard(piece, Black) ;
                     } else
@@ -299,7 +299,7 @@ namespace StockDory
         {
             assert(piece != NAP && color != NAC);
 
-            if constexpr (Engine) return BB[color][piece];
+            if (Engine) return BB[color][piece];
             else return BB[0][piece] & ColorBB[color];
         }
 
@@ -530,7 +530,7 @@ namespace StockDory
         template<MoveType T>
         PreviousState Move(const ::Move move, const size_t threadId = 0)
         {
-            if constexpr (T & NNUE) Evaluation::PreMove(threadId);
+            if (T & NNUE) Evaluation::PreMove(threadId);
 
             const Square from = move.From();
             const Square to   = move.To();
@@ -569,7 +569,7 @@ namespace StockDory
                 RemovePiece (capturedPiece, opposite, captured);
                 HashPiece<T>(capturedPiece, opposite, captured);
 
-                if constexpr (T & NNUE) Evaluation::Deactivate(capturedPiece, opposite, captured, threadId);
+                if (T & NNUE) Evaluation::Deactivate(capturedPiece, opposite, captured, threadId);
 
                 state.EnPassantCapture = move.EnPassant();
             }
@@ -582,7 +582,7 @@ namespace StockDory
                 HashPiece<T>(Pawn            , color, from);
                 HashPiece<T>(move.Promotion(), color,   to);
 
-                if constexpr (T & NNUE) {
+                if (T & NNUE) {
                     Evaluation::Deactivate(Pawn, color, from, threadId);
                     Evaluation::Activate(move.Promotion(), color, to, threadId);
                 }
@@ -591,7 +591,7 @@ namespace StockDory
                 HashPiece<T>   (piece, color, from    );
                 HashPiece<T>   (piece, color,       to);
 
-                if constexpr (T & NNUE) Evaluation::Transition(piece, color, from, to, threadId);
+                if (T & NNUE) Evaluation::Transition(piece, color, from, to, threadId);
 
                 if (move.Castling()) {
                     state.CastlingFrom = static_cast<Square>((from & 56) + (to > from ? 7 : 0));
@@ -601,7 +601,7 @@ namespace StockDory
                     HashPiece<T>   (Rook, color, state.CastlingFrom                  );
                     HashPiece<T>   (Rook, color,                     state.CastlingTo);
 
-                    if constexpr (T & NNUE)
+                    if (T & NNUE)
                         Evaluation::Transition(Rook, color, state.CastlingFrom, state.CastlingTo, threadId);
                 } else if (move.DoublePush()) {
                     const auto ep = static_cast<Square>(to ^ 8);
@@ -626,7 +626,7 @@ namespace StockDory
         template<MoveType T>
         void UndoMove(const PreviousState& state, const Square from, const Square to, const size_t threadId = 0)
         {
-            if constexpr (T & NNUE) Evaluation::PreUndoMove(threadId);
+            if (T & NNUE) Evaluation::PreUndoMove(threadId);
 
             CastlingRightAndColorToMove = state.CastlingRightAndColorToMove;
             SetEnPassant(state.EnPassant);
@@ -677,14 +677,14 @@ namespace StockDory
 
         void UpdateNACBB()
         {
-            if constexpr (Engine) ColorBB[NAC] = ~(ColorBB[White] | ColorBB[Black]);
+            if (Engine) ColorBB[NAC] = ~(ColorBB[White] | ColorBB[Black]);
         }
 
         private:
         [[nodiscard]]
         BitBoard Empty() const
         {
-            if constexpr (Engine) return ColorBB[NAC];
+            if (Engine) return ColorBB[NAC];
 
             else return ~(ColorBB[White] | ColorBB[Black]);
         }

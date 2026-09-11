@@ -28,8 +28,8 @@ constexpr void Set(BitBoard& bb, const Square sq)
 {
     assert(sq < NASQ);
 
-    if constexpr (Activate) bb |=   1ULL << sq ;
-    else                    bb &= ~(1ULL << sq);
+    if (Activate) bb |=   1ULL << sq ;
+    else          bb &= ~(1ULL << sq);
 }
 
 constexpr bool Get(const BitBoard bb, const Square sq)
