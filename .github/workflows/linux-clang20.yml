@@ -5,9 +5,6 @@ on:
     branches: [ "0.1-comparison" ]
   workflow_dispatch:
 
-env:
-  BUILD_TYPE: Release
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,11 +20,5 @@ jobs:
           chmod +x llvm.sh
           sudo ./llvm.sh 20
 
-      - name: Configure
-        env:
-          CC: clang-20
-          CXX: clang++-20
-        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCI=ON -DCMAKE_CXX_FLAGS="-march=x86-64-v3" -G Ninja
-
-      - name: Build
-        run: cmake --build build --config ${{ env.BUILD_TYPE }}
+      - name: Build through Verdict entrypoint
+        run: PATH=/usr/lib/llvm-20/bin:$PATH make openbench
