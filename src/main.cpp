@@ -10,12 +10,12 @@
 #include "Terminal/BenchHash.h"
 #include "Terminal/UCI/UCI.h"
 
-void DisplayTitle()
+static void DisplayTitle()
 {
     std::stringstream ss;
 
     ss << NAME << " " << VERSION << " (" << CODENAME << ")" << "\n";
-    ss << "Copyright (c) 2025 " << AUTHOR << " - Licensed under the " << LICENSE;
+    ss << "Copyright (c) " << COPYRIGHT << " " << AUTHOR << " - Licensed under the " << LICENSE;
 
     std::cerr << ss.str() << std::endl;
 }
