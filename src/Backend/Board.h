@@ -8,330 +8,342 @@
 
 #include <array>
 #include <cassert>
-#include <iostream>
+#include <stdexcept>
 #include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
 
+#include "Misc.h"
+#include "Move/AttackTable.h"
+#include "Move/BlackMagicFactory.h"
+#include "Move/RayTable.h"
+#include "Template/MoveType.h"
 #include "Type/BitBoard.h"
 #include "Type/CheckBitBoard.h"
 #include "Type/Color.h"
+#include "Type/Move.h"
 #include "Type/Piece.h"
 #include "Type/PieceColor.h"
 #include "Type/PinBitBoard.h"
 #include "Type/PreviousState.h"
 #include "Type/Zobrist.h"
 
-#include "Template/MoveType.h"
-
-#include "Move/AttackTable.h"
-#include "Move/BlackMagicFactory.h"
-#include "Move/RayTable.h"
-
-#include "../External/strutil.h"
-
 #include "../Engine/Evaluation.h"
 
 namespace StockDory
 {
 
-    class Board
+    enum class BoardType : uint8_t
     {
 
-        constexpr static uint8_t CastlingMask     = 0xF;
-        constexpr static uint8_t WhiteKCastleMask = 0x8;
-        constexpr static uint8_t WhiteQCastleMask = 0x4;
-        constexpr static uint8_t BlackKCastleMask = 0x2;
-        constexpr static uint8_t BlackQCastleMask = 0x1;
+        Engine,
+        Perft,
+        Packed
 
-        constexpr static uint8_t ColorFlipMask = 0x10;
+    };
 
-        constexpr static std::array<uint8_t, 3> ColorCastleMask {
+    struct EmptyBoardState {};
+
+    template<BoardType Profile>
+    class BasicBoard
+    {
+
+        static_assert(Profile != BoardType::Packed);
+
+        template<BoardType> friend class BasicBoard;
+
+        constexpr static bool Engine = Profile == BoardType::Engine;
+
+        constexpr static uint8_t     CastlingMask = 0x0F;
+        constexpr static uint8_t WhiteKCastleMask = 0x08;
+        constexpr static uint8_t WhiteQCastleMask = 0x04;
+        constexpr static uint8_t BlackKCastleMask = 0x02;
+        constexpr static uint8_t BlackQCastleMask = 0x01;
+        constexpr static uint8_t    ColorFlipMask = 0x10;
+
+        constexpr static Array<uint8_t, 2> ColorCastleMask {
             WhiteKCastleMask | WhiteQCastleMask,
-            BlackKCastleMask | BlackQCastleMask,
-            0
+            BlackKCastleMask | BlackQCastleMask
         };
 
-        std::array<std::array<BitBoard, 7>, 3> BB {};
+        constexpr static Array<uint8_t, 64> CastleMask = []
+        {
+            Array<uint8_t, 64> result {};
+            result.fill(CastlingMask | ColorFlipMask);
 
-        std::array<PieceColor, 64> PieceAndColor {};
+            result[A1] &= ~WhiteQCastleMask;
+            result[H1] &= ~WhiteKCastleMask;
+            result[A8] &= ~BlackQCastleMask;
+            result[H8] &= ~BlackKCastleMask;
 
-        std::array<BitBoard, 3> ColorBB {};
+            result[E1] &= ~(WhiteKCastleMask | WhiteQCastleMask);
+            result[E8] &= ~(BlackKCastleMask | BlackQCastleMask);
 
-        // [COLOR TO MOVE] [WHITE KING CASTLE] [WHITE QUEEN CASTLE] [BLACK KING CASTLE] [BLACK QUEEN CASTLE]
-        // [    4 BITS   ] [      1 BIT      ] [       1 BIT      ] [      1 BIT      ] [       1 BIT      ]
+            return result;
+        }();
+
+        Array<BitBoard, Engine ? 2 : 1, 6>      BB {};
+        Array<BitBoard, Engine ? 3 : 2   > ColorBB {};
+
+        Array<PieceColor, 64> PieceAndColor {};
+
         uint8_t CastlingRightAndColorToMove = 0;
 
-        BitBoard EnPassantTarget = BBDefault;
+        std::conditional_t<Engine, BitBoard, Square> EnPassantTarget {};
 
-        ZobristHash Hash = 0;
+        NO_UNIQUE_ADDRESS
+        std::conditional_t<Engine, ZobristHash, EmptyBoardState> Hash {};
 
         public:
-        Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
+        BasicBoard() : BasicBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
 
-        Board(const std::string& fen)
+        explicit BasicBoard(const std::string_view fen)
         {
-            constexpr auto none = PieceColor(NAP, NAC);
-            std::ranges::fill(PieceAndColor, none);
+            Fill(PieceAndColor, PieceColor(NAP, NAC));
+            SetEnPassant(NASQ);
 
-            for (uint8_t i = 0; i < 3; i++)
-                std::ranges::fill(BB[i], BBDefault);
+            size_t offset = 0;
+            Array<std::string_view, 6> fields {};
 
-            const std::vector<std::string> splitFen = strutil::split(fen, " ");
+            for (auto& field : fields) {
+                offset = fen.find_first_not_of(' ', offset);
 
-            assert(splitFen.size() == 6);
+                if (offset == std::string_view::npos) throw std::invalid_argument("Incomplete FEN");
 
-            std::vector<std::string> splitPosition = strutil::split(splitFen[0], "/");
-            std::ranges::reverse(splitPosition);
+                const size_t end = fen.find(' ', offset);
+                field = fen.substr(offset, end == std::string_view::npos ? end : end - offset);
+                offset = end;
+            }
 
-            assert(splitPosition.size() == 8);
+            if (offset != std::string_view::npos && fen.find_first_not_of(' ', offset) != std::string_view::npos)
+                throw std::invalid_argument("Excess FEN fields");
 
-            for (uint8_t v = 0; v < 8; v++) {
-                std::string& rankStr = splitPosition[v];
-                uint8_t      h       = 0;
-                for (const char p: rankStr) {
-                    if (isdigit(p)) {
-                        h += static_cast<uint8_t>(p - 48);
-                        continue;
-                    }
+            int rank = 7;
+            int file = 0;
+            for (const char value : fields[0]) {
+                if (value == '/') {
+                    if (file != 8 || rank == 0) throw std::invalid_argument("Invalid FEN rank");
 
-                    Color color = Black;
+                    rank--;
+                    file = 0;
 
-                    if (isupper(p)) color = White;
+                    continue;
+                }
 
-                    Piece piece = NAP;
-                    switch (tolower(p)) {
-                        case 'p':
-                            piece = Pawn;
-                            break;
-                        case 'n':
-                            piece = Knight;
-                            break;
-                        case 'b':
-                            piece = Bishop;
-                            break;
-                        case 'r':
-                            piece = Rook;
-                            break;
-                        case 'q':
-                            piece = Queen;
-                            break;
-                        case 'k':
-                            piece = King;
-                            break;
-                        default:;
-                    }
+                if (value >= '1' && value <= '8') {
+                    file += value - '0';
 
-                    uint8_t    idx = v * 8 + h;
-                    const auto sq  = static_cast<Square>(idx);
+                    if (file > 8) throw std::invalid_argument("Invalid FEN rank");
 
-                    Set<true>(BB[color][piece], sq);
+                    continue;
+                }
 
-                    PieceAndColor[idx] = PieceColor(piece, color);
+                if (file >= 8) throw std::invalid_argument("Invalid FEN square");
 
-                    if (piece == NAP) std::cout << "ERROR" << std::endl;
+                const size_t index = std::string_view("PNBRQKpnbrqk").find(value);
+                if (index == std::string_view::npos) throw std::invalid_argument("Invalid FEN piece");
 
-                    Hash = Zobrist::HashPiece<ZOBRIST>(Hash, piece, color, sq);
+                const auto  piece = static_cast<Piece>(index % 6);
+                const Color color = index < 6 ? White : Black;
 
-                    h++;
+                InsertNative(piece, color, static_cast<Square>(rank * 8 + file++));
+            }
+
+            if (rank != 0 || file != 8) throw std::invalid_argument("Invalid FEN placement");
+
+            if (fields[1] != "w" && fields[1] != "b") throw std::invalid_argument("Invalid FEN color");
+
+            CastlingRightAndColorToMove = fields[1] == "w" ? 0 : ColorFlipMask;
+
+            for (const char right : fields[2]) {
+                switch (right) {
+                    case 'K': CastlingRightAndColorToMove |= WhiteKCastleMask; break;
+                    case 'Q': CastlingRightAndColorToMove |= WhiteQCastleMask; break;
+                    case 'k': CastlingRightAndColorToMove |= BlackKCastleMask; break;
+                    case 'q': CastlingRightAndColorToMove |= BlackQCastleMask; break;
+                    case '-': break;
+
+                    default: throw std::invalid_argument("Invalid FEN castling rights");
                 }
             }
 
-            if (splitFen[1][0] == 'w') {
-                CastlingRightAndColorToMove = White << 4;
-                Hash                        = Zobrist::HashColorFlip<ZOBRIST>(Hash);
+            if (fields[3] != "-") {
+
+                if (fields[3].size() != 2   ||
+                    fields[3][0]      < 'a' ||
+                    fields[3][0]      > 'h' || (fields[3][1] != '3' && fields[3][1] != '6'))
+                    throw std::invalid_argument("Invalid FEN en passant square");
+
+                const auto ep = static_cast<Square>((fields[3][1] - '1') * 8 + fields[3][0] - 'a');
+
+                if (AttackTable::Pawn[Opposite(ColorToMove())][ep] & PieceBoard(Pawn, ColorToMove()))
+                    SetEnPassant(ep);
+            }
+
+            UpdateNACBB();
+
+            if constexpr (Engine) Hash = ComputeHash();
+        }
+
+        template<BoardType Other> requires (Other != Profile)
+        explicit BasicBoard(const BasicBoard<Other>& other)
+        {
+            if constexpr (Other != BoardType::Packed) {
+                ColorBB[White] = other.ColorBB[White];
+                ColorBB[Black] = other.ColorBB[Black];
+                PieceAndColor  = other.PieceAndColor;
+
+                for (::Piece piece = Pawn; piece != NAP; piece = Next(piece)) {
+                    if (Engine) {
+                        BB[White][piece] = other.PieceBoard(piece, White) ;
+                        BB[Black][piece] = other.PieceBoard(piece, Black) ;
+                    } else
+                        BB[  0  ][piece] = other.PieceBoard(piece, White) |
+                                           other.PieceBoard(piece, Black) ;
+                }
             } else {
-                CastlingRightAndColorToMove = Black << 4;
-            }
+                Fill(PieceAndColor, PieceColor(NAP, NAC));
 
-            const std::string& castlingData = splitFen[2];
-            CastlingRightAndColorToMove |= castlingData.find('K') != std::string::npos ? WhiteKCastleMask : 0x0;
-            CastlingRightAndColorToMove |= castlingData.find('Q') != std::string::npos ? WhiteQCastleMask : 0x0;
-            CastlingRightAndColorToMove |= castlingData.find('k') != std::string::npos ? BlackKCastleMask : 0x0;
-            CastlingRightAndColorToMove |= castlingData.find('q') != std::string::npos ? BlackQCastleMask : 0x0;
-
-            Hash = Zobrist::HashCastling<ZOBRIST>(Hash, CastlingRightAndColorToMove & CastlingMask);
-
-            EnPassantTarget     = BBDefault;
-            if (const std::string& epData = splitFen[3]; epData.length() == 2) {
-                if (const Square epSq = FromString(epData);
-                    AttackTable::Pawn[Opposite(ColorToMove())][epSq] & BB[ColorToMove()][Pawn]) {
-                    EnPassantTarget = FromSquare(epSq);
-                    Hash            = Zobrist::HashEnPassant<ZOBRIST>(Hash, epSq);
+                BitBoardIterator iterator(~other[NAC]);
+                for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
+                    const PieceColor pc = other[sq];
+                    InsertNative(pc.Piece(), pc.Color(), sq);
                 }
             }
 
-            ColorBB[White] = BBDefault;
-            ColorBB[Black] = BBDefault;
-            for (Piece p = Pawn; p != NAP; p = Next(p)) {
-                ColorBB[White] |= BB[White][p];
-                ColorBB[Black] |= BB[Black][p];
+            CastlingRightAndColorToMove = other.CastlingRights() | other.ColorToMove() << 4;
+            SetEnPassant(other.EnPassantSquare());
+
+            UpdateNACBB();
+
+            if constexpr (Engine) {
+                if constexpr (Other == BoardType::Packed) Hash = ComputeHash();
+                else Hash = other.Zobrist();
             }
-            ColorBB[NAC] = ~(ColorBB[White] | ColorBB[Black]);
         }
 
         void LoadForEvaluation(const size_t threadId = 0) const
         {
             Evaluation::ResetNetworkState(threadId);
 
-            for (Square sq = A1; sq < NASQ; sq = Next(sq)) {
-                PieceColor pc = PieceAndColor[sq];
-                if (pc.Piece() == NAP || pc.Color() == NAC) continue;
+            BitBoardIterator iterator(~Empty());
+            for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
+                const PieceColor pc = PieceAndColor[sq];
 
                 Evaluation::Activate(pc.Piece(), pc.Color(), sq, threadId);
             }
         }
 
+        [[nodiscard]]
         std::string Fen() const
         {
-            std::array<std::string, 8> fenRank;
+            std::string result;
+            result.reserve(90);
 
-            for (uint8_t v = 0; v < 8; v++) {
-                std::stringstream rankStr;
-                uint8_t           e = 0;
-                for (uint8_t h = 0; h < 8; h++) {
-                    const PieceColor pc = PieceAndColor[v * 8 + h];
+            for (int rank = 7; rank >= 0; rank--) {
+                int empty = 0;
+                for (int file = 0; file < 8; file++) {
+                    const PieceColor pc = PieceAndColor[rank * 8 + file];
 
                     if (pc.Piece() == NAP) {
-                        e++;
-
-                        if (h == 7) {
-                            rankStr << static_cast<uint16_t>(e);
-                            e = 0;
-                        }
+                        empty++;
                         continue;
                     }
 
-                    if (e != 0) {
-                        rankStr << static_cast<uint16_t>(e);
-                        e = 0;
-                    }
+                    if (empty) result += static_cast<char>('0' + std::exchange(empty, 0));
 
-                    char p = ' ';
-
-                    switch (pc.Piece()) {
-                        case Pawn:
-                            p = 'p';
-                            break;
-                        case Knight:
-                            p = 'n';
-                            break;
-                        case Bishop:
-                            p = 'b';
-                            break;
-                        case Rook:
-                            p = 'r';
-                            break;
-                        case Queen:
-                            p = 'q';
-                            break;
-                        case King:
-                            p = 'k';
-                            break;
-                        case NAP:
-                            break;
-                    }
-
-                    if (pc.Color() == White) p = static_cast<char>(toupper(p));
-
-                    rankStr << p;
+                    result += std::string_view("PNBRQKpnbrqk")[pc.Piece() + pc.Color() * 6];
                 }
 
-                fenRank[v] = rankStr.str();
+                if (empty) result += static_cast<char>('0' + empty);
+                if (rank ) result += '/';
             }
 
-            std::stringstream fen;
-            for (uint8_t v = 0; v < 8; v++) {
-                fen << fenRank[7 - v];
-                if (v != 7) fen << '/';
-            }
+            result += ColorToMove() == White ? " w " : " b ";
 
-            fen << ' ';
-            fen << (ColorToMove() == White ? 'w' : 'b');
-            fen << ' ';
+            if (CastlingRights()) {
+                if (CastlingRights() & WhiteKCastleMask) result += 'K';
+                if (CastlingRights() & WhiteQCastleMask) result += 'Q';
+                if (CastlingRights() & BlackKCastleMask) result += 'k';
+                if (CastlingRights() & BlackQCastleMask) result += 'q';
+            } else result += '-';
 
-            if     (CastlingRightAndColorToMove &     CastlingMask) {
-                if (CastlingRightAndColorToMove & WhiteKCastleMask) fen << 'K';
-                if (CastlingRightAndColorToMove & WhiteQCastleMask) fen << 'Q';
-                if (CastlingRightAndColorToMove & BlackKCastleMask) fen << 'k';
-                if (CastlingRightAndColorToMove & BlackQCastleMask) fen << 'q';
-            } else fen << '-';
+            result += ' ';
+            result += EnPassantSquare() == NASQ ? "-" : ::ToString(EnPassantSquare());
 
-            fen << ' ';
-            if (EnPassantSquare() != NASQ) fen << ToString(ToSquare(EnPassantTarget));
-            else fen << '-';
+            result += " 0 1";
 
-            // Implement half and full move clocks.
-            fen << ' ';
-            fen << '0';
-            fen << ' ';
-            fen << '1';
-
-            return fen.str();
-        }
-
-        ZobristHash Zobrist() const
-        {
-            return Hash;
-        }
-
-        PieceColor operator [](const Square sq) const
-        {
-            return PieceAndColor[sq];
-        }
-
-        BitBoard operator [](const Color c) const
-        {
-            return ColorBB[c];
-        }
-
-        template<Color Color>
-        BitBoard PieceBoard(const Piece p) const
-        {
-            assert(p != NAP);
-            assert(Color != NAC);
-
-            return BB[Color][p];
+            return result;
         }
 
         [[nodiscard]]
-        BitBoard PieceBoard(const Piece p, const Color c) const
+        ZobristHash Zobrist() const
         {
-            assert(p != NAP);
-            assert(c != NAC);
-
-            return BB[c][p];
+            if constexpr (Engine) return Hash;
+            else return ComputeHash();
         }
 
-        Color ColorToMove() const
+        [[nodiscard]]
+        PieceColor operator [](const Square sq) const { return PieceAndColor[sq]; }
+
+        [[nodiscard]]
+        BitBoard operator [](const Color color) const
         {
-            return static_cast<Color>(CastlingRightAndColorToMove >> 4);
+            if (Engine) return ColorBB[color];
+
+            return color == NAC ? Empty() : ColorBB[color];
         }
 
         template<Color Color>
+        [[nodiscard]]
+        BitBoard PieceBoard(const Piece piece) const { return PieceBoard(piece, Color); }
+
+        [[nodiscard]]
+        BitBoard PieceBoard(const Piece piece, const Color color) const
+        {
+            assert(piece != NAP && color != NAC);
+
+            if (Engine) return BB[color][piece];
+            else return BB[0][piece] & ColorBB[color];
+        }
+
+        [[nodiscard]]
+        Color ColorToMove() const { return static_cast<Color>(CastlingRightAndColorToMove >> 4); }
+
+        [[nodiscard]]
+        uint8_t CastlingRights() const { return CastlingRightAndColorToMove & CastlingMask; }
+
+        template<Color Color>
+        [[nodiscard]]
         bool CastlingRightK() const
         {
-            if (Color == White) return CastlingRightAndColorToMove & WhiteKCastleMask;
-            if (Color == Black) return CastlingRightAndColorToMove & BlackKCastleMask;
+            static_assert(Color != NAC);
 
-            throw std::invalid_argument("Invalid color");
+            return CastlingRights() & (Color == White ? WhiteKCastleMask : BlackKCastleMask);
         }
 
         template<Color Color>
+        [[nodiscard]]
         bool CastlingRightQ() const
         {
-            if (Color == White) return CastlingRightAndColorToMove & WhiteQCastleMask;
-            if (Color == Black) return CastlingRightAndColorToMove & BlackQCastleMask;
+            static_assert(Color != NAC);
 
-            throw std::invalid_argument("Invalid color");
+            return CastlingRights() & (Color == White ? WhiteQCastleMask : BlackQCastleMask);
         }
 
+        [[nodiscard]]
         BitBoard EnPassant() const
         {
-            return EnPassantTarget;
+            if constexpr (Engine) return EnPassantTarget;
+            else return EnPassantTarget == NASQ ? BBDefault : FromSquare(EnPassantTarget);
         }
 
+        [[nodiscard]]
         Square EnPassantSquare() const
         {
-            return ToSquare(EnPassantTarget);
+            if constexpr (Engine) return ToSquare(EnPassantTarget);
+            else return EnPassantTarget;
         }
 
         template<Color We>
@@ -339,65 +351,55 @@ namespace StockDory
         {
             constexpr Color by = Opposite(We);
 
-            const Square king = ToSquare(BB[We][King]);
+            const Square king = ToSquare(PieceBoard(King, We));
 
-            if (AttackTable::Pawn[We][king] & BB[by][Pawn]) return true;
+            if (AttackTable::Pawn[We][king] & PieceBoard(Pawn, by)) return true;
 
-            if (AttackTable::Knight[king] & BB[by][Knight]) return true;
+            if (AttackTable::Knight[king] & PieceBoard(Knight, by)) return true;
 
-            const BitBoard occupied = ~ColorBB[NAC];
-            const BitBoard queen    = BB[by][Queen];
+            const BitBoard occupied = ~Empty();
+            const BitBoard queen    = PieceBoard(Queen, by);
 
             if (AttackTable::Sliding[BlackMagicFactory::MagicIndex(Bishop, king, occupied)] &
-                (queen | BB[by][Bishop]))
+                (queen | PieceBoard(Bishop, by)))
                 return true;
 
             if (AttackTable::Sliding[BlackMagicFactory::MagicIndex(Rook  , king, occupied)] &
-                (queen | BB[by][ Rook ]))
+                (queen | PieceBoard( Rook , by)))
                 return true;
 
-            return AttackTable::King[king] & BB[by][King];
+            return AttackTable::King[king] & PieceBoard(King, by);
         }
 
         template<Color By>
         CheckBitBoard Check() const
         {
-            uint8_t count = 0;
+            uint8_t count =               0;
             auto    check = CheckBitBoard();
 
-            const Square sq = ToSquare(BB[Opposite(By)][King]);
+            const Square sq = ToSquare(PieceBoard(King, Opposite(By)));
 
-            // Check if the square is under attack by opponent knights or pawns.
-            const BitBoard pawnCheck   = AttackTable::Pawn[Opposite(By)][sq] & BB[By][Pawn];
-            const BitBoard knightCheck = AttackTable::Knight[sq] & BB[By][Knight];
+            const BitBoard pawnCheck   = AttackTable::Pawn[Opposite(By)][sq] & PieceBoard(Pawn, By);
+            const BitBoard knightCheck = AttackTable::Knight[sq] & PieceBoard(Knight, By);
 
-            // If the square is under attack by a pawn or knight, add it our checks.
-            check.Check |= pawnCheck;
+            check.Check |=   pawnCheck;
             check.Check |= knightCheck;
 
-            // Increment the count if there are checks.
-            count += static_cast<bool>(pawnCheck);
+            count += static_cast<bool>(  pawnCheck);
             count += static_cast<bool>(knightCheck);
 
-            // Check if the square is under attack by opponent bishops, rooks, or queens.
-            // For queen, we can merge with checks for bishop and rook.
-            const BitBoard queen = BB[By][Queen];
+            const BitBoard queen = PieceBoard(Queen, By);
 
-            // All the occupied squares:
-            const BitBoard occupied = ~ColorBB[NAC];
+            const BitBoard occupied = ~Empty();
 
-            // Check if the square is under attack by opponent bishops or queens (diagonally).
             const BitBoard diagonalCheck =
                     AttackTable::Sliding[BlackMagicFactory::MagicIndex(Bishop, sq, occupied)] &
-                    (queen | BB[By][Bishop]);
+                    (queen | PieceBoard(Bishop, By));
 
-            // Check if the square is under attack by opponent rooks or queens (straight).
             const BitBoard straightCheck =
-                    AttackTable::Sliding[BlackMagicFactory::MagicIndex(Rook, sq, occupied)] &
-                    (queen | BB[By][Rook]);
+                    AttackTable::Sliding[BlackMagicFactory::MagicIndex( Rook , sq, occupied)] &
+                    (queen | PieceBoard( Rook , By));
 
-            // For sliding attacks, we must add the square of the attack's origin and all the squares to us from the
-            // attack:
             if (diagonalCheck) {
                 const Square diagonalCheckSq = ToSquare(diagonalCheck);
                 check.Check |= RayTable::Between[sq][diagonalCheckSq] | FromSquare(diagonalCheckSq);
@@ -407,8 +409,6 @@ namespace StockDory
                 const Square straightCheckSq = ToSquare(straightCheck);
                 check.Check |= RayTable::Between[sq][straightCheckSq] | FromSquare(straightCheckSq);
 
-                // In the case where there is more than one check, we must increment the count once more, as it's a
-                // double check.
                 if (Count(straightCheck) > 1) count++;
             }
 
@@ -426,32 +426,25 @@ namespace StockDory
         {
             auto pin = PinBitBoard();
 
-            const Square sq = ToSquare(BB[We][King]);
+            const Square sq = ToSquare(PieceBoard(King, We));
 
-            // All the occupied squares:
-            // In this case, we want to let the pins pass through our pieces, since our pieces can move on the pins.
             const BitBoard occupied = ColorBB[By];
 
-            // For queen, we can merge with checks for bishop and rook.
-            const BitBoard queen = BB[By][Queen];
+            const BitBoard queen = PieceBoard(Queen, By);
 
-            // Check if the square is under attack by opponent bishops or queens (diagonally).
             const BitBoard diagonalCheck =
                     AttackTable::Sliding[BlackMagicFactory::MagicIndex(Bishop, sq, occupied)] &
-                    (queen | BB[By][Bishop]);
+                    (queen | PieceBoard(Bishop, By));
 
-            // Check if the square is under attack by opponent rooks or queens (straight).
             const BitBoard straightCheck =
-                    AttackTable::Sliding[BlackMagicFactory::MagicIndex(Rook, sq, occupied)] &
-                    (queen | BB[By][Rook]);
+                    AttackTable::Sliding[BlackMagicFactory::MagicIndex( Rook , sq, occupied)] &
+                    (queen | PieceBoard( Rook , By));
 
-            // Iterate through the attacks and check if the attack is a diagonally pinning one.
             BitBoardIterator iterator(diagonalCheck);
             for (Square attSq = iterator.Value(); attSq != NASQ; attSq = iterator.Value())
                 if (const BitBoard possiblePin = RayTable::Between[sq][attSq] | FromSquare(attSq);
                     Count(possiblePin & ColorBB[We]) == 1) pin.Diagonal |= possiblePin;
 
-            // Iterate through the attacks and check if the attack is a straight pinning one.
             iterator = BitBoardIterator(straightCheck);
             for (Square attSq = iterator.Value(); attSq != NASQ; attSq = iterator.Value())
                 if (const BitBoard possiblePin = RayTable::Between[sq][attSq] | FromSquare(attSq);
@@ -462,190 +455,177 @@ namespace StockDory
 
         BitBoard SquareAttackers(const Square sq, const BitBoard occ) const
         {
-            BitBoard attackers = AttackTable::Pawn[White][sq] &  BB[Black][ Pawn ] |
-                                 AttackTable::Pawn[Black][sq] &  BB[White][ Pawn ] |
-                                 AttackTable::Knight     [sq] & (BB[White][Knight] | BB[Black][Knight]) |
-                                 AttackTable::King       [sq] & (BB[White][ King ] | BB[Black][ King ]) ;
+            BitBoard attackers = AttackTable::Pawn[White][sq] &  PieceBoard( Pawn , Black)  |
+                                 AttackTable::Pawn[Black][sq] &  PieceBoard( Pawn , White)  |
+
+                                 AttackTable::Knight     [sq] & (PieceBoard(Knight, White)  |
+                                                                 PieceBoard(Knight, Black)) |
+
+                                 AttackTable::King       [sq] & (PieceBoard( King , White)  |
+                                                                 PieceBoard( King , Black)) ;
 
             attackers |= AttackTable::Sliding[BlackMagicFactory::MagicIndex(Bishop, sq, occ)] &
-                    (BB[White][Bishop] | BB[Black][Bishop] | BB[White][Queen] | BB[Black][Queen]);
+                    (PieceBoard(Bishop, White) |
+                     PieceBoard(Bishop, Black) |
+                     PieceBoard(Queen , White) |
+                     PieceBoard(Queen , Black));
 
-            attackers |= AttackTable::Sliding[BlackMagicFactory::MagicIndex(Rook, sq, occ)] &
-                    (BB[White][ Rook ] | BB[Black][ Rook ] | BB[White][Queen] | BB[Black][Queen]);
+            attackers |= AttackTable::Sliding[BlackMagicFactory::MagicIndex( Rook , sq, occ)] &
+                    (PieceBoard( Rook , White) |
+                     PieceBoard( Rook , Black) |
+                     PieceBoard(Queen , White) |
+                     PieceBoard(Queen , Black));
 
             return attackers;
         }
 
+        template<Piece Piece = NAP>
+        [[nodiscard]]
+        ::Move CreateMove(const Square from, const Square to, const ::Piece promotion = NAP) const
+        {
+            assert(from < NASQ && to < NASQ && from != to);
+            assert(promotion == NAP || (promotion >= Knight && promotion <= Queen));
+
+            const ::Piece piece = Piece == NAP ? PieceAndColor[from].Piece() : Piece;
+
+            const bool capture = PieceAndColor[to].Piece() != NAP;
+
+            if (promotion != NAP)
+                return ::Move(from, to, static_cast<MoveFlag>(8 | (capture ? 4 : 0) | (promotion - Knight)));
+            if (piece == Pawn) {
+                if (to == EnPassantSquare()) return ::Move(from, to, MoveFlag::EnPassant );
+                if ((from ^ to) == 16)       return ::Move(from, to, MoveFlag::DoublePush);
+            } else if (piece == King && (from == E1 || from == E8) && (from + 2 == to || from - 2 == to)) {
+                return ::Move(from, to, to > from ? MoveFlag::KingCastle : MoveFlag::QueenCastle);
+            }
+
+            return ::Move(from, to, capture ? MoveFlag::Capture : MoveFlag::Quiet);
+        }
+
         PreviousStateNull Move()
         {
-            const auto state = PreviousStateNull(EnPassantSquare());
+            const PreviousStateNull state (EnPassantSquare());
 
-            Hash            = Zobrist::HashEnPassant<ZOBRIST>(Hash, EnPassantSquare());
-            EnPassantTarget = BBDefault;
+            HashEnPassant<ZOBRIST>(state.EnPassant);
+            SetEnPassant(NASQ);
 
             CastlingRightAndColorToMove ^= ColorFlipMask;
-            Hash = Zobrist::HashColorFlip<ZOBRIST>(Hash);
+
+            if constexpr (Engine) Hash = Zobrist::HashColorFlip<ZOBRIST>(Hash);
 
             return state;
         }
 
         void UndoMove(const PreviousStateNull& state)
         {
-            if (state.EnPassant != NASQ) {
-                EnPassantTarget = FromSquare(state.EnPassant);
-                Hash            = Zobrist::HashEnPassant<ZOBRIST>(Hash, state.EnPassant);
-            }
+            SetEnPassant(state.EnPassant);
+            HashEnPassant<ZOBRIST>(state.EnPassant);
 
             CastlingRightAndColorToMove ^= ColorFlipMask;
-            Hash = Zobrist::HashColorFlip<ZOBRIST>(Hash);
+
+            if constexpr (Engine) Hash = Zobrist::HashColorFlip<ZOBRIST>(Hash);
         }
 
         template<MoveType T>
         PreviousState Move(const Square from, const Square to, const Piece promotion = NAP, const size_t threadId = 0)
         {
+            return Move<T>(CreateMove(from, to, promotion), threadId);
+        }
+
+        template<MoveType T>
+        PreviousState Move(const ::Move move, const size_t threadId = 0)
+        {
             if (T & NNUE) Evaluation::PreMove(threadId);
 
-            auto state = PreviousState(PieceAndColor[from], PieceAndColor[to],
-                                       EnPassantSquare(), CastlingRightAndColorToMove,
-                                       Hash);
+            const Square from = move.From();
+            const Square to   = move.To();
+            const PieceColor moved = PieceAndColor[from];
+            const Piece piece = moved.Piece();
+            const Color color = moved.Color();
+            const Color opposite = Opposite(color);
 
-            Hash            = Zobrist::HashEnPassant<T>(Hash, EnPassantSquare());
-            EnPassantTarget = BBDefault;
+            assert(piece != NAP && color == ColorToMove());
+            assert(move == CreateMove(from, to, move.Promotion()));
 
+            PreviousState state {
+                moved,
+                PieceAndColor[to],
+                EnPassantSquare(),
+                CastlingRightAndColorToMove,
+                0
+            };
+
+            if constexpr (Engine && (T & ZOBRIST)) state.Hash = Hash;
+
+            HashEnPassant<T>(state.EnPassant);
+            SetEnPassant(NASQ);
+
+            HashCastling<T>();
+            CastlingRightAndColorToMove &= CastleMask[from] & CastleMask[to];
             CastlingRightAndColorToMove ^= ColorFlipMask;
-            Hash = Zobrist::HashColorFlip<T>(Hash);
+            HashCastling<T>();
 
-            Hash = Zobrist::HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
+            if constexpr (Engine && (T & ZOBRIST)) Hash = Zobrist::HashColorFlip<T>(Hash);
 
-            const Piece pieceF = state.MovedPiece.Piece();
-            const Color colorF = state.MovedPiece.Color();
-            const Piece pieceT = state.CapturedPiece.Piece();
-            const Color colorT = state.CapturedPiece.Color();
+            if (move.Capture()) {
+                const Square captured      = move.EnPassant() ? static_cast<Square>(to ^ 8) : to;
+                const  Piece capturedPiece = move.EnPassant() ? Pawn : state.CapturedPiece.Piece();
 
-            using RookCastlingHandler = std::array<std::array<std::array<uint8_t, 64>, 2>, 2>;
-            constexpr static RookCastlingHandler RookCastlingMask =
-            [] constexpr -> RookCastlingHandler
-            {
-                RookCastlingHandler result = {};
+                RemovePiece (capturedPiece, opposite, captured);
+                HashPiece<T>(capturedPiece, opposite, captured);
 
-                result[0] = {{}};
+                if (T & NNUE) Evaluation::Deactivate(capturedPiece, opposite, captured, threadId);
 
-                result[1][0] = {};
+                state.EnPassantCapture = move.EnPassant();
+            }
 
-                for (Square sq = A1; sq <= NASQ; sq = Next(sq)) {
-                    if      (sq == A1) result[1][1][sq] = WhiteQCastleMask;
-                    else if (sq == A8) result[1][1][sq] = BlackQCastleMask;
-                    else if (sq == H1) result[1][1][sq] = WhiteKCastleMask;
-                    else if (sq == H8) result[1][1][sq] = BlackKCastleMask;
+            if (move.Promotion() != NAP) {
+                state.PromotedPiece = move.Promotion();
+
+                RemovePiece (Pawn            , color, from);
+                PlacePiece  (move.Promotion(), color,   to);
+                HashPiece<T>(Pawn            , color, from);
+                HashPiece<T>(move.Promotion(), color,   to);
+
+                if (T & NNUE) {
+                    Evaluation::Deactivate(Pawn, color, from, threadId);
+                    Evaluation::Activate(move.Promotion(), color, to, threadId);
                 }
+            } else {
+                TransitionPiece(piece, color, from, to);
+                HashPiece<T>   (piece, color, from    );
+                HashPiece<T>   (piece, color,       to);
 
-                return result;
-            }();
+                if (T & NNUE) Evaluation::Transition(piece, color, from, to, threadId);
 
-            CastlingRightAndColorToMove &= ~RookCastlingMask[pieceT == Rook][
-                static_cast<bool>(CastlingRightAndColorToMove & ColorCastleMask[colorT])
-            ][ to ];
-            CastlingRightAndColorToMove &= ~RookCastlingMask[pieceF == Rook][
-                static_cast<bool>(CastlingRightAndColorToMove & ColorCastleMask[colorF])
-            ][from];
+                if (move.Castling()) {
+                    state.CastlingFrom = static_cast<Square>((from & 56) + (to > from ? 7 : 0));
+                    state.CastlingTo   = static_cast<Square>((from & 56) + (to > from ? 5 : 3));
 
-            if (pieceF == Pawn) {
-                if (to == state.EnPassant) {
-                    const Color opposite = Opposite(colorF);
+                    TransitionPiece(Rook, color, state.CastlingFrom, state.CastlingTo);
+                    HashPiece<T>   (Rook, color, state.CastlingFrom                  );
+                    HashPiece<T>   (Rook, color,                     state.CastlingTo);
 
-                    const auto epPawnSq = static_cast<Square>(state.EnPassant ^ 8);
-                    EmptyNative(Pawn, opposite, epPawnSq);
-                    Hash = Zobrist::HashPiece<T>(Hash, Pawn, opposite, epPawnSq);
+                    if (T & NNUE)
+                        Evaluation::Transition(Rook, color, state.CastlingFrom, state.CastlingTo, threadId);
+                } else if (move.DoublePush()) {
+                    const auto ep = static_cast<Square>(to ^ 8);
 
-                    if (T & NNUE) Evaluation::Deactivate(Pawn, opposite, epPawnSq, threadId);
-
-                    state.EnPassantCapture = true;
-                } else if (static_cast<Square>(from ^ 16) == to) {
-                    const auto epSq = static_cast<Square>(to ^ 8);
-                    if (T & PERFT) {
-                        EnPassantTarget = FromSquare(epSq);
-                        Hash            = Zobrist::HashEnPassant<T>(Hash, epSq);
-                    } else {
-                        if (AttackTable::Pawn[colorF][epSq] & BB[Opposite(colorF)][Pawn]) {
-                            EnPassantTarget = FromSquare(epSq);
-                            Hash            = Zobrist::HashEnPassant<T>(Hash, epSq);
-                        }
+                    if ((T & PERFT) || (AttackTable::Pawn[color][ep] & PieceBoard(Pawn, opposite))) {
+                        SetEnPassant    (ep);
+                        HashEnPassant<T>(ep);
                     }
-                } else if (promotion != NAP) {
-                    state.PromotedPiece = promotion;
-
-                     EmptyNative(Pawn     , colorF, from);
-                     EmptyNative(pieceT   , colorT,   to);
-                    InsertNative(promotion, colorF,   to);
-
-                    if (T & NNUE) {
-                        Evaluation::Deactivate(Pawn, colorF, from, threadId);
-                        Evaluation::Activate(promotion, colorF, to, threadId);
-
-                        if (pieceT != NAP) Evaluation::Deactivate(pieceT, colorT, to, threadId);
-                    }
-
-                    Hash = Zobrist::HashPiece<T>(Hash, Pawn, colorF, from);
-                    Hash = Zobrist::HashPiece<T>(Hash, pieceT, colorT, to);
-                    Hash = Zobrist::HashPiece<T>(Hash, promotion, colorF, to);
-
-                    Hash = Zobrist::HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
-
-                    return state;
-                }
-            } else if (pieceF == King && CastlingRightAndColorToMove & ColorCastleMask[colorF]) {
-                CastlingRightAndColorToMove &= ~ColorCastleMask[colorF];
-
-                if (to == C1 || to == C8 || to == G1 || to == G8) {
-                    constexpr static std::array<std::array<Square, 2>, 2> RookCastleSquareStart {{
-                        {H1, A1},
-                        {H8, A8}
-                    }};
-
-                    constexpr static std::array<std::array<Square, 2>, 2> RookCastleSquareEnd   {{
-                        {F1, D1},
-                        {F8, D8}
-                    }};
-
-                    state.CastlingFrom = RookCastleSquareStart[colorF][to < from];
-                    state.CastlingTo   = RookCastleSquareEnd  [colorF][to < from];
-
-                     EmptyNative(King, colorF,               from);
-                     EmptyNative(Rook, colorF, state.CastlingFrom);
-                    InsertNative(King, colorF,               to  );
-                    InsertNative(Rook, colorF, state.CastlingTo  );
-
-                    if (T & NNUE) {
-                        Evaluation::Transition(King, colorF,               from,               to, threadId);
-                        Evaluation::Transition(Rook, colorF, state.CastlingFrom, state.CastlingTo, threadId);
-                    }
-
-                    Hash = Zobrist::HashPiece<T>(Hash, King, colorF,               from);
-                    Hash = Zobrist::HashPiece<T>(Hash, Rook, colorF, state.CastlingFrom);
-                    Hash = Zobrist::HashPiece<T>(Hash, King, colorF,               to  );
-                    Hash = Zobrist::HashPiece<T>(Hash, Rook, colorF, state.CastlingTo  );
-
-                    Hash = Zobrist::HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
-
-                    return state;
                 }
             }
 
-            MoveNative(pieceF, colorF, from, pieceT, colorT, to);
-
-            if (T & NNUE) {
-                Evaluation::Transition(pieceF, colorF, from, to, threadId);
-
-                if (pieceT != NAP) Evaluation::Deactivate(pieceT, colorT, to, threadId);
-            }
-
-            Hash = Zobrist::HashPiece<T>(Hash, pieceF, colorF, from);
-            Hash = Zobrist::HashPiece<T>(Hash, pieceT, colorT,   to);
-            Hash = Zobrist::HashPiece<T>(Hash, pieceF, colorF,   to);
-
-            Hash = Zobrist::HashCastling<T>(Hash, CastlingRightAndColorToMove & CastlingMask);
-
+            UpdateNACBB();
             return state;
+        }
+
+        template<MoveType T>
+        void UndoMove(const PreviousState& state, const ::Move move, const size_t threadId = 0)
+        {
+            UndoMove<T>(state, move.From(), move.To(), threadId);
         }
 
         template<MoveType T>
@@ -654,80 +634,154 @@ namespace StockDory
             if (T & NNUE) Evaluation::PreUndoMove(threadId);
 
             CastlingRightAndColorToMove = state.CastlingRightAndColorToMove;
-            if (T & ZOBRIST) Hash = state.Hash;
+            SetEnPassant(state.EnPassant);
 
-            if (state.EnPassant != NASQ) EnPassantTarget = FromSquare(state.EnPassant);
-            else EnPassantTarget                         = BBDefault;
+            if constexpr (Engine && (T & ZOBRIST)) Hash = state.Hash;
+
+            const Piece piece = state.MovedPiece.Piece();
+            const Color color = state.MovedPiece.Color();
 
             if (state.PromotedPiece != NAP) {
-                 EmptyNative(state.PromotedPiece, state.MovedPiece.Color(),   to);
-                InsertNative(Pawn               , state.MovedPiece.Color(), from);
-            } else {
-                 EmptyNative(state.MovedPiece.Piece(), state.MovedPiece.Color(),   to);
-                InsertNative(state.MovedPiece.Piece(), state.MovedPiece.Color(), from);
-            }
+                RemovePiece(state.PromotedPiece, color,   to);
+                PlacePiece (Pawn               , color, from);
+            } else TransitionPiece(piece, color, to, from);
 
-            if (state.CapturedPiece.Piece() != NAP) {
-                InsertNative(state.CapturedPiece.Piece(), state.CapturedPiece.Color(), to);
-            } else if (state.EnPassantCapture) {
-                const auto epPieceSq = static_cast<Square>(to ^ 8);
-                InsertNative(Pawn, Opposite(state.MovedPiece.Color()), epPieceSq);
-            } else if (state.CastlingFrom != NASQ) {
-                 EmptyNative(Rook, state.MovedPiece.Color(), state.CastlingTo  );
-                InsertNative(Rook, state.MovedPiece.Color(), state.CastlingFrom);
-            }
-        }
-
-        void MoveNative(const Piece pF, const Color cF, const Square sqF,
-                        const Piece pT, const Color cT, const Square sqT)
-        {
-            // Capture Section:
-            Set<false>(BB[cT][pT] , sqT);
-
-            Set<false>(ColorBB[cT], sqT);
-
-            // MoveNative Section:
-            Set<false>(BB[cF][pF], sqF);
-            Set<true >(BB[cF][pF], sqT);
-
-            Set<false>(ColorBB[cF], sqF);
-            Set<true >(ColorBB[cF], sqT);
+            if (state.CapturedPiece.Piece() != NAP)
+                PlacePiece(state.CapturedPiece.Piece(), state.CapturedPiece.Color(), to);
+            else if (state.EnPassantCapture)
+                PlacePiece(Pawn, Opposite(color), static_cast<Square>(to ^ 8));
+            else if (state.CastlingFrom != NASQ)
+                TransitionPiece(Rook, color, state.CastlingTo, state.CastlingFrom);
 
             UpdateNACBB();
-
-            PieceAndColor[sqT] = PieceAndColor[sqF];
-            PieceAndColor[sqF] = PieceColor(NAP, NAC);
         }
 
-        void EmptyNative(const Piece p, const Color c, const Square sq)
+        void MoveNative(const Piece piece, const Color color, const Square from,
+                        const Piece captured, const Color capturedColor, const Square to)
         {
-            Set<false>(BB[c][p]  , sq);
+            if (captured != NAP) RemovePiece(captured, capturedColor, to);
 
-            Set<false>(ColorBB[c], sq);
+            TransitionPiece(piece, color, from, to);
 
             UpdateNACBB();
-
-            PieceAndColor[sq] = PieceColor(NAP, NAC);
         }
 
-        void InsertNative(const Piece p, const Color c, const Square sq)
+        void EmptyNative(const Piece piece, const Color color, const Square sq)
         {
-            Set<true>(BB[c][p]  , sq);
-
-            Set<true>(ColorBB[c], sq);
+            if (piece != NAP) RemovePiece(piece, color, sq);
 
             UpdateNACBB();
+        }
 
-            PieceAndColor[sq] = PieceColor(p, c);
+        void InsertNative(const Piece piece, const Color color, const Square sq)
+        {
+            PlacePiece(piece, color, sq);
+
+            UpdateNACBB();
         }
 
         void UpdateNACBB()
         {
-            ColorBB[NAC] = ~(ColorBB[White] | ColorBB[Black]);
+            if (Engine) ColorBB[NAC] = ~(ColorBB[White] | ColorBB[Black]);
+        }
+
+        private:
+        [[nodiscard]]
+        BitBoard Empty() const
+        {
+            if (Engine) return ColorBB[NAC];
+            return ~(ColorBB[White] | ColorBB[Black]);
+        }
+
+        void SetEnPassant(const Square sq)
+        {
+            if constexpr (Engine) EnPassantTarget = sq == NASQ ? BBDefault : FromSquare(sq);
+
+            else EnPassantTarget = sq;
+        }
+
+        void RemovePiece(const Piece piece, const Color color, const Square sq)
+        {
+            assert(sq < NASQ && piece < NAP && color < NAC);
+            assert(PieceAndColor[sq].Piece() == piece && PieceAndColor[sq].Color() == color);
+
+            const BitBoard mask = FromSquare(sq);
+            BB[Engine ? color : 0][piece] ^= mask;
+            ColorBB[color] ^= mask;
+            PieceAndColor[sq] = PieceColor(NAP, NAC);
+        }
+
+        void PlacePiece(const Piece piece, const Color color, const Square sq)
+        {
+            assert(sq < NASQ && piece < NAP && color < NAC);
+            assert(PieceAndColor[sq].Piece() == NAP);
+
+            const BitBoard mask = FromSquare(sq);
+            BB[Engine ? color : 0][piece] |= mask;
+            ColorBB[color] |= mask;
+            PieceAndColor[sq] = PieceColor(piece, color);
+        }
+
+        void TransitionPiece(const Piece piece, const Color color, const Square from, const Square to)
+        {
+            assert(from < NASQ && to < NASQ && from != to);
+            assert(PieceAndColor[from].Piece() == piece && PieceAndColor[from].Color() == color);
+            assert(PieceAndColor[to].Piece() == NAP);
+
+            const BitBoard mask = FromSquare(from) | FromSquare(to);
+            BB[Engine ? color : 0][piece] ^= mask;
+            ColorBB[color] ^= mask;
+            PieceAndColor[from] = PieceColor(NAP, NAC);
+            PieceAndColor[to] = PieceColor(piece, color);
+        }
+
+        template<MoveType T>
+        void HashPiece(const Piece piece, const Color color, const Square sq)
+        {
+            if constexpr (Engine && (T & ZOBRIST)) Hash = Zobrist::HashPiece<T>(Hash, piece, color, sq);
+        }
+
+        template<MoveType T>
+        void HashEnPassant(const Square sq)
+        {
+            if constexpr (Engine && (T & ZOBRIST)) Hash = Zobrist::HashEnPassant<T>(Hash, sq);
+        }
+
+        template<MoveType T>
+        void HashCastling()
+        {
+            if constexpr (Engine && (T & ZOBRIST)) Hash = Zobrist::HashCastling<T>(Hash, CastlingRights());
+        }
+
+        ZobristHash ComputeHash() const
+        {
+            ZobristHash result = 0;
+            BitBoardIterator iterator(~Empty());
+
+            for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
+                const PieceColor pc = PieceAndColor[sq];
+                result = Zobrist::HashPiece<ZOBRIST>(result, pc.Piece(), pc.Color(), sq);
+            }
+
+            if (ColorToMove() == White) result = Zobrist::HashColorFlip<ZOBRIST>(result);
+
+            result = Zobrist::HashCastling<ZOBRIST>(result, CastlingRights());
+
+            return Zobrist::HashEnPassant<ZOBRIST>(result, EnPassantSquare());
         }
 
     };
 
+    using      Board = BasicBoard<BoardType::Engine>;
+    using PerftBoard = BasicBoard<BoardType:: Perft>;
+
+    static_assert(std::is_trivially_copyable_v<     Board>);
+    static_assert(std::is_trivially_copyable_v<PerftBoard>);
+
+    static_assert(sizeof(PerftBoard) < sizeof(Board));
+
 } // StockDory
+
+#include "PackedBoard.h"
 
 #endif //STOCKDORY_BOARD_H

@@ -6,6 +6,7 @@
 #ifndef STOCKDORY_SEARCH_H
 #define STOCKDORY_SEARCH_H
 
+#include <algorithm>
 #include <cmath>
 #include <ranges>
 
@@ -870,10 +871,8 @@ namespace StockDory
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move = moves[i];
 
-                const Piece movingPiece = Board[move.From()].Piece();
-                const Piece targetPiece = Board[move.  To()].Piece();
-
-                const bool quiet = targetPiece == NAP;
+                const bool capture = move.Capture();
+                const bool quiet   = !capture && move.Promotion() == NAP;
 
                 quietMoves += quiet;
 
@@ -914,7 +913,9 @@ namespace StockDory
                     if (doLMP && quietMoves > lmpLastQuiet && bestEvaluation > -Infinity) break;
                 }
 
-                const PreviousState state = DoMove<true>(move, ply, quiet);
+                const Piece movingPiece = Board[move.From()].Piece();
+
+                const PreviousState state = DoMove<true>(move, ply);
 
                 // Principle Variation Search (PVS):
                 //
@@ -1028,7 +1029,7 @@ namespace StockDory
                     // If Killer Move 0 is different from the current move:
                     //    Killer Move 0 -> Killer Move 1
                     //   Current Move   -> Killer Move 0
-                    if (Killer[0][ply] != move) {
+                    if (!Killer[0][ply].SameIdentity(move)) {
                         Killer[1][ply] = Killer[0][ply];
                         Killer[0][ply] = move;
                     }
@@ -1038,8 +1039,16 @@ namespace StockDory
 
                     // Reduce the history value for all other quiet moves that were searched, since they didn't
                     // cause a beta cut-off
-                    for (uint8_t q = 1; q < quietMoves; q++)
-                        UpdateHistory<Color, false>(moves.UnsortedAccess(i - q), depth);
+
+                    uint8_t updated = 0;
+                    for (uint8_t j = 1; updated < quietMoves - 1; j++) {
+                        const Move m = moves.UnsortedAccess(i - j);
+
+                        if (m.Capture() || m.Promotion() != NAP) continue;
+
+                        UpdateHistory<Color, false>(m, depth);
+                        updated++;
+                    }
                 }
 
                 ttEntryNew.Type = Beta;
@@ -1139,16 +1148,15 @@ namespace StockDory
         }
 
         template<bool UpdateRepetitionHistory>
-        PreviousState DoMove(const Move move, const uint8_t ply, const bool quiet = false)
+        PreviousState DoMove(const Move move, const uint8_t ply)
         {
             constexpr MoveType MT = NNUE | ZOBRIST;
 
-            if (!quiet || Board[move.From()].Piece() == Pawn) {
-                Stack[ply + 1].HalfMoveCounter = 1;
-            } else
-                Stack[ply + 1].HalfMoveCounter = Stack[ply].HalfMoveCounter + 1;
+            const bool resetHalfMoveCounter = move.Capture() || Board[move.From()].Piece() == Pawn;
 
-            const PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion(), ThreadId);
+            Stack[ply + 1].HalfMoveCounter = resetHalfMoveCounter ? 1 : Stack[ply].HalfMoveCounter + 1;
+
+            const PreviousState state = Board.Move<MT>(move, ThreadId);
             Nodes++;
 
             const ZobristHash hash = Board.Zobrist();
@@ -1165,7 +1173,7 @@ namespace StockDory
         {
             constexpr MoveType MT = NNUE | ZOBRIST;
 
-            Board.UndoMove<MT>(state, move.From(), move.To(), ThreadId);
+            Board.UndoMove<MT>(state, move, ThreadId);
 
             if (UpdateRepetitionHistory) Repetition.Pop();
         }

@@ -7,7 +7,9 @@
 #define STOCKDORY_BITBOARD_H
 
 #include <bit>
+#include <cassert>
 #include <cstdint>
+#include <stdexcept>
 
 #include "Square.h"
 
@@ -24,17 +26,23 @@ constexpr uint8_t Count(const BitBoard bb)
 template<bool Activate>
 constexpr void Set(BitBoard& bb, const Square sq)
 {
+    assert(sq < NASQ);
+
     if (Activate) bb |=   1ULL << sq ;
     else          bb &= ~(1ULL << sq);
 }
 
 constexpr bool Get(const BitBoard bb, const Square sq)
 {
+    assert(sq < NASQ);
+
     return bb >> sq & 1ULL;
 }
 
 constexpr BitBoard FromSquare(const Square sq)
 {
+    assert(sq < NASQ);
+
     return 1ULL << sq;
 }
 
@@ -56,7 +64,7 @@ class BitBoardIterator
 
     constexpr Square Value()
     {
-        uint8_t i = std::countr_zero(BB);
+        const uint8_t i = std::countr_zero(BB);
 
         // Subtract 1 and only hold set bits in the container.
         BB &= BB - 1ULL;
@@ -83,7 +91,7 @@ constexpr BitBoardIterator Iterator(const BitBoard bb)
     return BitBoardIterator(bb);
 }
 
-std::string ToString(const BitBoard bb)
+inline std::string ToString(const BitBoard bb)
 {
     std::string s;
 

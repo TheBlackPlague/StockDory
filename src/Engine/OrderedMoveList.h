@@ -104,7 +104,7 @@ namespace StockDory
                                          const Square           from ,
                                          const Square            to  )
         {
-            const auto move = Move(from, to, Promotion);
+            const auto move = board.CreateMove<Piece>(from, to, Promotion);
             return { policy.template Score<Piece, Promotion>(board, hTable, move), move };
         }
 

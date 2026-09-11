@@ -18,6 +18,7 @@
 
 #include "../../Backend/Board.h"
 #include "../../Backend/Misc.h"
+#include "../../Backend/Move/MoveList.h"
 
 #include "../../Engine/Search.h"
 
@@ -235,12 +236,46 @@ namespace StockDory
             std::cout << ss.str() << std::endl;
         }
 
+        template<Piece Piece, Color Color>
+        static Move ValidateMove(const Move move, const PinBitBoard& pin, const CheckBitBoard& check)
+        {
+            if (check.DoubleCheck && Piece != King) return {};
+
+            const MoveList<Piece, Color> moves(Board, move.From(), pin, check);
+            if (moves.Promotion(move.From()) != (move.Promotion() != NAP)) return {};
+            if (!moves.Mask(FromSquare(move.To())).Count()) return {};
+
+            return Board.CreateMove<Piece>(move.From(), move.To(), move.Promotion());
+        }
+
+        template<Color Color>
+        static Move ValidateMove(const Move move)
+        {
+            const PieceColor piece = Board[move.From()];
+            if (piece.Color() != Color || piece.Piece() == NAP) return {};
+
+            const PinBitBoard   pin   = Board.Pin<Color, Opposite(Color)>();
+            const CheckBitBoard check = Board.Check<Opposite(Color)>();
+
+            switch (piece.Piece()) {
+                case Pawn:   return ValidateMove<Pawn  , Color>(move, pin, check);
+                case Knight: return ValidateMove<Knight, Color>(move, pin, check);
+                case Bishop: return ValidateMove<Bishop, Color>(move, pin, check);
+                case Rook:   return ValidateMove<Rook  , Color>(move, pin, check);
+                case Queen:  return ValidateMove<Queen , Color>(move, pin, check);
+                case King:   return ValidateMove<King  , Color>(move, pin, check);
+                default:     return {};
+            }
+        }
+
         static void HandlePosition(const Arguments& args)
         {
-            if (!UCIPrompted) return;
+            if (!UCIPrompted || args.empty()) return;
 
             uint8_t moveStrIndex = 2;
             if (strutil::compare_ignore_case(args[0], "fen")) {
+                if (args.size() < 7) return;
+
                 const Arguments   fenToken = {args.begin() + 1, args.begin() + 7};
                 const std::string fen      = strutil::join(fenToken, " ");
 
@@ -263,12 +298,16 @@ namespace StockDory
                 strutil::compare_ignore_case(args[moveStrIndex - 1], "moves"))
                 for (const Arguments movesToken = {args.begin() + moveStrIndex, args.end()};
                      const std::string& moveStr: movesToken) {
-                    const Move move = Move::FromString(moveStr);
+                    const Move parsed = Move::FromString(moveStr);
+                    if (!parsed) return;
 
-                    if (Board[move.To()].Piece() != NAP || Board[move.From()].Piece() == Pawn) HalfMoveCounter = 1;
-                    else                                                                       HalfMoveCounter++;
+                    const Move move = Board.ColorToMove() == White
+                        ? ValidateMove<White>(parsed) : ValidateMove<Black>(parsed);
+                    if (!move) return;
 
-                    Board.Move<ZOBRIST>(move.From(), move.To(), move.Promotion());
+                    HalfMoveCounter = move.Capture() || Board[move.From()].Piece() == Pawn ? 1 : HalfMoveCounter + 1;
+
+                    Board.Move<ZOBRIST>(move);
 
                     Repetition.Push(Board.Zobrist());
                 }
@@ -288,11 +327,6 @@ namespace StockDory
         static void HandleGo(const Arguments& args)
         {
             if (!UCIPrompted) return;
-
-            // if (UCISearch::Searching) {
-            //     std::cerr << "ERROR: The engine is already searching" << std::endl;
-            //     return;
-            // }
 
             UCISearch::Searching.wait(true, std::memory_order::acquire);
 
