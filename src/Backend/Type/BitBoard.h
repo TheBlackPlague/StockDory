@@ -77,7 +77,7 @@ class BitBoardIterator
     {
         const uint8_t count = Count(BB);
 
-        if (N < count) throw std::length_error("Bitboard does not fit in the destination array");
+        assert(N >= count);
 
         for (uint8_t i = 0; i < count; i++) array[i] = Value();
 
