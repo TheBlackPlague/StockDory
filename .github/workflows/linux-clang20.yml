@@ -20,5 +20,8 @@ jobs:
           chmod +x llvm.sh
           sudo ./llvm.sh 20
 
-      - name: Build through Verdict entrypoint
-        run: PATH=/usr/lib/llvm-20/bin:$PATH make openbench
+      - name: Build exactly like Verdict
+        run: PATH=/usr/lib/llvm-20/bin:$PATH make -j EXE=StockDory-verdict-test CXX=clang++
+
+      - name: Verify Verdict output binary
+        run: test -x StockDory-verdict-test
