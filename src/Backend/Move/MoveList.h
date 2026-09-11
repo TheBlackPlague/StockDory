@@ -41,7 +41,7 @@ namespace StockDory
         public:
         constexpr static bool Promotion(const Square sq)
         {
-            if constexpr (Piece != Piece::Pawn) return false;
+            if (Piece != Piece::Pawn) return false;
 
             return Color == White ? sq >= A7 && sq <= H7 : sq >= A2 && sq <= H2;
         }
@@ -50,12 +50,12 @@ namespace StockDory
         {
             InternalContainer = BBDefault;
 
-            if constexpr (Piece == ::Pawn  ) Pawn   (board, pin, check, sq);
-            if constexpr (Piece == ::Knight) Knight (board, pin, check, sq);
-            if constexpr (Piece == ::Bishop) Bishop (board, pin, check, sq);
-            if constexpr (Piece == ::Rook  ) Rook   (board, pin, check, sq);
-            if constexpr (Piece == ::Queen ) Queen  (board, pin, check, sq);
-            if constexpr (Piece == ::King  ) King   (board,             sq);
+            if (Piece == ::Pawn  ) Pawn   (board, pin, check, sq);
+            if (Piece == ::Knight) Knight (board, pin, check, sq);
+            if (Piece == ::Bishop) Bishop (board, pin, check, sq);
+            if (Piece == ::Rook  ) Rook   (board, pin, check, sq);
+            if (Piece == ::Queen ) Queen  (board, pin, check, sq);
+            if (Piece == ::King  ) King   (board,             sq);
         }
 
         [[nodiscard]]
