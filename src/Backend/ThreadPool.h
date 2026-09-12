@@ -1,6 +1,6 @@
 //
-// Copyright (c) 2023 StockDory authors. See the list of authors for more details.
-// Licensed under LGPL-3.0.
+// Copyright (c) 2023-2026 Shaheryar Sohail and Lee Durbin
+// SPDX-License-Identifier: AGPL-3.0-only
 //
 
 #ifndef STOCKDORY_THREADPOOL_H
@@ -11,6 +11,50 @@
 #include <nanothread/nanothread.h>
 
 using Block = drjit::blocked_range<uint8_t>;
+
+class ThreadedTask
+{
+
+    Task* Internal = nullptr;
+
+    public:
+    ThreadedTask() = default;
+
+    explicit ThreadedTask(Task* task) noexcept : Internal(task) {}
+
+    ~ThreadedTask() { Reset(); }
+
+    ThreadedTask(const ThreadedTask&) = delete;
+    ThreadedTask& operator =(const ThreadedTask&) = delete;
+
+    ThreadedTask(ThreadedTask&& other) noexcept : Internal(std::exchange(other.Internal, nullptr)) {}
+
+    ThreadedTask& operator =(ThreadedTask&& other) noexcept
+    {
+        if (this != &other) {
+            Reset();
+            Internal = std::exchange(other.Internal, nullptr);
+        }
+
+        return *this;
+    }
+
+    [[nodiscard]]
+    Task* Get() const noexcept { return Internal; }
+
+    [[nodiscard]]
+    explicit operator bool() const noexcept { return Internal != nullptr; }
+
+    void Wait() const { if (Internal != nullptr) task_wait(Internal); }
+
+    void Reset() noexcept
+    {
+        if (Internal == nullptr) return;
+
+        task_release(std::exchange(Internal, nullptr));
+    }
+
+};
 
 class ThreadPool
 {
@@ -38,10 +82,9 @@ class ThreadPool
     }
 
     template<typename F>
-    void Execute(F&& code)
+    ThreadedTask Execute(F&& code)
     {
-        Task* task = drjit::do_async(code, {}, Internal);
-        task_release(task);
+        return ThreadedTask(drjit::do_async(std::forward<F>(code), {}, Internal));
     }
 
     template<typename T, typename F>

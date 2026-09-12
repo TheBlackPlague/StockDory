@@ -1,14 +1,15 @@
 //
-// Copyright (c) 2023 StockDory authors. See the list of authors for more details.
-// Licensed under MIT.
+// Copyright (c) 2023-2026 Shaheryar Sohail and Lee Durbin
+// SPDX-License-Identifier: AGPL-3.0-only
 //
 
 #ifndef STOCKDORY_SQUARE_H
 #define STOCKDORY_SQUARE_H
 
-#include <array>
 #include <cstdint>
-#include <sstream>
+#include <string_view>
+
+#include "../Misc.h"
 
 enum Square : uint8_t
 {
@@ -29,7 +30,7 @@ constexpr Square Next(const Square sq)
     return static_cast<Square>(static_cast<uint8_t>(sq) + 1);
 }
 
-constexpr std::array FILE_CHAR {
+constexpr Array<char, 65> FILE_CHAR {
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
@@ -40,7 +41,7 @@ constexpr std::array FILE_CHAR {
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'X'
 };
 
-constexpr std::array RANK_CHAR {
+constexpr Array<char, 65> RANK_CHAR {
     '1', '1', '1', '1', '1', '1', '1', '1',
     '2', '2', '2', '2', '2', '2', '2', '2',
     '3', '3', '3', '3', '3', '3', '3', '3',
@@ -61,21 +62,21 @@ constexpr char Rank(const Square sq)
     return RANK_CHAR[sq];
 }
 
-std::string ToString(const Square sq)
+inline std::string ToString(const Square sq)
 {
-    std::stringstream ss;
-    ss << static_cast<char>(tolower(FILE_CHAR[sq]));
-    ss << RANK_CHAR[sq];
-
-    return ss.str();
+    return {static_cast<char>(FILE_CHAR[sq] + ('a' - 'A')), RANK_CHAR[sq]};
 }
 
-Square FromString(const std::string& s)
+constexpr Square FromString(const std::string_view s)
 {
-    const uint8_t file = tolower(s[0]) - 97;
-    const uint8_t rank = tolower(s[1]) - 49;
+    if (s.size() != 2) return NASQ;
 
-    return static_cast<Square>(rank * 8 + file);
+    const char file = s[0] >= 'A' && s[0] <= 'H' ? static_cast<char>(s[0] + ('a' - 'A')) : s[0];
+    const char rank = s[1];
+
+    if (file < 'a' || file > 'h' || rank < '1' || rank > '8') return NASQ;
+
+    return static_cast<Square>((rank - '1') * 8 + file - 'a');
 }
 
 #endif //STOCKDORY_SQUARE_H

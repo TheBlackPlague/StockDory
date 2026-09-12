@@ -1,6 +1,6 @@
 //
-// Copyright (c) 2023 StockDory authors. See the list of authors for more details.
-// Licensed under LGPL-3.0.
+// Copyright (c) 2023-2026 Shaheryar Sohail and Lee Durbin
+// SPDX-License-Identifier: AGPL-3.0-only
 //
 
 #ifndef STOCKDORY_POLICY_H
@@ -72,23 +72,19 @@ namespace StockDory
 
             if (move == TTMove) return MaximumScore;
 
-            constexpr bool Promotion = PromotionPiece != NAP;
-
-            const bool     capture = board[move.To()].Piece() != NAP;
-            const bool goodCapture = capture ? SEE::Accurate(board, move, 0) : false;
-
             uint32_t score = ScoreAnchor;
 
-            if (Promotion) score += PromotionFactor[PromotionPiece] * PromotionMultiplier;
+            if (PromotionPiece != NAP) score += PromotionFactor[PromotionPiece] * PromotionMultiplier;
 
-            if (CaptureOnly || capture) {
-                score += MvvLva[board[move.To()].Piece()][Piece] * (goodCapture ? 20 : 1);
+            if (CaptureOnly || move.Capture()) {
+                const bool goodCapture = SEE::Accurate(board, move, 0);
+                score += MvvLva[move.EnPassant() ? Pawn : board[move.To()].Piece()][Piece] * (goodCapture ? 20 : 1);
 
                 return score;
             }
 
-            if (move == KillerOne) score += HistoryLimit    ;
-            if (move == KillerTwo) score += HistoryLimit / 2;
+            if (move.SameIdentity(KillerOne)) score += HistoryLimit    ;
+            if (move.SameIdentity(KillerTwo)) score += HistoryLimit / 2;
 
             score += history[Color][Piece][move.To()];
 

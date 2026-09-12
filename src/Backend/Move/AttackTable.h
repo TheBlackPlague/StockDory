@@ -1,6 +1,6 @@
 //
-// Copyright (c) 2023 StockDory authors. See the list of authors for more details.
-// Licensed under LGPL-3.0.
+// Copyright (c) 2023-2026 Shaheryar Sohail and Lee Durbin
+// SPDX-License-Identifier: AGPL-3.0-only
 //
 
 #ifndef STOCKDORY_ATTACKTABLE_H
@@ -13,7 +13,7 @@
 namespace StockDory::AttackTable
 {
 
-    constexpr std::array<std::array<BitBoard, 64>, 2> Pawn {{
+    constexpr Array<BitBoard, 2, 64> Pawn {{
         {
             // BEGIN WHITE
             0x0000000000000200, 0x0000000000000500, 0x0000000000000a00, 0x0000000000001400,
@@ -56,7 +56,7 @@ namespace StockDory::AttackTable
         }
     }};
 
-    constexpr std::array<BitBoard, 64> Knight {
+    constexpr Array<BitBoard, 64> Knight {
         0x0000000000020400, 0x0000000000050800, 0x00000000000A1100, 0x0000000000142200,
         0x0000000000284400, 0x0000000000508800, 0x0000000000A01000, 0x0000000000402000,
         0x0000000002040004, 0x0000000005080008, 0x000000000A110011, 0x0000000014220022,
@@ -75,7 +75,7 @@ namespace StockDory::AttackTable
         0x0044280000000000, 0x0088500000000000, 0x0010A00000000000, 0x0020400000000000
     };
 
-    constexpr std::array<BitBoard, 64> King {
+    constexpr Array<BitBoard, 64> King {
         0x0000000000000302, 0x0000000000000705, 0x0000000000000E0A, 0x0000000000001C14,
         0x0000000000003828, 0x0000000000007050, 0x000000000000E0A0, 0x000000000000C040,
         0x0000000000030203, 0x0000000000070507, 0x00000000000E0A0E, 0x00000000001C141C,
@@ -94,7 +94,7 @@ namespace StockDory::AttackTable
         0x2838000000000000, 0x5070000000000000, 0xA0E0000000000000, 0x40C0000000000000
     };
 
-    extern std::array<BitBoard, 87988> Sliding;
+    extern Array<BitBoard, 87988> Sliding;
 
 } // StockDory
 

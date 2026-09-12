@@ -1,6 +1,6 @@
 //
-// Copyright (c) 2023 StockDory authors. See the list of authors for more details.
-// Licensed under LGPL-3.0.
+// Copyright (c) 2023-2026 Shaheryar Sohail and Lee Durbin
+// SPDX-License-Identifier: AGPL-3.0-only
 //
 
 #ifndef STOCKDORY_MOVELIST_H
@@ -23,9 +23,11 @@
 namespace StockDory
 {
 
-    template<Piece Piece, Color Color>
+    template<Piece Piece, Color Color, BoardType Profile = BoardType::Engine>
     class MoveList
     {
+
+        using Board = BasicBoard<Profile>;
 
         constexpr static BitBoard WhiteQueenCastlePath = 0x0EULL;
         constexpr static BitBoard WhiteKingCastlePath  = 0x60ULL;
@@ -41,7 +43,7 @@ namespace StockDory
         {
             if (Piece != Piece::Pawn) return false;
 
-            return (Color == White && sq > H6) || (Color == Black && sq < A3);
+            return Color == White ? sq >= A7 && sq <= H7 : sq >= A2 && sq <= H2;
         }
 
         MoveList(const Board& board, const Square sq, const PinBitBoard& pin, const CheckBitBoard& check)
@@ -91,7 +93,8 @@ namespace StockDory
                     const auto   epPieceSq = static_cast<Square>(
                         Color == White ? epTarget - 8 : epTarget + 8
                     );
-                    if (!EnPassantLegal(board, sq, epPieceSq, epTarget))
+                    if (!(check.Check & (enPassant | FromSquare(epPieceSq))) ||
+                        !EnPassantLegal(board, sq, epPieceSq, epTarget))
                         InternalContainer &= ~enPassant;
                 }
 
@@ -136,7 +139,8 @@ namespace StockDory
                 const auto   epPieceSq = static_cast<Square>(
                     Color == White ? epTarget - 8 : epTarget + 8
                 );
-                if (!EnPassantLegal(board, sq, epPieceSq, epTarget))
+                if (!(check.Check & (enPassant | FromSquare(epPieceSq))) ||
+                    !EnPassantLegal(board, sq, epPieceSq, epTarget))
                     InternalContainer &= ~enPassant;
             }
         }
@@ -208,12 +212,14 @@ namespace StockDory
 
             InternalContainer |= king;
 
+            const bool  kingSide = board.template CastlingRightK<Color>(),
+                       queenSide = board.template CastlingRightQ<Color>();
+
+            if (!(kingSide || queenSide) || sq != (Color == White ? E1 : E8)) return;
             if (!KingMoveLegal(board, sq)) return;
 
-            const bool  kingSide = board.CastlingRightK<Color>(),
-                       queenSide = board.CastlingRightQ<Color>();
-
             if (queenSide &&
+                Get(board.PieceBoard(Piece::Rook, Color), Color == White ? A1 : A8) &&
                 Get(king, static_cast<Square>(sq - 1)) &&
                 KingMoveLegal(board, static_cast<Square>(sq - 2)))
                 if (const BitBoard path = Color == White ? WhiteQueenCastlePath : BlackQueenCastlePath;
@@ -221,6 +227,7 @@ namespace StockDory
                     InternalContainer |= path & QueenCastlePathMask;
 
             if (kingSide  &&
+                Get(board.PieceBoard(Piece::Rook, Color), Color == White ? H1 : H8) &&
                 Get(king, static_cast<Square>(sq + 1)) &&
                 KingMoveLegal(board, static_cast<Square>(sq + 2)))
                 if (const BitBoard path = Color == White ? WhiteKingCastlePath : BlackKingCastlePath;
@@ -260,6 +267,9 @@ namespace StockDory
                                    const Square y, // the square that is being captured
                                    const Square z) // the square that is being moved to
         {
+            if (!Get(board.PieceBoard(Piece::Pawn, Opposite(Color)), y) || !Get(board[NAC], z))
+                return false;
+
             BitBoard occupied = ~board[NAC];
             Set<false>(occupied, x);
             Set<false>(occupied, y);

@@ -1,24 +1,23 @@
 //
-// Copyright (c) 2023 StockDory authors. See the list of authors for more details.
-// Licensed under LGPL-3.0.
+// Copyright (c) 2023-2026 Shaheryar Sohail and Lee Durbin
+// SPDX-License-Identifier: AGPL-3.0-only
 //
 
 #ifndef STOCKDORY_PERFTRUNNER_H
 #define STOCKDORY_PERFTRUNNER_H
 
 #include <chrono>
+#include <functional>
 #include <iostream>
 #include <math.h>
+#include <regex>
 
 #include <nanothread/nanothread.h>
 
 #include "../../Backend/Board.h"
+#include "../../Backend/Misc.h"
 #include "../../Backend/ThreadPool.h"
 #include "../../Backend/Move/MoveList.h"
-
-#include "PerftEntry.h"
-
-// using PEntry = StockDory::Perft::PerftEntry<9>;
 
 namespace StockDory
 {
@@ -26,24 +25,23 @@ namespace StockDory
     class PerftRunner
     {
 
-        static Board PerftBoard;
-        // static TranspositionTable<PEntry> TranspositionTable;
+        static PerftBoard InternalBoard;
 
-        template<Color Color, bool Divide, bool Sync = false, bool TT = false>
+        template<Color Color, bool Divide, bool Sync = false>
         struct PerftLayer
         {
 
-            static inline uint64_t Perft(Board& board, const uint8_t depth)
+            static inline uint64_t Perft(PerftBoard& board, const uint8_t depth)
             {
-                return PerftRunner::Perft<Color, Divide, Sync, TT>(board, depth);
+                return PerftRunner::Perft<Color, Divide, Sync>(board, depth);
             }
 
             template<Piece Piece>
-            static inline uint64_t PerftLoop(            Board&      board, const uint8_t        depth,
+            static inline uint64_t PerftLoop(       PerftBoard&      board, const uint8_t        depth,
                                              const PinBitBoard&      pin,   const CheckBitBoard& check,
                                              const BitBoardIterator& iterator)
             {
-                return PerftRunner::PerftLoop<Piece, Color, Divide, Sync, TT>(board, depth, pin, check, iterator);
+                return PerftRunner::PerftLoop<Piece, Color, Divide, Sync>(board, depth, pin, check, iterator);
             }
 
         };
@@ -52,35 +50,24 @@ namespace StockDory
         struct BoardLayer
         {
 
-            static inline PreviousState Move(Board&       board,
-                                             const Square from, const Square to,
-                                             const Piece  promotion = NAP)
+            static inline PreviousState Move(PerftBoard& board, const ::Move move)
             {
-                return board.Move<T>(from, to, promotion);
+                return board.Move<T>(move);
             }
 
-            static inline void UndoMove(Board&       board, const PreviousState& state,
-                                        const Square from, const Square          to)
+            static inline void UndoMove(PerftBoard& board, const PreviousState& state, const ::Move move)
             {
-                board.UndoMove<T>(state, from, to);
+                board.UndoMove<T>(state, move);
             }
 
         };
 
         public:
-        template<Color Color, bool Divide, bool Sync = false, bool TT = false>
-        static inline uint64_t Perft(Board& board, const uint8_t depth)
+        template<Color Color, bool Divide, bool Sync = false>
+        static inline uint64_t Perft(PerftBoard& board, const uint8_t depth)
         {
             uint64_t nodes = 0;
-            using PLayer   = PerftLayer<Color, Divide, Sync, TT>;
-
-            // if (TT) {
-            //     const ZobristHash hash = board.Zobrist();
-            //     PEntry& entry = TranspositionTable[hash];
-            //     std::pair<bool, uint64_t> result = entry.Nodes(hash, depth);
-            //
-            //     if (result.first) return result.second;
-            // }
+            using PLayer   = PerftLayer<Color, Divide, Sync>;
 
             const PinBitBoard   pin   = board.Pin<Color, Opposite(Color)>();
 
@@ -103,36 +90,36 @@ namespace StockDory
                     nodes += PLayer::template PerftLoop<Queen >(board, depth, pin, check, queens );
                     nodes += PLayer::template PerftLoop<King  >(board, depth, pin, check, kings  );
                 } else {
-                    std::array<uint64_t             , 6> result     = {};
-                    std::array<std::function<void()>, 6> perftLoops = {
+                    Array<uint64_t             , 6> result     = {};
+                    Array<std::function<void()>, 6> perftLoops = {
                         [pawns  , depth, &board, &pin, &check, &result] -> void
                         {
-                            Board b = board;
+                            PerftBoard b = board;
                             result[Pawn  ] = PLayer::template PerftLoop<Pawn  >(b, depth, pin, check, pawns  );
                         },
                         [knights, depth, &board, &pin, &check, &result] -> void
                         {
-                            Board b = board;
+                            PerftBoard b = board;
                             result[Knight] = PLayer::template PerftLoop<Knight>(b, depth, pin, check, knights);
                         },
                         [bishops, depth, &board, &pin, &check, &result] -> void
                         {
-                            Board b = board;
+                            PerftBoard b = board;
                             result[Bishop] = PLayer::template PerftLoop<Bishop>(b, depth, pin, check, bishops);
                         },
                         [rooks  , depth, &board, &pin, &check, &result] -> void
                         {
-                            Board b = board;
+                            PerftBoard b = board;
                             result[Rook  ] = PLayer::template PerftLoop<Rook  >(b, depth, pin, check, rooks  );
                         },
                         [queens , depth, &board, &pin, &check, &result] -> void
                         {
-                            Board b = board;
+                            PerftBoard b = board;
                             result[Queen ] = PLayer::template PerftLoop<Queen >(b, depth, pin, check, queens );
                         },
                         [kings  , depth, &board, &pin, &check, &result] -> void
                         {
-                            Board b = board;
+                            PerftBoard b = board;
                             result[King  ] = PLayer::template PerftLoop<King  >(b, depth, pin, check, kings  );
                         }
                     };
@@ -149,30 +136,24 @@ namespace StockDory
                 }
             }
 
-            // if (TT) {
-            //     const ZobristHash hash = board.Zobrist();
-            //     PEntry& entry = TranspositionTable[hash];
-            //     entry.Insert(hash, depth, nodes);
-            // }
-
             return nodes;
         }
 
         private:
-        template<Piece Piece, Color Color, bool Divide, bool Sync = false, bool TT = false>
-        static inline uint64_t PerftLoop(Board&             board, const uint8_t      depth,
+        template<Piece Piece, Color Color, bool Divide, bool Sync = false>
+        static inline uint64_t PerftLoop(PerftBoard&         board, const uint8_t      depth,
                                          const PinBitBoard& pin, const CheckBitBoard& check,
                                          BitBoardIterator   pIterator)
         {
             uint64_t nodes = 0;
 
-            using PLayer = PerftLayer<Opposite(Color), false, Sync, TT>;
-            using BLayer = BoardLayer<TT ? PERFT | ZOBRIST : STANDARD>;
+            using PLayer = PerftLayer<Opposite(Color), false, Sync>;
+            using BLayer = BoardLayer<STANDARD>;
 
             if (depth == 1)
                 for (Square sq = pIterator.Value(); sq != NASQ; sq = pIterator.Value()) {
-                    const MoveList<Piece, Color> moves (board, sq, pin, check);
-                    const uint8_t        count = moves.Count();
+                    const MoveList<Piece, Color, BoardType::Perft> moves (board, sq, pin, check);
+                    const uint8_t count = moves.Count();
 
                     if (moves.Promotion(sq)) nodes += count * 4;
                     else                     nodes += count;
@@ -192,43 +173,48 @@ namespace StockDory
                 }
             else if (Sync || depth < 5)
                 for (Square sq = pIterator.Value(); sq != NASQ; sq = pIterator.Value()) {
-                    const MoveList<Piece, Color> moves (board, sq, pin, check);
+                    const MoveList<Piece, Color, BoardType::Perft> moves (board, sq, pin, check);
 
                     BitBoardIterator mIterator = moves.Iterator();
 
                     for (Square m = mIterator.Value(); m != NASQ; m = mIterator.Value()) {
                         if (moves.Promotion(sq)) {
-                            PreviousState  state       = BLayer::Move (board, sq, m, Queen );
+                            ::Move move                = board.CreateMove<Pawn>(sq, m, Queen );
+                            PreviousState  state       = BLayer::Move(board, move);
                             const uint64_t queenNodes  = PLayer::Perft(board, depth - 1);
-                            BLayer::UndoMove(board, state, sq, m);
+                            BLayer::UndoMove(board, state, move);
                             nodes += queenNodes;
 
                             if (Divide) LogMove<Queen >(sq, m,  queenNodes);
 
-                            state                      = BLayer::Move (board, sq, m, Rook  );
+                            move                       = board.CreateMove<Pawn>(sq, m, Rook  );
+                            state                      = BLayer::Move(board, move);
                             const uint64_t rookNodes   = PLayer::Perft(board, depth - 1);
-                            BLayer::UndoMove(board, state, sq, m);
+                            BLayer::UndoMove(board, state, move);
                             nodes += rookNodes;
 
                             if (Divide) LogMove<Rook  >(sq, m,   rookNodes);
 
-                            state                      = BLayer::Move (board, sq, m, Bishop);
+                            move                       = board.CreateMove<Pawn>(sq, m, Bishop);
+                            state                      = BLayer::Move(board, move);
                             const uint64_t bishopNodes = PLayer::Perft(board, depth - 1);
-                            BLayer::UndoMove(board, state, sq, m);
+                            BLayer::UndoMove(board, state, move);
                             nodes += bishopNodes;
 
                             if (Divide) LogMove<Bishop>(sq, m, bishopNodes);
 
-                            state                      = BLayer::Move (board, sq, m, Knight);
+                            move                       = board.CreateMove<Pawn>(sq, m, Knight);
+                            state                      = BLayer::Move(board, move);
                             const uint64_t knightNodes = PLayer::Perft(board, depth - 1);
-                            BLayer::UndoMove(board, state, sq, m);
+                            BLayer::UndoMove(board, state, move);
                             nodes += knightNodes;
 
                             if (Divide) LogMove<Knight>(sq, m, knightNodes);
                         } else {
-                            const PreviousState state      = BLayer::Move (board, sq, m);
+                            const ::Move        move       = board.CreateMove<Piece>(sq, m);
+                            const PreviousState state      = BLayer::Move(board, move);
                             const uint64_t      perftNodes = PLayer::Perft(board, depth - 1);
-                            BLayer::UndoMove(board, state, sq, m);
+                            BLayer::UndoMove(board, state, move);
                             nodes += perftNodes;
 
                             if (Divide) LogMove(sq, m, perftNodes);
@@ -236,8 +222,8 @@ namespace StockDory
                     }
                 }
             else {
-                std::array<Square  , 8> psq    = {};
-                std::array<uint64_t, 8> result = {};
+                Array<Square  , 10> psq    = {};
+                Array<uint64_t, 10> result = {};
 
                 const uint8_t count  = pIterator.ToArray(psq);
 
@@ -248,51 +234,56 @@ namespace StockDory
 
                     const uint8_t nextDepth = depth - 1;
 
-                    Board parallelBoard = board;
+                    PerftBoard parallelBoard = board;
 
                     uint64_t parallelNodes = 0;
 
                     for (uint8_t i = start; i < end; i++) {
                         const Square sq = psq[i];
 
-                        MoveList<Piece, Color> moves (parallelBoard, sq, pin, check);
+                        MoveList<Piece, Color, BoardType::Perft> moves (parallelBoard, sq, pin, check);
                         if (moves.Count() < 1) continue;
 
                         BitBoardIterator mIterator = moves.Iterator();
 
                         for (Square m = mIterator.Value(); m != NASQ; m = mIterator.Value()) {
                             if (moves.Promotion(sq)) {
-                                PreviousState  state       = BLayer::Move (parallelBoard, sq, m, Queen );
+                                const ::Move   queenMove   = parallelBoard.CreateMove<Piece>(sq, m, Queen );
+                                PreviousState  state       = BLayer::Move(parallelBoard, queenMove);
                                 const uint64_t queenNodes  = PLayer::Perft(parallelBoard, nextDepth);
-                                BLayer::UndoMove(parallelBoard, state, sq, m);
+                                BLayer::UndoMove(parallelBoard, state, queenMove);
                                 parallelNodes += queenNodes;
 
                                 if (Divide) LogMove<Queen >(sq, m, queenNodes);
 
-                                state                      = BLayer::Move (parallelBoard, sq, m, Rook  );
+                                const ::Move   rookMove    = parallelBoard.CreateMove<Piece>(sq, m, Rook  );
+                                state                      = BLayer::Move(parallelBoard, rookMove);
                                 const uint64_t rookNodes   = PLayer::Perft(parallelBoard, nextDepth);
-                                BLayer::UndoMove(parallelBoard, state, sq, m);
+                                BLayer::UndoMove(parallelBoard, state, rookMove);
                                 parallelNodes += rookNodes;
 
                                 if (Divide) LogMove<Rook  >(sq, m, rookNodes);
 
-                                state                      = BLayer::Move (parallelBoard, sq, m, Bishop);
+                                const ::Move   bishopMove  = parallelBoard.CreateMove<Piece>(sq, m, Bishop);
+                                state                      = BLayer::Move(parallelBoard, bishopMove);
                                 const uint64_t bishopNodes = PLayer::Perft(parallelBoard, nextDepth);
-                                BLayer::UndoMove(parallelBoard, state, sq, m);
+                                BLayer::UndoMove(parallelBoard, state, bishopMove);
                                 parallelNodes += bishopNodes;
 
                                 if (Divide) LogMove<Bishop>(sq, m, bishopNodes);
 
-                                state                      = BLayer::Move (parallelBoard, sq, m, Knight);
+                                const ::Move   knightMove  = parallelBoard.CreateMove<Piece>(sq, m, Knight);
+                                state                      = BLayer::Move(parallelBoard, knightMove);
                                 const uint64_t knightNodes = PLayer::Perft(parallelBoard, nextDepth);
-                                BLayer::UndoMove(parallelBoard, state, sq, m);
+                                BLayer::UndoMove(parallelBoard, state, knightMove);
                                 parallelNodes += knightNodes;
 
                                 if (Divide) LogMove<Knight>(sq, m, knightNodes);
                             } else {
-                                const PreviousState state      = BLayer::Move (parallelBoard, sq, m);
+                                const ::Move        move       = parallelBoard.CreateMove<Piece>(sq, m);
+                                const PreviousState state      = BLayer::Move(parallelBoard, move);
                                 const uint64_t      perftNodes = PLayer::Perft(parallelBoard, nextDepth);
-                                BLayer::UndoMove(parallelBoard, state, sq, m);
+                                BLayer::UndoMove(parallelBoard, state, move);
                                 parallelNodes += perftNodes;
 
                                 if (Divide) LogMove(sq, m, perftNodes);
@@ -311,7 +302,7 @@ namespace StockDory
                     }
                 );
 
-                for (size_t i = 0; i < 8; i++) nodes += result[i];
+                for (size_t i = 0; i < count; i++) nodes += result[i];
             }
 
             return nodes;
@@ -329,23 +320,15 @@ namespace StockDory
         public:
         static void SetBoard(const std::string& fen)
         {
-            PerftBoard = Board(fen);
+            InternalBoard = PerftBoard(fen);
         }
 
         static void SetBoard(const Board& board)
         {
-            PerftBoard = board;
+            InternalBoard = PerftBoard(board);
         }
 
-        // static void SetTranspositionTable(const uint64_t bytes)
-        // {
-        //     std::cout << "Allocating table using defined bytes (" << bytes << ")\n";
-        //     TranspositionTable = StockDory::TranspositionTable<PEntry>(bytes);
-        //     std::cout << "Table: " << TranspositionTable.Size() << " entries\n";
-        //     std::cout << "Table: " << TranspositionTable.Size() * sizeof(PEntry) << " bytes\n";
-        // }
-
-        template<bool Divide, bool TT = false>
+        template<bool Divide>
         static void Perft(const uint8_t depth)
         {
             static const std::regex comma ("(\\d)(?=(\\d{3})+(?!\\d))");
@@ -357,14 +340,16 @@ namespace StockDory
             const auto     start = std::chrono::high_resolution_clock::now();
                   uint64_t nodes = 0;
 
-            if (ThreadPool.Size() > 1)
-                nodes = PerftBoard.ColorToMove() == White
-                    ? Perft<White, Divide, false, TT>(PerftBoard, depth)
-                    : Perft<Black, Divide, false, TT>(PerftBoard, depth);
-            else
-                nodes = PerftBoard.ColorToMove() == White
-                    ? Perft<White, Divide, true , TT>(PerftBoard, depth)
-                    : Perft<Black, Divide, true , TT>(PerftBoard, depth);
+            if (depth != 0) {
+                if (ThreadPool.Size() > 1)
+                    nodes = InternalBoard.ColorToMove() == White
+                        ? Perft<White, Divide, false>(InternalBoard, depth)
+                        : Perft<Black, Divide, false>(InternalBoard, depth);
+                else
+                    nodes = InternalBoard.ColorToMove() == White
+                        ? Perft<White, Divide, true >(InternalBoard, depth)
+                        : Perft<Black, Divide, true >(InternalBoard, depth);
+            } else  nodes = 1;
 
             const auto     stop  = std::chrono::high_resolution_clock::now();
             const auto     time  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
@@ -386,8 +371,6 @@ namespace StockDory
 
 } // Perft
 
-StockDory::Board StockDory::PerftRunner::PerftBoard = Board();
-// StockDory::TranspositionTable<PEntry> StockDory::Perft::PerftRunner::TranspositionTable =
-// StockDory::TranspositionTable<PEntry>(0);
+StockDory::PerftBoard StockDory::PerftRunner::InternalBoard = PerftBoard();
 
 #endif //STOCKDORY_PERFTRUNNER_H

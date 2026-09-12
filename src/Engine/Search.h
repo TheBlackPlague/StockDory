@@ -1,12 +1,14 @@
 //
-// Copyright (c) 2025 StockDory authors. See the list of authors for more details.
-// Licensed under LGPL-3.0.
+// Copyright (c) 2025-2026 Shaheryar Sohail and Lee Durbin
+// SPDX-License-Identifier: AGPL-3.0-only
 //
 
 #ifndef STOCKDORY_SEARCH_H
 #define STOCKDORY_SEARCH_H
 
+#include <algorithm>
 #include <cmath>
+#include <ranges>
 
 #include "../Backend/Board.h"
 #include "../Backend/Misc.h"
@@ -98,8 +100,8 @@ namespace StockDory
         Array<Frame, Padding + MaxDepth> Internal {};
 
         public:
-              Frame& operator[](const size_t index)       { return Internal[index + Padding]; }
-        const Frame& operator[](const size_t index) const { return Internal[index + Padding]; }
+              Frame& operator [](const size_t index)       { return Internal[index + Padding]; }
+        const Frame& operator [](const size_t index) const { return Internal[index + Padding]; }
 
     };
 
@@ -634,10 +636,10 @@ namespace StockDory
             // exists a transposition entry - if the entry is valid, depending on the quality of the entry, we can
             // return the evaluation from the entry. Even if the entry isn't of sufficient quality to return directly,
             // we can still search the move in the entry first, since it most likely is the best move in the position
-            SearchTranspositionEntry& ttEntry      = TT[hash];
-            Move                      ttMove       = {};
-            bool                      ttHit        = false;
-            Score                     ttEvaluation = None;
+            SearchTranspositionEntry ttEntry      = TT[hash];
+            Move                     ttMove       = {};
+            bool                     ttHit        = false;
+            Score                    ttEvaluation = None;
 
             if (ttEntry.Type != Invalid && ttEntry.Hash == CompressHash(hash)) {
                 ttHit  = true;
@@ -869,10 +871,8 @@ namespace StockDory
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move = moves[i];
 
-                const Piece movingPiece = Board[move.From()].Piece();
-                const Piece targetPiece = Board[move.  To()].Piece();
-
-                const bool quiet = targetPiece == NAP;
+                const bool capture = move.Capture();
+                const bool quiet   = !capture && move.Promotion() == NAP;
 
                 quietMoves += quiet;
 
@@ -913,7 +913,9 @@ namespace StockDory
                     if (doLMP && quietMoves > lmpLastQuiet && bestEvaluation > -Infinity) break;
                 }
 
-                const PreviousState state = DoMove<true>(move, ply, quiet);
+                const Piece movingPiece = Board[move.From()].Piece();
+
+                const PreviousState state = DoMove<true>(move, ply);
 
                 // Principle Variation Search (PVS):
                 //
@@ -1027,7 +1029,7 @@ namespace StockDory
                     // If Killer Move 0 is different from the current move:
                     //    Killer Move 0 -> Killer Move 1
                     //   Current Move   -> Killer Move 0
-                    if (Killer[0][ply] != move) {
+                    if (!Killer[0][ply].SameIdentity(move)) {
                         Killer[1][ply] = Killer[0][ply];
                         Killer[0][ply] = move;
                     }
@@ -1037,8 +1039,16 @@ namespace StockDory
 
                     // Reduce the history value for all other quiet moves that were searched, since they didn't
                     // cause a beta cut-off
-                    for (uint8_t q = 1; q < quietMoves; q++)
-                        UpdateHistory<Color, false>(moves.UnsortedAccess(i - q), depth);
+
+                    uint8_t updated = 0;
+                    for (uint8_t j = 1; updated < quietMoves - 1; j++) {
+                        const Move m = moves.UnsortedAccess(i - j);
+
+                        if (m.Capture() || m.Promotion() != NAP) continue;
+
+                        UpdateHistory<Color, false>(m, depth);
+                        updated++;
+                    }
                 }
 
                 ttEntryNew.Type = Beta;
@@ -1051,7 +1061,7 @@ namespace StockDory
             //
             // As long as the search has not stopped, we should try to insert/replace the transposition table entry
             // with the new entry as it is most likely more relevant than the old entry
-            if (Status != SearchThreadStatus::Stopped) TryReplaceTT(ttEntry, ttEntryNew);
+            if (Status != SearchThreadStatus::Stopped) TryReplaceTT(hash, ttEntryNew);
 
             return bestEvaluation;
         }
@@ -1077,7 +1087,7 @@ namespace StockDory
 
                 const ZobristHash hash = Board.Zobrist();
 
-                const SearchTranspositionEntry& ttEntry = TT[hash];
+                const SearchTranspositionEntry ttEntry = TT[hash];
 
                 if (ttEntry.Hash == CompressHash(hash)) {
                     const Score ttEvaluation = DecompressScore(ttEntry.Evaluation, ply);
@@ -1138,16 +1148,15 @@ namespace StockDory
         }
 
         template<bool UpdateRepetitionHistory>
-        PreviousState DoMove(const Move move, const uint8_t ply, const bool quiet = false)
+        PreviousState DoMove(const Move move, const uint8_t ply)
         {
             constexpr MoveType MT = NNUE | ZOBRIST;
 
-            if (!quiet || Board[move.From()].Piece() == Pawn) {
-                Stack[ply + 1].HalfMoveCounter = 1;
-            } else
-                Stack[ply + 1].HalfMoveCounter = Stack[ply].HalfMoveCounter + 1;
+            const bool resetHalfMoveCounter = move.Capture() || Board[move.From()].Piece() == Pawn;
 
-            const PreviousState state = Board.Move<MT>(move.From(), move.To(), move.Promotion(), ThreadId);
+            Stack[ply + 1].HalfMoveCounter = resetHalfMoveCounter ? 1 : Stack[ply].HalfMoveCounter + 1;
+
+            const PreviousState state = Board.Move<MT>(move, ThreadId);
             Nodes++;
 
             const ZobristHash hash = Board.Zobrist();
@@ -1164,7 +1173,7 @@ namespace StockDory
         {
             constexpr MoveType MT = NNUE | ZOBRIST;
 
-            Board.UndoMove<MT>(state, move.From(), move.To(), ThreadId);
+            Board.UndoMove<MT>(state, move, ThreadId);
 
             if (UpdateRepetitionHistory) Repetition.Pop();
         }
@@ -1199,13 +1208,15 @@ namespace StockDory
             return (Evaluation::Evaluate(Color, ThreadId) * weightedMaterial) / MaterialScalingQuantization;
         }
 
-        static void TryReplaceTT(SearchTranspositionEntry& pEntry, const SearchTranspositionEntry nEntry)
+        static void TryReplaceTT(const ZobristHash hash, const SearchTranspositionEntry nEntry)
         {
+            const SearchTranspositionEntry pEntry = TT[hash];
+
             if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
                (pEntry.Type == Alpha &&
                 nEntry.Type == Beta) ||
                 nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
-                pEntry = nEntry;
+                TT[hash] = nEntry;
         }
 
     };
@@ -1215,7 +1226,8 @@ namespace StockDory
 
         using ParallelTask = SearchTask<Parallel>;
 
-        std::vector<ParallelTask> Internal;
+        std::vector<ParallelTask> SearchTaskPool;
+        std::vector<ThreadedTask> ThreadTaskPool;
 
         size_t TaskCount = 0;
 
@@ -1230,17 +1242,37 @@ namespace StockDory
         {
             TaskCount = ThreadPool.Size() - 1;
 
-            Internal.reserve(TaskCount);
+            SearchTaskPool.reserve(TaskCount);
+            ThreadTaskPool.reserve(TaskCount);
         }
 
-        void Clear() { Internal.clear(); }
+        void Clear()
+        {
+            SearchTaskPool.clear();
+            ThreadTaskPool.clear();
+        }
 
         size_t Size() const { return TaskCount; }
 
         void Fill(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc)
-        { for (size_t i = 0; i < TaskCount; i++) Internal.emplace_back(l, b, r, hmc, i + 1); }
+        {
+            for (size_t i = 0; i < TaskCount; i++) SearchTaskPool.emplace_back(l, b, r, hmc, i + 1);
+        }
 
-        constexpr std::vector<ParallelTask>& operator &(){ return Internal; }
+        void Execute()
+        {
+            for (auto& task : SearchTaskPool) ThreadTaskPool.emplace_back(ThreadPool.Execute(
+                [&task] -> void { task.IterativeDeepening(); }
+            ));
+        }
+
+        void Stop()
+        {
+            for (auto &task : SearchTaskPool) task.Stop();
+            for (auto &task : ThreadTaskPool) task.Wait();
+        }
+
+        auto Tasks() const { return std::views::zip(SearchTaskPool, ThreadTaskPool); }
 
     };
 
@@ -1257,7 +1289,7 @@ namespace StockDory
             {
                 IterativeDeepeningIterationCompletionEvent event = e;
 
-                for (const auto& task : &ParallelTaskPool) event.Nodes += task.GetNodes();
+                for (const auto& [task, _] : ParallelTaskPool.Tasks()) event.Nodes += task.GetNodes();
 
                 return MainEventHandler::HandleIterativeDeepeningIterationCompletion(event);
             }
@@ -1271,13 +1303,11 @@ namespace StockDory
 
         static inline MainSearchTask MainTask;
 
-        static inline bool Searching = false;
+        static inline std::atomic_bool Searching = false;
 
         static void Run(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc)
         {
-            if (Searching) return;
-
-            Searching = true;
+            if (Searching.exchange(true, std::memory_order::acq_rel)) return;
 
             // Symmetric MultiProcessing (SMP):
             //
@@ -1313,13 +1343,7 @@ namespace StockDory
 
             if (ParallelTaskPool.Size()) {
                 ParallelTaskPool.Fill(l, b, r, hmc);
-
-                for (auto& task : &ParallelTaskPool) ThreadPool.Execute(
-                    [&task] -> void
-                    {
-                        task.IterativeDeepening();
-                    }
-                );
+                ParallelTaskPool.Execute();
             }
 
             MainTask = MainSearchTask(l, b, r, hmc, 0);
@@ -1332,13 +1356,12 @@ namespace StockDory
                     // The main thread is responsible for ensuring that it stops all the parallel tasks when it has
                     // concluded searching
                     if (ParallelTaskPool.Size()) {
-                        for (auto& task : &ParallelTaskPool) task.Stop();
-
-                        for (auto& task : &ParallelTaskPool) if (!task.Stopped()) Sleep(1);
+                        ParallelTaskPool.Stop();
+                        ParallelTaskPool.Clear();
                     }
 
-                    ParallelTaskPool.Clear();
-                    Searching = false;
+                    Searching.store(false, std::memory_order::release);
+                    Searching.notify_all();
                 }
             );
         }

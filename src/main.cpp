@@ -1,6 +1,6 @@
 //
-// Copyright (c) 2023 StockDory authors. See the list of authors for more details.
-// Licensed under LGPL-3.0.
+// Copyright (c) 2023-2026 Shaheryar Sohail and Lee Durbin
+// SPDX-License-Identifier: AGPL-3.0-only
 //
 
 #include <iostream>
@@ -8,14 +8,14 @@
 #include "Information.h"
 
 #include "Terminal/BenchHash.h"
-#include "Terminal/UCI/UCIInterface.h"
+#include "Terminal/UCI/UCI.h"
 
-void DisplayTitle()
+static void DisplayTitle()
 {
     std::stringstream ss;
 
     ss << NAME << " " << VERSION << " (" << CODENAME << ")" << "\n";
-    ss << "Copyright (c) 2025 " << AUTHOR << " - Licensed under the " << LICENSE;
+    ss << "Copyright (c) " << COPYRIGHT << " " << AUTHOR << " - Licensed under the " << LICENSE;
 
     std::cerr << ss.str() << std::endl;
 }
@@ -33,7 +33,7 @@ int main(const int argc, const char* argv[])
         }
     }
 
-    StockDory::UCIInterface::Launch();
+    StockDory::UCI::Launch();
 
     return EXIT_SUCCESS;
 }

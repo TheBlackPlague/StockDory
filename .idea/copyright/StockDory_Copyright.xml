@@ -1,0 +1,6 @@
+<component name="CopyrightManager">
+  <copyright>
+    <option name="notice" value="&#10;Copyright (c) &amp;#36;originalComment.match(&quot;Copyright \(c\) (\d+)&quot;, 1, &quot;-&quot;)&amp;#36;today.year Shaheryar Sohail and Lee Durbin&#10;SPDX-License-Identifier: AGPL-3.0-only&#10;" />
+    <option name="myName" value="StockDory Copyright" />
+  </copyright>
+</component>
