@@ -347,7 +347,7 @@ namespace StockDory
 
         uint64_t GetNodes() const
         {
-            return std::atomic_ref(Nodes).load(std::memory_order::relaxed);
+            return std::atomic_ref<const uint64_t>(Nodes).load(std::memory_order::relaxed);
         }
 
         void IterativeDeepening()
@@ -421,7 +421,8 @@ namespace StockDory
 
         bool Stopped() const
         {
-            return std::atomic_ref(Status).load(std::memory_order::relaxed) == SearchTaskStatus::Stopped;
+            return std::atomic_ref<const SearchTaskStatus>(Status)
+            .load(std::memory_order::relaxed) == SearchTaskStatus::Stopped;
         }
 
         Score GetEvaluation() const { return WDLCalculator::S(Board, Evaluation); }
