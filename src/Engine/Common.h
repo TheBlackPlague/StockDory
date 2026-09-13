@@ -53,6 +53,40 @@ namespace StockDory
                IsLoss(score) ? -Mate - score : 0;
     }
 
+    static_assert(
+        std::atomic<uint8_t >::is_always_lock_free &&
+        std::atomic<uint16_t>::is_always_lock_free &&
+        std::atomic<uint32_t>::is_always_lock_free &&
+        std::atomic<uint64_t>::is_always_lock_free &&
+        std::atomic< int8_t >::is_always_lock_free &&
+        std::atomic< int16_t>::is_always_lock_free &&
+        std::atomic< int32_t>::is_always_lock_free &&
+        std::atomic< int64_t>::is_always_lock_free &&
+        std::atomic<char    >::is_always_lock_free &&
+        std::atomic<char8_t >::is_always_lock_free &&
+        std::atomic<char16_t>::is_always_lock_free &&
+        std::atomic<char32_t>::is_always_lock_free &&
+        std::atomic<  bool  >::is_always_lock_free  ,
+        "StockDory relies on lock-free atomics"
+    );
+
+    static_assert(
+        std::atomic_ref<uint8_t >::is_always_lock_free &&
+        std::atomic_ref<uint16_t>::is_always_lock_free &&
+        std::atomic_ref<uint32_t>::is_always_lock_free &&
+        std::atomic_ref<uint64_t>::is_always_lock_free &&
+        std::atomic_ref< int8_t >::is_always_lock_free &&
+        std::atomic_ref< int16_t>::is_always_lock_free &&
+        std::atomic_ref< int32_t>::is_always_lock_free &&
+        std::atomic_ref< int64_t>::is_always_lock_free &&
+        std::atomic_ref<char    >::is_always_lock_free &&
+        std::atomic_ref<char8_t >::is_always_lock_free &&
+        std::atomic_ref<char16_t>::is_always_lock_free &&
+        std::atomic_ref<char32_t>::is_always_lock_free &&
+        std::atomic_ref<  bool  >::is_always_lock_free  ,
+        "StockDory relies on lock-free atomic references"
+    );
+
 } // StockDory
 
 #endif //STOCKDORY_COMMON_H
