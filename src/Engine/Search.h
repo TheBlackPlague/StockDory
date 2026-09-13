@@ -315,8 +315,6 @@ namespace StockDory
 
         int16_t IDepth = 0;
 
-        uint64_t Nodes = 0;
-
         Score Evaluation = -Infinity;
 
         Move BestMove {};
@@ -327,7 +325,8 @@ namespace StockDory
 
         size_t ThreadId = 0;
 
-        SearchTaskStatus Status = Running;
+        Atomic<    uint64_t    > Nodes  {    0    };
+        Atomic<SearchTaskStatus> Status { Running };
 
         public:
         SearchTask() {}
@@ -345,10 +344,7 @@ namespace StockDory
         }
         // ReSharper restore CppPassValueParameterByConstReference
 
-        uint64_t GetNodes() const
-        {
-            return std::atomic_ref<const uint64_t>(Nodes).load(std::memory_order::relaxed);
-        }
+        uint64_t GetNodes() const { return Nodes.Load(MemoryOrder::relaxed); }
 
         void IterativeDeepening()
         {
@@ -414,16 +410,9 @@ namespace StockDory
             }
         }
 
-        void Stop()
-        {
-            std::atomic_ref(Status).store(SearchTaskStatus::Stopped, std::memory_order::relaxed);
-        }
+        void Stop() { Status.Store(SearchTaskStatus::Stopped, MemoryOrder::relaxed); }
 
-        bool Stopped() const
-        {
-            return std::atomic_ref<const SearchTaskStatus>(Status)
-            .load(std::memory_order::relaxed) == SearchTaskStatus::Stopped;
-        }
+        bool Stopped() const { return Status.Load(MemoryOrder::relaxed) == SearchTaskStatus::Stopped; }
 
         Score GetEvaluation() const { return WDLCalculator::S(Board, Evaluation); }
 
@@ -433,12 +422,7 @@ namespace StockDory
         { return std::chrono::duration_cast<MS>(std::chrono::steady_clock::now() - StartTime); }
 
         private:
-        void IncrementNodes()
-        {
-            const auto nodes = std::atomic_ref(Nodes);
-
-            nodes.store(nodes.load(std::memory_order::relaxed) + 1, std::memory_order::relaxed);
-        }
+        void IncrementNodes() { Nodes.Store(Nodes.Load(MemoryOrder::relaxed) + 1, MemoryOrder::relaxed); }
 
         template<Limit::TimeType Type>
         bool OutOfTime() const
@@ -1322,11 +1306,11 @@ namespace StockDory
 
         static inline MainSearchTask MainTask;
 
-        static inline std::atomic_bool Searching = false;
+        static inline Atomic<bool> Searching { false };
 
         static void Run(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc)
         {
-            if (Searching.exchange(true, std::memory_order::acq_rel)) return;
+            if (Searching.Exchange(true, MemoryOrder::acq_rel)) return;
 
             // Symmetric MultiProcessing (SMP):
             //
@@ -1379,8 +1363,8 @@ namespace StockDory
                         ParallelTaskPool.Clear();
                     }
 
-                    Searching.store(false, std::memory_order::release);
-                    Searching.notify_all();
+                    Searching.Store(false, MemoryOrder::release);
+                    Searching.NotifyAll();
                 }
             );
         }
