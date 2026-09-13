@@ -1023,7 +1023,7 @@ namespace StockDory
                 ttEntryNew.Type = Exact;
                 ttEntryNew.Move =  move;
 
-                if (ThreadType == Main && PV && Status != SearchTaskStatus::Stopped) {
+                if (ThreadType == Main && PV && !Stopped()) {
                     // The main thread is responsible for updating the PV Table in PV branches. We should be careful
                     // not to do this if the search was stopped, otherwise we may corrupt the PV Table
 
@@ -1037,7 +1037,7 @@ namespace StockDory
 
                 if (evaluation < beta) continue;
 
-                if (Status != SearchTaskStatus::Stopped && quiet) {
+                if (!Stopped() && quiet) {
                     // Killer and History Table Updates:
                     //
                     // Update the Killer and History Table if a quiet move caused a beta cut-off to ensure we search
@@ -1079,7 +1079,7 @@ namespace StockDory
             //
             // As long as the search has not stopped, we should try to insert/replace the transposition table entry
             // with the new entry as it is most likely more relevant than the old entry
-            if (Status != SearchTaskStatus::Stopped) TryReplaceTT(hash, ttEntryNew);
+            if (!Stopped()) TryReplaceTT(hash, ttEntryNew);
 
             return bestEvaluation;
         }
