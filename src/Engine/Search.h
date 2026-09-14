@@ -148,7 +148,7 @@ namespace StockDory
 
     using PVTable = Array<PVEntry, MaxDepth>;
 
-    enum SearchThreadStatus : bool
+    enum SearchTaskStatus : uint8_t
     {
 
         Stopped,
@@ -216,7 +216,7 @@ namespace StockDory
                               Count(rook  ) * 5 +
                               Count(queen ) * 9 ;
 
-            return { Formula<A>(mat), Formula<B>(mat) };
+            return { .A = Formula<A>(mat), .B = Formula<B>(mat) };
         }
 
         public:
@@ -315,8 +315,6 @@ namespace StockDory
 
         int16_t IDepth = 0;
 
-        uint64_t Nodes = 0;
-
         Score Evaluation = -Infinity;
 
         Move BestMove {};
@@ -327,7 +325,8 @@ namespace StockDory
 
         size_t ThreadId = 0;
 
-        SearchThreadStatus Status = Running;
+        Atomic<    uint64_t    > Nodes  {    0    };
+        Atomic<SearchTaskStatus> Status { Running };
 
         public:
         SearchTask() {}
@@ -345,7 +344,7 @@ namespace StockDory
         }
         // ReSharper restore CppPassValueParameterByConstReference
 
-        uint64_t GetNodes() const { return Nodes; }
+        uint64_t GetNodes() const { return Nodes.Load(MemoryOrder::relaxed); }
 
         void IterativeDeepening()
         {
@@ -372,7 +371,7 @@ namespace StockDory
                 else Evaluation = Aspiration<Black>(IDepth);
 
                 // In the case that the search was stopped, we should just proceed to fire the completion event
-                if (Status == SearchThreadStatus::Stopped) break;
+                if (Stopped()) break;
 
                 if (ThreadType == Main) {
                     // On the main thread, we need to fire events to notify handlers about the completion of the
@@ -390,7 +389,7 @@ namespace StockDory
                         .SelectiveDepth = SelectiveDepth,
                         .Evaluation     = WDLCalculator::S(Board, Evaluation),
                         .WDL            = WDL(Board, Evaluation),
-                        .Nodes          = Nodes,
+                        .Nodes          = GetNodes(),
                         .Time           = time,
                         .PVEntry        = PVTable[0]
                     });
@@ -399,7 +398,7 @@ namespace StockDory
                 IDepth++;
             }
 
-            Status = SearchThreadStatus::Stopped;
+            Stop();
 
             if (ThreadType == Main) {
                 // The main thread is responsible for notifying the handlers about the completion of the search,
@@ -411,9 +410,9 @@ namespace StockDory
             }
         }
 
-        void Stop() { Status = SearchThreadStatus::Stopped; }
+        void Stop() { Status.Store(SearchTaskStatus::Stopped, MemoryOrder::relaxed); }
 
-        bool Stopped() const { return Status == SearchThreadStatus::Stopped; }
+        bool Stopped() const { return Status.Load(MemoryOrder::relaxed) == SearchTaskStatus::Stopped; }
 
         Score GetEvaluation() const { return WDLCalculator::S(Board, Evaluation); }
 
@@ -423,6 +422,8 @@ namespace StockDory
         { return std::chrono::duration_cast<MS>(std::chrono::steady_clock::now() - StartTime); }
 
         private:
+        void IncrementNodes() { Nodes.Store(Nodes.Load(MemoryOrder::relaxed) + 1, MemoryOrder::relaxed); }
+
         template<Limit::TimeType Type>
         bool OutOfTime() const
         {
@@ -493,11 +494,11 @@ namespace StockDory
                     // If we are in the main thread, we should regularly (every search/research) check if the search's
                     // limits have been crossed. If they have, we should stop searching/researching
                     if (OutOfTime<Limit::Actual>()) [[unlikely]]
-                        Status = SearchThreadStatus::Stopped;
+                        Stop();
                 }
 
                 // If the search was stopped, we should return a draw score immediately
-                if (Status == SearchThreadStatus::Stopped) [[unlikely]] return Draw;
+                if (Stopped()) [[unlikely]] return Draw;
 
                 // Window Fallback:
                 //
@@ -548,18 +549,20 @@ namespace StockDory
             constexpr auto OColor = Opposite(Color);
 
             if (ThreadType == Main) {
+                const uint64_t nodes = GetNodes();
+
                 // If we are in the main thread, we should regularly (every 4096 nodes) check if the search's limits
                 // have been crossed. If they have, we should stop searching
-                if ((Nodes & 4095) == 0 && OutOfTime<Limit::Actual>()) [[unlikely]]
-                    Status = SearchThreadStatus::Stopped;
+                if ((nodes & 4095) == 0 && OutOfTime<Limit::Actual>()) [[unlikely]]
+                    Stop();
 
                 // If we have exceeded the maximum node limit, we should stop searching
-                if (Nodes > Limit.Nodes) [[unlikely]]
-                    Status = SearchThreadStatus::Stopped;
+                if (nodes > Limit.Nodes) [[unlikely]]
+                    Stop();
             }
 
             // If the search was stopped, we should return a draw score immediately
-            if (Status == SearchThreadStatus::Stopped) [[unlikely]] return Draw;
+            if (Stopped()) [[unlikely]] return Draw;
 
             if (ThreadType == Main) {
                 // The main thread is responsible for ensuring the PV Table is correctly updated with the right moves
@@ -1005,7 +1008,7 @@ namespace StockDory
                 ttEntryNew.Type = Exact;
                 ttEntryNew.Move =  move;
 
-                if (ThreadType == Main && PV && Status != SearchThreadStatus::Stopped) {
+                if (ThreadType == Main && PV && !Stopped()) {
                     // The main thread is responsible for updating the PV Table in PV branches. We should be careful
                     // not to do this if the search was stopped, otherwise we may corrupt the PV Table
 
@@ -1019,7 +1022,7 @@ namespace StockDory
 
                 if (evaluation < beta) continue;
 
-                if (Status != SearchThreadStatus::Stopped && quiet) {
+                if (!Stopped() && quiet) {
                     // Killer and History Table Updates:
                     //
                     // Update the Killer and History Table if a quiet move caused a beta cut-off to ensure we search
@@ -1061,7 +1064,7 @@ namespace StockDory
             //
             // As long as the search has not stopped, we should try to insert/replace the transposition table entry
             // with the new entry as it is most likely more relevant than the old entry
-            if (Status != SearchThreadStatus::Stopped) TryReplaceTT(hash, ttEntryNew);
+            if (!Stopped()) TryReplaceTT(hash, ttEntryNew);
 
             return bestEvaluation;
         }
@@ -1157,7 +1160,7 @@ namespace StockDory
             Stack[ply + 1].HalfMoveCounter = resetHalfMoveCounter ? 1 : Stack[ply].HalfMoveCounter + 1;
 
             const PreviousState state = Board.Move<MT>(move, ThreadId);
-            Nodes++;
+            IncrementNodes();
 
             const ZobristHash hash = Board.Zobrist();
 
@@ -1303,11 +1306,11 @@ namespace StockDory
 
         static inline MainSearchTask MainTask;
 
-        static inline std::atomic_bool Searching = false;
+        static inline Atomic<bool> Searching { false };
 
         static void Run(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc)
         {
-            if (Searching.exchange(true, std::memory_order::acq_rel)) return;
+            if (Searching.Exchange(true, MemoryOrder::acq_rel)) return;
 
             // Symmetric MultiProcessing (SMP):
             //
@@ -1360,8 +1363,8 @@ namespace StockDory
                         ParallelTaskPool.Clear();
                     }
 
-                    Searching.store(false, std::memory_order::release);
-                    Searching.notify_all();
+                    Searching.Store(false, MemoryOrder::release);
+                    Searching.NotifyAll();
                 }
             );
         }
