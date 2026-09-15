@@ -178,8 +178,8 @@ namespace StockDory
         {
             if (!UCIPrompted) return;
 
-            if (UCISearch::Searching.load(std::memory_order::acquire)) UCISearch::MainTask.Stop();
-            UCISearch::Searching.wait(true, std::memory_order::acquire);
+            if (UCISearch::Searching.Load(MemoryOrder::acquire)) UCISearch::MainTask.Stop();
+            UCISearch::Searching.Wait(true, MemoryOrder::acquire);
 
             Board           = {};
             Repetition      = {};
@@ -199,8 +199,8 @@ namespace StockDory
 
         static void Quit()
         {
-            if (UCISearch::Searching.load(std::memory_order::acquire)) UCISearch::MainTask.Stop();
-            UCISearch::Searching.wait(true, std::memory_order::acquire);
+            if (UCISearch::Searching.Load(MemoryOrder::acquire)) UCISearch::MainTask.Stop();
+            UCISearch::Searching.Wait(true, MemoryOrder::acquire);
 
             Running = false;
         }
@@ -209,7 +209,7 @@ namespace StockDory
         {
             if (!UCIPrompted) return;
 
-            if (UCISearch::Searching.load(std::memory_order::acquire)) return;
+            if (UCISearch::Searching.Load(MemoryOrder::acquire)) return;
 
             Board.LoadForEvaluation();
 
@@ -328,7 +328,7 @@ namespace StockDory
         {
             if (!UCIPrompted) return;
 
-            UCISearch::Searching.wait(true, std::memory_order::acquire);
+            UCISearch::Searching.Wait(true, MemoryOrder::acquire);
 
             if (args.size() > 1 && strutil::compare_ignore_case(args[0], "perft")) {
                 const auto depth = static_cast<uint8_t>(std::stoull(args[1]));
