@@ -54,12 +54,20 @@ endif ()
 
 if (APPLE)
     if (NOT ARCHITECTURE MATCHES "native")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=${ARCHITECTURE}")
+        set(ARCHITECTURE_FLAGS "-mcpu=${ARCHITECTURE}")
     elseif (ARCHITECTURE)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mtune=native")
+        set(ARCHITECTURE_FLAGS "-march=native")
     endif ()
 elseif (ARCHITECTURE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${ARCHITECTURE} -mtune=${ARCHITECTURE}")
+    set(ARCHITECTURE_FLAGS "-march=${ARCHITECTURE}")
+endif ()
+
+if (ARCHITECTURE_FLAGS)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCHITECTURE_FLAGS}")
+endif ()
+
+if (NOT BUILD_NATIVE AND ARCHITECTURE_FLAGS)
+    set(NANOTHREAD_NATIVE_FLAGS "${ARCHITECTURE_FLAGS}" CACHE STRING "Compilation flags used to target the host processor architecture." FORCE)
 endif ()
 
 if (BUILD_PGO)
@@ -95,6 +103,10 @@ target_link_libraries(StockDory MantaRay nanothread)
 
 if (NOT WIN32)
     target_link_libraries(StockDory pthread)
+endif ()
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(StockDory atomic)
 endif ()
 
 if (CMAKE_BUILD_TYPE MATCHES "Release")
