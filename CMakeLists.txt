@@ -52,59 +52,18 @@ if (BUILD_NATIVE)
     set(ARCHITECTURE "native")
 endif ()
 
-set(X86_64_FLAGS
-        -march=x86-64
-        -mcx16
-)
-set(X86_64_V2_FLAGS
-        ${X86_64_FLAGS}
-        -msahf
-        -mpopcnt
-        -msse3
-        -mssse3
-        -msse4.1
-        -msse4.2
-)
-set(X86_64_V3_FLAGS
-        ${X86_64_V2_FLAGS}
-        -mavx
-        -mavx2
-        -mbmi
-        -mbmi2
-        -mf16c
-        -mfma
-        -mlzcnt
-        -mmovbe
-        -mxsave
-)
-set(X86_64_V4_FLAGS
-        ${X86_64_V3_FLAGS}
-        -mavx512f
-        -mavx512bw
-        -mavx512cd
-        -mavx512dq
-        -mavx512vl
-)
-
-if (ARCHITECTURE STREQUAL "native")
-    set(ARCHITECTURE_FLAGS -march=native -mtune=native)
-elseif (APPLE AND ARCHITECTURE)
-    set(ARCHITECTURE_FLAGS "-mcpu=${ARCHITECTURE}")
-elseif (ARCHITECTURE STREQUAL "x86-64")
-    set(ARCHITECTURE_FLAGS ${X86_64_FLAGS})
-elseif (ARCHITECTURE STREQUAL "x86-64-v2")
-    set(ARCHITECTURE_FLAGS ${X86_64_V2_FLAGS})
-elseif (ARCHITECTURE STREQUAL "x86-64-v3")
-    set(ARCHITECTURE_FLAGS ${X86_64_V3_FLAGS})
-elseif (ARCHITECTURE STREQUAL "x86-64-v4")
-    set(ARCHITECTURE_FLAGS ${X86_64_V4_FLAGS})
+if (APPLE)
+    if (NOT ARCHITECTURE MATCHES "native")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=${ARCHITECTURE}")
+    elseif (ARCHITECTURE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mtune=native")
+    endif ()
+elseif (ARCHITECTURE MATCHES "^x86-64(-v[234])?$")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${ARCHITECTURE}")
+elseif (ARCHITECTURE MATCHES "native")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mtune=native")
 elseif (ARCHITECTURE)
     message(FATAL_ERROR "Unsupported architecture: ${ARCHITECTURE}")
-endif ()
-
-if (ARCHITECTURE_FLAGS)
-    string(JOIN " " ARCHITECTURE_FLAGS_STRING ${ARCHITECTURE_FLAGS})
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCHITECTURE_FLAGS_STRING}")
 endif ()
 
 if (NOT BUILD_NATIVE)
