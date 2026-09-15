@@ -1,8 +1,9 @@
 # === Configuration ===
 
 # User-overridable variables
-CC  ?= clang
-CXX ?= clang++
+ifeq ($(origin CXX), default)
+    CXX = clang++
+endif
 EXE ?= StockDory
 
 # Detect OS and set environment-specific variables
@@ -33,12 +34,11 @@ all: openbench
 openbench:
 ifdef EVALFILE
 	$(RM) src/Engine/Model/* && \
-	$(CP) $(EVALFILE) src/Engine/Model/
+	$(CP) $(EVALFILE) src/Engine/Model/Network.nnue
 endif
 	@echo "[*] Performing initial build for profiling..."
 	cmake -B Build -G Ninja \
 		-DCMAKE_BUILD_TYPE=Release \
-		-DCMAKE_C_COMPILER=$(CC) \
 		-DCMAKE_CXX_COMPILER=$(CXX) \
 		-DBUILD_PGO=ON
 	cmake --build Build --config Release
@@ -54,7 +54,6 @@ endif
 	@echo "[*] Performing optimized build with profiling data..."
 	cmake -B Build -G Ninja \
     	-DCMAKE_BUILD_TYPE=Release \
-    	-DCMAKE_C_COMPILER=$(CC) \
     	-DCMAKE_CXX_COMPILER=$(CXX) \
     	-DBUILD_PGO=ON
 	cmake --build Build --config Release
