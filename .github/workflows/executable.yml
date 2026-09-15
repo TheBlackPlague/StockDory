@@ -18,6 +18,7 @@ env:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         arch: [ x86-64, x86-64-v2, x86-64-v3, x86-64-v4, apple-m1, apple-m2, apple-m3, apple-m4 ]
         os: [ ubuntu-latest , windows-latest, macos-latest ]

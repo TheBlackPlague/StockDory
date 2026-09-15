@@ -105,6 +105,10 @@ if (NOT WIN32)
     target_link_libraries(StockDory pthread)
 endif ()
 
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(StockDory atomic)
+endif ()
+
 if (CMAKE_BUILD_TYPE MATCHES "Release")
     message(STATUS "Flags: ${CMAKE_CXX_FLAGS} | ${CMAKE_CXX_FLAGS_RELEASE}")
 elseif (CMAKE_BUILD_TYPE MATCHES "Debug")
