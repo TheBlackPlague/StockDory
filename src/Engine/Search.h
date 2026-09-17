@@ -1075,6 +1075,10 @@ namespace StockDory
             // Opponent's color for recursive calls
             constexpr auto OColor = Opposite(Color);
 
+            // In case we are in a check position from a Quiescence continuation, hand it back to PVS to evaluate
+            // fully since only evaluating captures and relying on static evaluation may give us the wrong impression
+            if (Board.Checked<Color>()) return PVS<Color, PV, false>(ply, 0, alpha, beta);
+
             // The main thread is responsible for ensuring that the correct selective depth is reported
             if (ThreadType == Main && PV) SelectiveDepth = std::max(SelectiveDepth, ply);
 
