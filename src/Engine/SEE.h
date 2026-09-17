@@ -49,7 +49,7 @@ namespace StockDory
             const BitBoard straight = board.PieceBoard<White>(Rook  ) | board.PieceBoard<Black>(Rook  ) |
                                       board.PieceBoard<White>(Queen ) | board.PieceBoard<Black>(Queen ) ;
 
-            BitBoard occ = ~board[NAC] ^ FromSquare(from);
+            BitBoard occ = ~board[NAC];
 
             Set<false>(occ, from);
 
