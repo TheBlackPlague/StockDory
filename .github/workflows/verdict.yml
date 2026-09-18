@@ -1,0 +1,44 @@
+name: Verdict
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  compatibility:
+    name: LLVM ${{ matrix.llvm }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        llvm: [20, 22]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+          wget -q https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh ${{ matrix.llvm }}
+
+      - name: Prepare network
+        run: |
+          network="$(find src/Engine/Model -maxdepth 1 -type f -name '*.nnue' -print -quit)"
+          test -n "$network"
+          cp "$network" "$RUNNER_TEMP/verdict-network.nnue"
+          echo "EVALFILE=$RUNNER_TEMP/verdict-network.nnue" >> "$GITHUB_ENV"
+
+      - name: Build as Verdict
+        run: |
+          make -j"$(nproc)" \
+            EXE=StockDory-verdict \
+            CXX=clang++-${{ matrix.llvm }} \
+            EVALFILE="$EVALFILE"
+
+      - name: Verify executable
+        run: test -x StockDory-verdict
