@@ -12,7 +12,7 @@ rm -rf "$BUILD_DIR"
 
 cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_COMPILER=clang-20 \
+    -DCMAKE_C_COMPILER=clang-22 \
     -DCMAKE_CXX_COMPILER=clang++-22 \
     -DBUILD_NATIVE=ON \
     -DBUILD_PRODUCTION=ON
