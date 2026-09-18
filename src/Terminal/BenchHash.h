@@ -20,7 +20,7 @@ namespace StockDory
     {
 
         constexpr static        uint8_t BenchLength =                  50  ;
-                  static inline auto    BenchLimit  = Limit { .Depth = 13 };
+                  static inline auto    BenchLimit  = Limit { .Depth = 15 };
 
         static std::array<std::string, BenchLength> Positions;
 
