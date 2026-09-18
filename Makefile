@@ -8,23 +8,32 @@ EXE ?= StockDory
 
 # Detect OS and set environment-specific variables
 ifeq ($(OS),Windows_NT)
-    CP            = powershell -Command "Copy-Item -Force"
-    RM            = powershell -Command "Remove-Item -Recurse -Force"
-    EXT           = .exe
-    LLVM_PROFDATA = llvm-profdata
-    SLASH         = \\
+    CP             = powershell -Command "Copy-Item -Force"
+    RM             = powershell -Command "Remove-Item -Recurse -Force"
+    EXT            = .exe
+    LLVM_PROFDATA ?= llvm-profdata
+    SLASH          = \\
 else
-    UNIX_OS := $(shell uname -s)
+    CP    = cp
+    RM    = rm -rf
+    EXT   =
+    SLASH = /
 
-    CP            = cp
-    RM            = rm -rf
-    EXT           =
-    LLVM_PROFDATA = llvm-profdata-22
-    SLASH         = /
-
-    ifeq ($(UNIX_OS), Darwin)
-        LLVM_PROFDATA = llvm-profdata
-    endif
+    LLVM_PROFDATA ?= $(shell \
+        CXX_PATH="$(command -v $(CXX))"; \
+        CXX_DIR="$(dirname "$CXX_PATH")"; \
+        CXX_VERSION="$(basename "$CXX_PATH" | sed -n 's/.*-\([0-9][0-9]*\)$/\1/p')"; \
+        if [ -n "$CXX_VERSION" ] && [ -x "$CXX_DIR/llvm-profdata-$CXX_VERSION" ]; then \
+            echo "$CXX_DIR/llvm-profdata-$CXX_VERSION"; \
+        elif [ -x "$CXX_DIR/llvm-profdata" ]; then \
+            echo "$CXX_DIR/llvm-profdata"; \
+        elif [ -n "$CXX_VERSION" ] && command -v "llvm-profdata-$CXX_VERSION" >/dev/null 2>&1; then \
+            command -v "llvm-profdata-$CXX_VERSION"; \
+        elif command -v llvm-profdata >/dev/null 2>&1; then \
+            command -v llvm-profdata; \
+        else \
+            echo llvm-profdata; \
+        fi)
 endif
 
 # === Targets ===
