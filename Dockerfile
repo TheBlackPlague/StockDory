@@ -10,7 +10,7 @@ FROM ubuntu:${UBUNTU_VERSION} AS stockdory_runtime
 LABEL org.opencontainers.image.title="StockDory" \
       org.opencontainers.image.description="Strong Neural Network Chess Engine" \
       org.opencontainers.image.source="https://github.com/TheBlackPlague/StockDory" \
-      org.opencontainers.image.licenses="LGPL-3.0"
+      org.opencontainers.image.licenses="AGPL-3.0-only"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CPM_SOURCE_CACHE=/opt/stockdory-cpm
@@ -25,10 +25,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN curl -4 -fsSL https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh && \
     chmod 0755 /tmp/llvm.sh && \
-    /tmp/llvm.sh 20 && \
+    /tmp/llvm.sh 22 && \
     rm -f /tmp/llvm.sh
 
-RUN clang-20 --version
+RUN clang-22 --version
 
 COPY . .
 
@@ -36,8 +36,8 @@ COPY . .
 # itself is intentionally not compiled here; it is built natively on startup.
 RUN cmake -S . -B /tmp/stockdory-configure -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_COMPILER=clang-20 \
-    -DCMAKE_CXX_COMPILER=clang++-20 \
+    -DCMAKE_C_COMPILER=clang-22 \
+    -DCMAKE_CXX_COMPILER=clang++-22 \
     -DBUILD_NATIVE=OFF \
     -DBUILD_PRODUCTION=ON && \
     rm -rf /tmp/stockdory-configure
