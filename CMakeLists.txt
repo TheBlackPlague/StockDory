@@ -15,12 +15,16 @@ endif ()
 set(VERSION  "0.3")
 set(CODENAME "Koi")
 
+set(STOCKDORY_VERSION "" CACHE STRING "Override the reported StockDory version")
+
 option(BUILD_NATIVE     "Build with native optimizations enabled"          ON )
 option(BUILD_PGO        "Build with Profile Guided Optimization"           OFF)
 option(BUILD_CI         "Build for CI - BUILD_NATIVE/BUILD_PGO is ignored" OFF)
 option(BUILD_PRODUCTION "Build for production - Version is solidified"     OFF)
 
-if (NOT BUILD_PRODUCTION)
+if (STOCKDORY_VERSION)
+    set(VERSION "${STOCKDORY_VERSION}")
+elseif (NOT BUILD_PRODUCTION)
     execute_process(
             COMMAND git rev-parse HEAD
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
