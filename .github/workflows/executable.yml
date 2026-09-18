@@ -87,7 +87,6 @@ jobs:
     - if: matrix.os == 'ubuntu-latest'
       name: Set CXX for Linux
       run: |
-        echo "CC=clang-22" >> $GITHUB_ENV
         echo "CXX=clang++-22" >> $GITHUB_ENV
     - if: matrix.os == 'windows-latest'
       name: Set CXX for Windows
@@ -97,7 +96,6 @@ jobs:
     - if: matrix.os == 'macos-latest'
       name: Set CXX for MacOS
       run: |
-        echo "CC=/opt/homebrew/opt/llvm@22/bin/clang" >> $GITHUB_ENV
         echo "CXX=/opt/homebrew/opt/llvm@22/bin/clang++" >> $GITHUB_ENV
         echo "PATH=/opt/homebrew/opt/llvm@22/bin:$PATH" >> $GITHUB_ENV
 
