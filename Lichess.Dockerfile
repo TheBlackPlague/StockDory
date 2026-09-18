@@ -33,7 +33,7 @@ FROM ${STOCKDORY_IMAGE} AS lichess_bot
 LABEL org.opencontainers.image.title="StockDory Lichess Bot" \
       org.opencontainers.image.description="StockDory connected to Lichess through BotLi" \
       org.opencontainers.image.source="https://github.com/TheBlackPlague/StockDory" \
-      org.opencontainers.image.licenses="LGPL-3.0 AND AGPL-3.0-or-later"
+      org.opencontainers.image.licenses="AGPL-3.0-only AND AGPL-3.0-or-later"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
@@ -42,8 +42,7 @@ ENV TZ=America/Chicago
 
 RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 
-RUN mkdir -p /config && chown -R 1000:1000 /config
-VOLUME ["/config"]
+RUN mkdir -p /config
 
 WORKDIR /app
 
@@ -53,6 +52,13 @@ COPY --from=botli_prep /src_data/BotLi /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 COPY --from=botli_prep /src_data/BotLi/config.yml.default /config/config.yml
+RUN sed -i \
+    -e 's|dir: "./engines"|dir: "/usr/local/bin"|' \
+    -e 's|name: "engine_executable"|name: "StockDory"|' \
+    /config/config.yml && \
+    chown -R 1000:1000 /config
+
+VOLUME ["/config"]
 
 ENTRYPOINT ["/usr/local/bin/stockdory-entrypoint", "--"]
 CMD ["uv", "run", "/app/user_interface.py", "--config", "/config/config.yml"]
