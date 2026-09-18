@@ -17,12 +17,13 @@ ENV CPM_SOURCE_CACHE=/opt/stockdory-cpm
 
 WORKDIR /opt/stockdory
 
+RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates cmake curl git gnupg ninja-build lsb-release software-properties-common build-essential && \
     rm -rf /var/lib/apt/lists/*
 
-RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 && \
-    curl -4 -fsSL https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh && \
+RUN curl -4 -fsSL https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh && \
     chmod 0755 /tmp/llvm.sh && \
     /tmp/llvm.sh 20 && \
     rm -f /tmp/llvm.sh
