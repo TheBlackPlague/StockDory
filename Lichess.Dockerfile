@@ -60,9 +60,9 @@ RUN sed -i \
     -e 's|      Threads: 4|      Threads: 1|' \
     /config/config.yml
 
-USER stockdory
-
 RUN uv sync
+
+USER stockdory
 
 VOLUME ["/config"]
 
