@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023-2026 Shaheryar Sohail
+// Copyright (c) 2023-2026 Shaheryar Sohail and Lee Durbin
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -9,6 +9,87 @@
 #include <thread>
 
 #include <nanothread/nanothread.h>
+
+using MemoryOrder = std::memory_order;
+
+template<typename T>
+class Atomic
+{
+
+    static_assert(std::is_trivially_copyable_v<T>, "Atomic values must be trivially copyable");
+
+    static_assert(std::atomic<T>::is_always_lock_free, "Atomic values must be lock-free");
+
+    std::atomic<T> Internal {};
+
+    public:
+    Atomic() noexcept = default;
+
+    explicit Atomic(const T value) noexcept : Internal(value) {}
+
+    Atomic(const Atomic&  other) noexcept : Internal(other.Load(MemoryOrder::relaxed)) {}
+    Atomic(      Atomic&& other) noexcept : Internal(other.Load(MemoryOrder::relaxed)) {}
+
+    Atomic& operator =(const Atomic& other) noexcept
+    {
+        Store(other.Load(MemoryOrder::relaxed), MemoryOrder::relaxed);
+
+        return *this;
+    }
+
+    Atomic& operator =(Atomic&& other) noexcept
+    {
+        Store(other.Load(MemoryOrder::relaxed), MemoryOrder::relaxed);
+
+        return *this;
+    }
+
+    [[nodiscard]]
+    T Load(const MemoryOrder order = MemoryOrder::seq_cst) const noexcept
+    {
+        return Internal.load(order);
+    }
+
+    void Store(const T value, const MemoryOrder order = MemoryOrder::seq_cst) noexcept
+    {
+        Internal.store(value, order);
+    }
+
+    [[nodiscard]]
+    T Exchange(const T value, const MemoryOrder order = MemoryOrder::seq_cst) noexcept
+    {
+        return Internal.exchange(value, order);
+    }
+
+    bool CompareExchangeWeak(
+        T& expected,
+        const T desired,
+        const MemoryOrder success,
+        const MemoryOrder failure
+    ) noexcept
+    {
+        return Internal.compare_exchange_weak(expected, desired, success, failure);
+    }
+
+    bool CompareExchangeStrong(
+        T& expected,
+        const T desired,
+        const MemoryOrder success,
+        const MemoryOrder failure
+    ) noexcept
+    {
+        return Internal.compare_exchange_strong(expected, desired, success, failure);
+    }
+
+    void Wait(const T expected, const MemoryOrder order = MemoryOrder::seq_cst) const noexcept
+    {
+        Internal.wait(expected, order);
+    }
+
+    void NotifyOne() noexcept { Internal.notify_one(); }
+    void NotifyAll() noexcept { Internal.notify_all(); }
+
+};
 
 using Block = drjit::blocked_range<uint8_t>;
 

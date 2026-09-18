@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023-2026 Shaheryar Sohail
+// Copyright (c) 2023-2026 Shaheryar Sohail and Lee Durbin
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -104,7 +104,7 @@ namespace StockDory
                                          const Square           from ,
                                          const Square            to  )
         {
-            const auto move = Move(from, to, Promotion);
+            const auto move = board.CreateMove<Piece>(from, to, Promotion);
             return { policy.template Score<Piece, Promotion>(board, hTable, move), move };
         }
 

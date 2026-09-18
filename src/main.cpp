@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023-2026 Shaheryar Sohail
+// Copyright (c) 2023-2026 Shaheryar Sohail and Lee Durbin
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -10,12 +10,12 @@
 #include "Terminal/BenchHash.h"
 #include "Terminal/UCI/UCI.h"
 
-void DisplayTitle()
+static void DisplayTitle()
 {
     std::stringstream ss;
 
     ss << NAME << " " << VERSION << " (" << CODENAME << ")" << "\n";
-    ss << "Copyright (c) 2025 " << AUTHOR << " - Licensed under the " << LICENSE;
+    ss << "Copyright (c) " << COPYRIGHT << " " << AUTHOR << " - Licensed under the " << LICENSE;
 
     std::cerr << ss.str() << std::endl;
 }

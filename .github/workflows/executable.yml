@@ -3,6 +3,7 @@ name: Executable
 on:
   push:
     branches: [ "master" ]
+    tags: [ "*" ]
   pull_request:
     branches: [ "master" ]
     paths-ignore:
@@ -17,6 +18,7 @@ env:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         arch: [ x86-64, x86-64-v2, x86-64-v3, x86-64-v4, apple-m1, apple-m2, apple-m3, apple-m4 ]
         os: [ ubuntu-latest , windows-latest, macos-latest ]
@@ -83,49 +85,88 @@ jobs:
         brew install llvm@22
 
     - if: matrix.os == 'ubuntu-latest'
-      name: Set CC and CXX for Linux
+      name: Set CXX for Linux
       run: |
         echo "CC=clang-22" >> $GITHUB_ENV
         echo "CXX=clang++-22" >> $GITHUB_ENV
     - if: matrix.os == 'windows-latest'
-      name: Set CC and CXX for Windows
+      name: Set CXX for Windows
       shell: powershell
       run: |
-        echo "CC=clang" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "CXX=clang++" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
     - if: matrix.os == 'macos-latest'
-      name: Set CC and CXX for MacOS
+      name: Set CXX for MacOS
       run: |
         echo "CC=/opt/homebrew/opt/llvm@22/bin/clang" >> $GITHUB_ENV
         echo "CXX=/opt/homebrew/opt/llvm@22/bin/clang++" >> $GITHUB_ENV
         echo "PATH=/opt/homebrew/opt/llvm@22/bin:$PATH" >> $GITHUB_ENV
 
     - name: Configure CMake
-      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCI=ON -DARCHITECTURE=${{ matrix.arch }} -G Ninja
+      run: >-
+        cmake -B ${{ github.workspace }}/build
+        -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+        -DBUILD_CI=ON
+        -DBUILD_PRODUCTION=${{ startsWith(github.ref, 'refs/tags/') && 'ON' || 'OFF' }}
+        -DARCHITECTURE=${{ matrix.arch }}
+        -G Ninja
 
     - name: Build
       run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }}
 
     - if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
-      name: Extract Version Identifier (Linux and MacOS)
+      name: Extract Binary Identifier (Linux and MacOS)
       run: |
         VERSION=$(grep 'const std::string VERSION' ${{ github.workspace }}/build/BuildSystem/Information.h | cut -d'"' -f2)
-        echo "VERSION=${VERSION}" >> $GITHUB_ENV
+        IDENTIFIER="${VERSION}"
+        if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+          CODENAME=$(grep 'const std::string CODENAME' ${{ github.workspace }}/build/BuildSystem/Information.h | cut -d'"' -f2)
+          IDENTIFIER="${CODENAME}-${VERSION}"
+        fi
+        echo "IDENTIFIER=${IDENTIFIER}" >> $GITHUB_ENV
 
     - if: matrix.os == 'windows-latest'
-      name: Extract Version Identifier (Windows)
+      name: Extract Binary Identifier (Windows)
       shell: powershell
       run: |
         $VERSION = (Get-Content -Path ${{ github.workspace }}/build/BuildSystem/Information.h | Select-String -Pattern 'const std::string VERSION' -SimpleMatch).ToString().Split('"')[1]
-        echo "VERSION=${VERSION}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        $IDENTIFIER = $VERSION
+        if ($env:GITHUB_REF -like 'refs/tags/*') {
+          $CODENAME = (Get-Content -Path ${{ github.workspace }}/build/BuildSystem/Information.h | Select-String -Pattern 'const std::string CODENAME' -SimpleMatch).ToString().Split('"')[1]
+          $IDENTIFIER = "${CODENAME}-${VERSION}"
+        }
+        echo "IDENTIFIER=${IDENTIFIER}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Rename Binary
       run: |
-        mv ${{ github.workspace }}/build/StockDory${{ matrix.extension }} ${{ github.workspace }}/StockDory-${{ env.VERSION }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}
+        mv ${{ github.workspace }}/build/StockDory${{ matrix.extension }} ${{ github.workspace }}/StockDory-${{ env.IDENTIFIER }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}
 
     - name: Upload Binary
       uses: actions/upload-artifact@v4
       with:
-        name: StockDory-${{ env.VERSION }}-${{ matrix.os }}-${{ matrix.arch }}
-        path: ${{ github.workspace }}/StockDory-${{ env.VERSION }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}
+        name: StockDory-${{ env.IDENTIFIER }}-${{ matrix.os }}-${{ matrix.arch }}
+        path: ${{ github.workspace }}/StockDory-${{ env.IDENTIFIER }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}
 
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Download Binaries
+      uses: actions/download-artifact@v4
+      with:
+        pattern: StockDory-*
+        path: release
+        merge-multiple: true
+
+    - name: Publish Release Binaries
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" > /dev/null 2>&1; then
+          gh release upload "${GITHUB_REF_NAME}" release/* --repo "${GITHUB_REPOSITORY}" --clobber
+        else
+          gh release create "${GITHUB_REF_NAME}" release/* --repo "${GITHUB_REPOSITORY}" --title "${GITHUB_REF_NAME}" --generate-notes
+        fi

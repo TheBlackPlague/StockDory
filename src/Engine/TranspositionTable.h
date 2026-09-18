@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023-2026 Shaheryar Sohail
+// Copyright (c) 2023-2026 Shaheryar Sohail and Lee Durbin
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -20,8 +20,34 @@ namespace StockDory
     class TranspositionTable
     {
 
-        std::vector<T> Internal;
-        size_t         Count = 0;
+        using Entry = Atomic<T>;
+
+        class Reference
+        {
+
+            Entry* Internal;
+
+            public:
+            explicit Reference(Entry& entry) : Internal(&entry) {}
+
+            // ReSharper disable once CppNonExplicitConversionOperator
+            operator T() const
+            {
+                return Internal->Load(MemoryOrder::relaxed);
+            }
+
+            Reference& operator =(const T& value)
+            {
+                Internal->Store(value, MemoryOrder::relaxed);
+
+                return *this;
+            }
+
+        };
+
+        std::vector<Entry> Internal;
+
+        size_t Count = 0;
 
         public:
         explicit TranspositionTable(const size_t bytes)
@@ -31,33 +57,29 @@ namespace StockDory
 
         void Resize(const size_t bytes)
         {
-            Count = bytes / sizeof(T);
+            Count = bytes / sizeof(Entry);
 
             Clear();
         }
 
         void Clear()
         {
-            Internal = std::vector<T>(Count);
+            Internal = std::vector<Entry>(Count);
         }
 
-        T& operator [](const ZobristHash hash)
+        Reference operator [](const ZobristHash hash)
         {
-            return Internal[fastrange64(hash, Count)];
+            return Reference(Internal[fastrange64(hash, Count)]);
         }
 
-        const T& operator [](const ZobristHash hash) const
+        T operator [](const ZobristHash hash) const
         {
-            return Internal[fastrange64(hash, Count)];
+            return Internal[fastrange64(hash, Count)].Load(MemoryOrder::relaxed);
         }
 
         void Prefetch(const ZobristHash hash) const
         {
-            __builtin_prefetch(
-                static_cast<const void*>(reinterpret_cast<const char*>(&Internal[fastrange64(hash, Count)])),
-                0,
-                3
-            );
+            __builtin_prefetch(static_cast<const void*>(&Internal[fastrange64(hash, Count)]), 0, 3);
         }
 
         [[nodiscard]]

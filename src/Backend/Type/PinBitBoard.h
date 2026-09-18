@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023-2026 Shaheryar Sohail
+// Copyright (c) 2023-2026 Shaheryar Sohail and Lee Durbin
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
