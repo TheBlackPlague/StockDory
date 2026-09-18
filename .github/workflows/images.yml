@@ -77,7 +77,7 @@ jobs:
                   lichess="ghcr.io/${owner}/stockdory-lichess"
 
                   if [[ "$EVENT_NAME" == "pull_request" ]]; then
-                      stockdory_base="${stockdory}:latest"
+                      stockdory_base="stockdory:ci"
                   else
                       stockdory_base="${stockdory}:${tag}"
                   fi
@@ -103,6 +103,7 @@ jobs:
                   } >> "$GITHUB_OUTPUT"
 
             - name: Docker Setup
+              if: github.event_name != 'pull_request'
               uses: docker/setup-buildx-action@v4
 
             - name: GHCR Login
@@ -114,12 +115,13 @@ jobs:
                   password: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Build StockDory
+              if: github.event_name != 'pull_request'
               uses: docker/build-push-action@v7
               with:
                   context: .
                   file: Dockerfile
                   platforms: linux/amd64
-                  push: ${{ github.event_name != 'pull_request' }}
+                  push: true
                   tags: ${{ steps.image_info.outputs.stockdory_tags }}
                   cache-from: type=gha,scope=stockdory
                   cache-to: type=gha,mode=max,scope=stockdory
@@ -129,13 +131,22 @@ jobs:
                       org.opencontainers.image.revision=${{ steps.image_info.outputs.revision }}
                       org.opencontainers.image.version=${{ steps.image_info.outputs.tag }}
 
+            - name: Build StockDory for PR
+              if: github.event_name == 'pull_request'
+              run: docker build --file Dockerfile --tag stockdory:ci .
+
+            - name: Smoke Test StockDory for PR
+              if: github.event_name == 'pull_request'
+              run: docker run --rm stockdory:ci bench
+
             - name: Build StockDory Lichess
+              if: github.event_name != 'pull_request'
               uses: docker/build-push-action@v7
               with:
                   context: .
                   file: Lichess.Dockerfile
                   platforms: linux/amd64
-                  push: ${{ github.event_name != 'pull_request' }}
+                  push: true
                   build-args: |
                       BOTLI_REF=6916a09825067862009393250be9dbd39f442dc8
                       STOCKDORY_IMAGE=${{ steps.image_info.outputs.stockdory_base }}
@@ -147,3 +158,13 @@ jobs:
                       org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
                       org.opencontainers.image.revision=${{ steps.image_info.outputs.revision }}
                       org.opencontainers.image.version=${{ steps.image_info.outputs.tag }}
+
+            - name: Build StockDory Lichess for PR
+              if: github.event_name == 'pull_request'
+              run: |
+                  docker build \
+                      --file Lichess.Dockerfile \
+                      --build-arg BOTLI_REF=6916a09825067862009393250be9dbd39f442dc8 \
+                      --build-arg STOCKDORY_IMAGE=${{ steps.image_info.outputs.stockdory_base }} \
+                      --tag stockdory-lichess:ci \
+                      .
