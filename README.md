@@ -21,21 +21,52 @@ human ability.
 
 ### 🎮 Building & Using
 
-For the quickest way to get started, it is recommended to use one of the
-[official release binaries](https://github.com/TheBlackPlague/StockDory/releases). These builds target the three major
-desktop operating systems and common CPU architecture levels, making them suitable for most systems likely to run
-StockDory.
-
 > [!NOTE]
 > StockDory is a command-line program that communicates through the **standard input and output streams** using the
 > **Universal Chess Interface (UCI)** protocol. For normal use, it is recommended to pair StockDory with a
 > **UCI-compatible** graphical interface such as [En Croissant](https://encroissant.org/).
 
-For maximum performance, however, the best StockDory build is generally one compiled specifically for your native
-hardware. The official releases cannot reasonably cover every processor or architecture combination, particularly for
-new, uncommon, or recently introduced hardware. Compiling StockDory locally is therefore recommended when no suitable
-release binary exists, when targeting a specialized platform, or when you simply want the best possible performance
-from your system.
+For the quickest way to get started, it is recommended to use one of the
+[official release binaries](https://github.com/TheBlackPlague/StockDory/releases) (which target the three most widely used desktop operating systems) or use an official 
+container image (see below).
+
+#### 🐳 Container
+
+StockDory is available as an official container image through the
+[GitHub Container Registry](https://github.com/TheBlackPlague/StockDory/pkgs/container/stockdory):
+
+```bash
+docker pull ghcr.io/theblackplague/stockdory:latest
+docker run --rm -i ghcr.io/theblackplague/stockdory:latest
+```
+
+Unlike a conventional precompiled container image, StockDory is compiled **natively for the host CPU when the container
+starts**. This allows the container to retain the portability and isolation of Docker while still taking advantage of
+the instruction-set capabilities available on the machine running it.
+
+The number of parallel compilation jobs can optionally be controlled through `STOCKDORY_BUILD_JOBS`:
+
+```bash
+docker run --rm -i -e STOCKDORY_BUILD_JOBS=8 ghcr.io/theblackplague/stockdory:latest
+```
+
+The container starts StockDory directly as a UCI engine and communicates through standard input and output. For manual
+interaction from a terminal, a pseudo-terminal may also be allocated using the `-t` flag:
+
+```bash
+docker run --rm -it ghcr.io/theblackplague/stockdory:latest
+```
+
+Per Docker guidelines, for production use it's recommended to pin the container to a specific tag of the image rather 
+than the forward-sliding `latest` tag. 
+
+#### ⚙️ Native Build
+
+Ideally, the best StockDory build is generally one compiled specifically for your hardware, running natively. The 
+official releases cannot reasonably cover every processor or architecture combination, particularly for new, uncommon, 
+or recently introduced hardware. Compiling StockDory locally is therefore recommended when no suitable release binary 
+exists, when targeting a specialized platform, when running it containerized isn't suitable, or when you simply want 
+the best possible performance from your system.
 
 StockDory currently targets **C++23** and officially supports the **LLVM toolchain**. The recommended build environment
 is:
