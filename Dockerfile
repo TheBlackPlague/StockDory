@@ -28,7 +28,7 @@ RUN curl -4 -fsSL https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh && \
     /tmp/llvm.sh 22 && \
     rm -f /tmp/llvm.sh
 
-RUN clang-22 --version
+RUN clang++-22 --version
 
 COPY . .
 
@@ -36,7 +36,6 @@ COPY . .
 # itself is intentionally not compiled here; it is built natively on startup.
 RUN cmake -S . -B /tmp/stockdory-configure -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_COMPILER=clang-22 \
     -DCMAKE_CXX_COMPILER=clang++-22 \
     -DBUILD_NATIVE=OFF \
     -DBUILD_PRODUCTION=ON && \
