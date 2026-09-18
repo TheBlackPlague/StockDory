@@ -71,7 +71,8 @@ jobs:
 
                   branch="$(printf '%s' "$branch" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_.-]+/-/g; s/^[.-]+//; s/[.-]+$//')"
                   branch="${branch:0:111}"
-                  tag="${branch:-image}-${revision:0:16}"
+                  version="${revision:0:10}"
+                  tag="${branch:-image}-${version}"
                   owner="${GITHUB_REPOSITORY_OWNER,,}"
                   stockdory="ghcr.io/${owner}/stockdory"
                   lichess="ghcr.io/${owner}/stockdory-lichess"
@@ -86,6 +87,7 @@ jobs:
                       printf 'stockdory=%s\n' "$stockdory"
                       printf 'lichess=%s\n' "$lichess"
                       printf 'tag=%s\n' "$tag"
+                      printf 'version=%s\n' "$version"
                       printf 'revision=%s\n' "$revision"
                       printf 'stockdory_base=%s\n' "$stockdory_base"
 
@@ -123,6 +125,8 @@ jobs:
                   platforms: linux/amd64
                   push: true
                   tags: ${{ steps.image_info.outputs.stockdory_tags }}
+                  build-args: |
+                      STOCKDORY_VERSION=${{ steps.image_info.outputs.version }}
                   cache-from: type=gha,scope=stockdory
                   cache-to: type=gha,mode=max,scope=stockdory
                   labels: |
@@ -133,7 +137,12 @@ jobs:
 
             - name: Build StockDory for PR
               if: github.event_name == 'pull_request'
-              run: docker build --file Dockerfile --tag stockdory:ci .
+              run: |
+                  docker build \
+                      --file Dockerfile \
+                      --build-arg STOCKDORY_VERSION=${{ steps.image_info.outputs.version }} \
+                      --tag stockdory:ci \
+                      .
 
             - name: Smoke Test StockDory for PR
               if: github.event_name == 'pull_request'
