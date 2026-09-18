@@ -44,8 +44,8 @@ RUN cmake -S . -B /tmp/stockdory-configure -G Ninja \
 COPY docker/stockdory-entrypoint.sh /usr/local/bin/stockdory-entrypoint
 RUN chmod 0755 /usr/local/bin/stockdory-entrypoint
 
-RUN groupadd --gid 1000 stockdory && \
-    useradd --uid 1000 --gid stockdory --create-home stockdory && \
+RUN groupadd --system stockdory && \
+    useradd --system --gid stockdory --create-home stockdory && \
     mkdir -p /opt/stockdory-cpm /opt/stockdory-bin && \
     chown -R stockdory:stockdory /opt/stockdory-cpm /opt/stockdory-bin
 
