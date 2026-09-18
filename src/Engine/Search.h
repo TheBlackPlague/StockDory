@@ -881,6 +881,24 @@ namespace StockDory
 
                 if (skipQuiets && quiet) continue;
 
+                // Futility Pruning (FP):
+                //
+                // FP is a pruning technique that prunes branches that are too bad for us to be worth searching further.
+                // It is the opposite of RFP, and while trying to achieve the same goal as Razoring, it does so with a
+                // very different approach - relying on the static evaluation and move policy. Then, if the static
+                // evaluation of the current position is significantly worse than our lower bound (alpha), it is very
+                // unlikely that a non-tactical move will improve our position enough to exceed our lower bound (alpha).
+                // Searching non-tactical moves in this branch is not going to change the outcome of this branch, so we
+                // skip them
+                if (i > 0 && quiet) {
+                    const Score margin = depth * FutilityDepthFactor;
+
+                    if (staticEvaluation + margin <= alpha) {
+                        skipQuiets = true;
+                        continue;
+                    }
+                }
+
                 if (!PV) {
                     // Risky Pruning:
                     //
@@ -889,24 +907,6 @@ namespace StockDory
                     // to do. We can afford to miss some good moves in non-PV branches, as we are not that likely going
                     // to find the best move in these branches, mainly using the results of these branches to optimize
                     // search tree exploration
-
-                    // Futility Pruning (FP):
-                    //
-                    // FP is a pruning technique that prunes branches that are too bad for us to be worth searching
-                    // further. It is the opposite of RFP, and while trying to achieve the same goal as Razoring, it
-                    // does so with a very different approach - relying on the static evaluation and move policy. Then,
-                    // if the static evaluation of the current position is significantly worse than our lower bound
-                    // (alpha), it is very unlikely that a non-tactical move will improve our position enough to exceed
-                    // our lower bound (alpha). Searching non-tactical moves in this branch is not going to change the
-                    // outcome of this branch, so we skip them
-                    if (i > 0 && quiet) {
-                        const Score margin = depth * FutilityDepthFactor;
-
-                        if (staticEvaluation + margin <= alpha) {
-                            skipQuiets = true;
-                            continue;
-                        }
-                    }
 
                     // Late Move Pruning (LMP):
                     //
