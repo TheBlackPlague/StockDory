@@ -14,7 +14,7 @@ on:
             - "Lichess.Dockerfile.dockerignore"
             - ".github/workflows/images.yml"
     pull_request:
-        branches: [ master, lichess ]
+        branches: [ master ]
         types: [ opened, synchronize, reopened ]
         paths:
             - "src/**"
@@ -30,13 +30,18 @@ on:
 
 permissions:
     contents: read
-    packages: write
+
+concurrency:
+    group: images-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
 
 jobs:
     publish:
         runs-on: ubuntu-latest
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         timeout-minutes: 30
+        permissions:
+            contents: read
+            packages: write
 
         steps:
             - name: Checkout
@@ -44,7 +49,7 @@ jobs:
               with:
                   persist-credentials: false
 
-            - name: Image Names & Tag
+            - name: Image Names & Tags
               id: image_info
               shell: bash
               env:
@@ -66,37 +71,56 @@ jobs:
 
                   branch="$(printf '%s' "$branch" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_.-]+/-/g; s/^[.-]+//; s/[.-]+$//')"
                   branch="${branch:0:111}"
+                  tag="${branch:-image}-${revision:0:16}"
+                  owner="${GITHUB_REPOSITORY_OWNER,,}"
+                  stockdory="ghcr.io/${owner}/stockdory"
+                  lichess="ghcr.io/${owner}/stockdory-lichess"
 
-                  if [[ -z "$branch" ]]; then
-                      branch="image"
+                  if [[ "$EVENT_NAME" == "pull_request" ]]; then
+                      stockdory_base="${stockdory}:latest"
+                  else
+                      stockdory_base="${stockdory}:${tag}"
                   fi
 
-                  tag="${branch}-${revision:0:16}"
-                  owner="${GITHUB_REPOSITORY_OWNER,,}"
+                  {
+                      printf 'stockdory=%s\n' "$stockdory"
+                      printf 'lichess=%s\n' "$lichess"
+                      printf 'tag=%s\n' "$tag"
+                      printf 'revision=%s\n' "$revision"
+                      printf 'stockdory_base=%s\n' "$stockdory_base"
 
-                  printf 'stockdory=ghcr.io/%s/stockdory\n' "$owner" >> "$GITHUB_OUTPUT"
-                  printf 'lichess=ghcr.io/%s/stockdory-lichess\n' "$owner" >> "$GITHUB_OUTPUT"
-                  printf 'tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
-                  printf 'revision=%s\n' "$revision" >> "$GITHUB_OUTPUT"
+                      printf 'stockdory_tags<<EOF\n%s:%s\n' "$stockdory" "$tag"
+                      if [[ "$EVENT_NAME" != "pull_request" && "$GITHUB_REF" == "refs/heads/master" ]]; then
+                          printf '%s:latest\n' "$stockdory"
+                      fi
+                      printf 'EOF\n'
+
+                      printf 'lichess_tags<<EOF\n%s:%s\n' "$lichess" "$tag"
+                      if [[ "$EVENT_NAME" != "pull_request" && "$GITHUB_REF" == "refs/heads/master" ]]; then
+                          printf '%s:latest\n' "$lichess"
+                      fi
+                      printf 'EOF\n'
+                  } >> "$GITHUB_OUTPUT"
 
             - name: Docker Setup
               uses: docker/setup-buildx-action@v4
 
             - name: GHCR Login
+              if: github.event_name != 'pull_request'
               uses: docker/login-action@v4
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Build & Push StockDory
+            - name: Build StockDory
               uses: docker/build-push-action@v7
               with:
                   context: .
                   file: Dockerfile
                   platforms: linux/amd64
-                  push: true
-                  tags: ${{ steps.image_info.outputs.stockdory }}:${{ steps.image_info.outputs.tag }}
+                  push: ${{ github.event_name != 'pull_request' }}
+                  tags: ${{ steps.image_info.outputs.stockdory_tags }}
                   cache-from: type=gha,scope=stockdory
                   cache-to: type=gha,mode=max,scope=stockdory
                   labels: |
@@ -105,17 +129,17 @@ jobs:
                       org.opencontainers.image.revision=${{ steps.image_info.outputs.revision }}
                       org.opencontainers.image.version=${{ steps.image_info.outputs.tag }}
 
-            - name: Build & Push StockDory Lichess
+            - name: Build StockDory Lichess
               uses: docker/build-push-action@v7
               with:
                   context: .
                   file: Lichess.Dockerfile
                   platforms: linux/amd64
-                  push: true
+                  push: ${{ github.event_name != 'pull_request' }}
                   build-args: |
                       BOTLI_REF=6916a09825067862009393250be9dbd39f442dc8
-                      STOCKDORY_IMAGE=${{ steps.image_info.outputs.stockdory }}:${{ steps.image_info.outputs.tag }}
-                  tags: ${{ steps.image_info.outputs.lichess }}:${{ steps.image_info.outputs.tag }}
+                      STOCKDORY_IMAGE=${{ steps.image_info.outputs.stockdory_base }}
+                  tags: ${{ steps.image_info.outputs.lichess_tags }}
                   cache-from: type=gha,scope=stockdory-lichess
                   cache-to: type=gha,mode=max,scope=stockdory-lichess
                   labels: |
