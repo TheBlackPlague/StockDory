@@ -71,8 +71,8 @@ jobs:
 
                   branch="$(printf '%s' "$branch" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_.-]+/-/g; s/^[.-]+//; s/[.-]+$//')"
                   branch="${branch:0:111}"
-                  version="${revision:0:10}"
-                  tag="${branch:-image}-${version}"
+                  short_revision="${revision:0:10}"
+                  tag="${branch:-image}-${short_revision}"
                   owner="${GITHUB_REPOSITORY_OWNER,,}"
                   stockdory="ghcr.io/${owner}/stockdory"
                   lichess="ghcr.io/${owner}/stockdory-lichess"
@@ -87,7 +87,7 @@ jobs:
                       printf 'stockdory=%s\n' "$stockdory"
                       printf 'lichess=%s\n' "$lichess"
                       printf 'tag=%s\n' "$tag"
-                      printf 'version=%s\n' "$version"
+                      printf 'short_revision=%s\n' "$short_revision"
                       printf 'revision=%s\n' "$revision"
                       printf 'stockdory_base=%s\n' "$stockdory_base"
 
@@ -103,6 +103,11 @@ jobs:
                       fi
                       printf 'EOF\n'
                   } >> "$GITHUB_OUTPUT"
+
+            - name: Write Source Revision
+              env:
+                  STOCKDORY_REVISION: ${{ steps.image_info.outputs.short_revision }}
+              run: printf '%s\n' "$STOCKDORY_REVISION" > .stockdory-revision
 
             - name: Docker Setup
               if: github.event_name != 'pull_request'
@@ -125,8 +130,6 @@ jobs:
                   platforms: linux/amd64
                   push: true
                   tags: ${{ steps.image_info.outputs.stockdory_tags }}
-                  build-args: |
-                      STOCKDORY_VERSION=${{ steps.image_info.outputs.version }}
                   cache-from: type=gha,scope=stockdory
                   cache-to: type=gha,mode=max,scope=stockdory
                   labels: |
@@ -140,7 +143,6 @@ jobs:
               run: |
                   docker build \
                       --file Dockerfile \
-                      --build-arg STOCKDORY_VERSION=${{ steps.image_info.outputs.version }} \
                       --tag stockdory:ci \
                       .
 

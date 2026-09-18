@@ -15,32 +15,33 @@ endif ()
 set(VERSION  "0.3")
 set(CODENAME "Koi")
 
-set(STOCKDORY_VERSION "" CACHE STRING "Override the reported StockDory version")
-
 option(BUILD_NATIVE     "Build with native optimizations enabled"          ON )
 option(BUILD_PGO        "Build with Profile Guided Optimization"           OFF)
 option(BUILD_CI         "Build for CI - BUILD_NATIVE/BUILD_PGO is ignored" OFF)
 option(BUILD_PRODUCTION "Build for production - Version is solidified"     OFF)
 
-if (STOCKDORY_VERSION)
-    set(VERSION "${STOCKDORY_VERSION}")
-elseif (NOT BUILD_PRODUCTION)
-    execute_process(
-            COMMAND git rev-parse HEAD
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-            OUTPUT_VARIABLE GIT_FULL_SHA
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            RESULT_VARIABLE GIT_REV_PARSE_RESULT
-    )
+if (NOT BUILD_PRODUCTION)
+    set(REVISION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/.stockdory-revision")
 
-    if (NOT GIT_REV_PARSE_RESULT EQUAL 0)
-        message(WARNING "Could not get hash. Is this a Git repository?")
-        set(GIT_SHORT_SHA "unknown")
+    if (EXISTS "${REVISION_FILE}")
+        file(READ "${REVISION_FILE}" GIT_SHORT_SHA)
+        string(STRIP "${GIT_SHORT_SHA}" GIT_SHORT_SHA)
     else()
-        string(SUBSTRING "${GIT_FULL_SHA}" 0 10 GIT_SHORT_SHA)
+        execute_process(
+                COMMAND git rev-parse --short=10 HEAD
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                OUTPUT_VARIABLE GIT_SHORT_SHA
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                RESULT_VARIABLE GIT_REV_PARSE_RESULT
+        )
+
+        if (NOT GIT_REV_PARSE_RESULT EQUAL 0)
+            message(WARNING "Could not get hash. Is this a Git repository?")
+            set(GIT_SHORT_SHA "unknown")
+        endif()
     endif()
 
-    set(VERSION ${GIT_SHORT_SHA})
+    set(VERSION "${GIT_SHORT_SHA}")
 endif ()
 
 message(STATUS "Building StockDory ${VERSION} (${CODENAME})")

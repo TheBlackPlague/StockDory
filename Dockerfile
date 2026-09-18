@@ -7,8 +7,6 @@ ARG UBUNTU_VERSION=24.04
 # -----------------------------------------------------------------------------
 FROM ubuntu:${UBUNTU_VERSION} AS stockdory_runtime
 
-ARG STOCKDORY_VERSION=0.3
-
 LABEL org.opencontainers.image.title="StockDory" \
       org.opencontainers.image.description="Strong Neural Network Chess Engine" \
       org.opencontainers.image.source="https://github.com/TheBlackPlague/StockDory" \
@@ -16,7 +14,6 @@ LABEL org.opencontainers.image.title="StockDory" \
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CPM_SOURCE_CACHE=/opt/stockdory-cpm
-ENV STOCKDORY_VERSION=${STOCKDORY_VERSION}
 
 WORKDIR /opt/stockdory
 
@@ -40,9 +37,8 @@ COPY . .
 RUN cmake -S . -B /tmp/stockdory-configure -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_CXX_COMPILER=clang++-22 \
-    -DSTOCKDORY_VERSION="${STOCKDORY_VERSION}" \
     -DBUILD_NATIVE=OFF \
-    -DBUILD_PRODUCTION=ON && \
+    -DBUILD_PRODUCTION=OFF && \
     rm -rf /tmp/stockdory-configure
 
 COPY docker/stockdory-entrypoint.sh /usr/local/bin/stockdory-entrypoint
