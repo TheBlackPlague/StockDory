@@ -20,8 +20,14 @@ option(BUILD_PGO        "Build with Profile Guided Optimization"           OFF)
 option(BUILD_CI         "Build for CI - BUILD_NATIVE/BUILD_PGO is ignored" OFF)
 option(BUILD_PRODUCTION "Build for production - Version is solidified"     OFF)
 
+set(RELEASE_FILE  "${CMAKE_CURRENT_SOURCE_DIR}/.stockdory-release")
+set(REVISION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/.stockdory-revision")
+
+if (EXISTS "${RELEASE_FILE}")
+    set(BUILD_PRODUCTION ON)
+endif ()
+
 if (NOT BUILD_PRODUCTION)
-    set(REVISION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/.stockdory-revision")
 
     if (EXISTS "${REVISION_FILE}")
         file(READ "${REVISION_FILE}" GIT_SHORT_SHA)

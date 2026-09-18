@@ -13,8 +13,7 @@ rm -rf "$BUILD_DIR"
 cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_CXX_COMPILER=clang++-22 \
-    -DBUILD_NATIVE=ON \
-    -DBUILD_PRODUCTION=OFF
+    -DBUILD_NATIVE=ON
 
 cmake --build "$BUILD_DIR" --parallel "$BUILD_JOBS"
 install -m 0755 "$BUILD_DIR/StockDory" "$ENGINE"

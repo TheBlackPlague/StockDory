@@ -3,6 +3,7 @@ name: Image Publishing
 on:
     push:
         branches: [ master ]
+        tags: [ "*" ]
         paths:
             - "src/**"
             - "docker/**"
@@ -56,23 +57,35 @@ jobs:
                   EVENT_NAME: ${{ github.event_name }}
                   PR_BRANCH: ${{ github.head_ref }}
                   PR_SHA: ${{ github.event.pull_request.head.sha }}
-                  BRANCH_NAME: ${{ github.ref_name }}
+                  REF: ${{ github.ref }}
+                  REF_NAME: ${{ github.ref_name }}
                   COMMIT_SHA: ${{ github.sha }}
               run: |
                   set -euo pipefail
+
+                  release=false
 
                   if [[ "$EVENT_NAME" == "pull_request" ]]; then
                       branch="$PR_BRANCH"
                       revision="$PR_SHA"
                   else
-                      branch="$BRANCH_NAME"
+                      branch="$REF_NAME"
                       revision="$COMMIT_SHA"
+
+                      if [[ "$REF" == refs/tags/* ]]; then
+                          release=true
+                      fi
                   fi
 
                   branch="$(printf '%s' "$branch" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_.-]+/-/g; s/^[.-]+//; s/[.-]+$//')"
                   branch="${branch:0:111}"
                   short_revision="${revision:0:10}"
-                  tag="${branch:-image}-${short_revision}"
+
+                  if [[ "$release" == "true" ]]; then
+                      tag="$branch"
+                  else
+                      tag="${branch:-image}-${short_revision}"
+                  fi
                   owner="${GITHUB_REPOSITORY_OWNER,,}"
                   stockdory="ghcr.io/${owner}/stockdory"
                   lichess="ghcr.io/${owner}/stockdory-lichess"
@@ -89,6 +102,7 @@ jobs:
                       printf 'tag=%s\n' "$tag"
                       printf 'short_revision=%s\n' "$short_revision"
                       printf 'revision=%s\n' "$revision"
+                      printf 'release=%s\n' "$release"
                       printf 'stockdory_base=%s\n' "$stockdory_base"
 
                       printf 'stockdory_tags<<EOF\n%s:%s\n' "$stockdory" "$tag"
@@ -104,10 +118,17 @@ jobs:
                       printf 'EOF\n'
                   } >> "$GITHUB_OUTPUT"
 
-            - name: Write Source Revision
+            - name: Write Source Metadata
+              shell: bash
               env:
                   STOCKDORY_REVISION: ${{ steps.image_info.outputs.short_revision }}
-              run: printf '%s\n' "$STOCKDORY_REVISION" > .stockdory-revision
+                  STOCKDORY_RELEASE: ${{ steps.image_info.outputs.release }}
+              run: |
+                  if [[ "$STOCKDORY_RELEASE" == "true" ]]; then
+                      : > .stockdory-release
+                  else
+                      printf '%s\n' "$STOCKDORY_REVISION" > .stockdory-revision
+                  fi
 
             - name: Docker Setup
               if: github.event_name != 'pull_request'

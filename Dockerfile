@@ -37,8 +37,7 @@ COPY . .
 RUN cmake -S . -B /tmp/stockdory-configure -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_CXX_COMPILER=clang++-22 \
-    -DBUILD_NATIVE=OFF \
-    -DBUILD_PRODUCTION=OFF && \
+    -DBUILD_NATIVE=OFF && \
     rm -rf /tmp/stockdory-configure
 
 COPY docker/stockdory-entrypoint.sh /usr/local/bin/stockdory-entrypoint
