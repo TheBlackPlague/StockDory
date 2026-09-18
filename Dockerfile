@@ -21,7 +21,7 @@ RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 && \
     printf 'ipv4\n' > /root/.curlrc
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates cmake curl git gnupg ninja-build lsb-release software-properties-common build-essential && \
+    ca-certificates cmake curl git gnupg ninja-build lsb-release software-properties-common build-essential passwd && \
     rm -rf /var/lib/apt/lists/*
 
 RUN curl -4 -fsSL https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh && \
@@ -43,5 +43,12 @@ RUN cmake -S . -B /tmp/stockdory-configure -G Ninja \
 
 COPY docker/stockdory-entrypoint.sh /usr/local/bin/stockdory-entrypoint
 RUN chmod 0755 /usr/local/bin/stockdory-entrypoint
+
+RUN groupadd --gid 1000 stockdory && \
+    useradd --uid 1000 --gid stockdory --create-home stockdory && \
+    mkdir -p /opt/stockdory-cpm /opt/stockdory-bin && \
+    chown -R stockdory:stockdory /opt/stockdory-cpm /opt/stockdory-bin
+
+USER stockdory
 
 ENTRYPOINT ["/usr/local/bin/stockdory-entrypoint"]

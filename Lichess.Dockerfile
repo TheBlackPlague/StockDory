@@ -30,6 +30,8 @@ RUN git init BotLi && \
 # -----------------------------------------------------------------------------
 FROM ${STOCKDORY_IMAGE} AS lichess_bot
 
+USER root
+
 LABEL org.opencontainers.image.title="StockDory Lichess Bot" \
       org.opencontainers.image.description="StockDory connected to Lichess through BotLi" \
       org.opencontainers.image.source="https://github.com/TheBlackPlague/StockDory" \
@@ -38,27 +40,30 @@ LABEL org.opencontainers.image.title="StockDory Lichess Bot" \
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV TZ=America/Chicago
 
 RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 
-RUN mkdir -p /config
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates python3 && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /config && chown stockdory:stockdory /config
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates python3 && rm -rf /var/lib/apt/lists/*
-
-COPY --from=botli_prep /src_data/BotLi /app
+COPY --from=botli_prep --chown=stockdory:stockdory /src_data/BotLi /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-COPY --from=botli_prep /src_data/BotLi/config.yml.default /config/config.yml
+COPY --from=botli_prep --chown=stockdory:stockdory /src_data/BotLi/config.yml.default /config/config.yml
 RUN sed -i \
-    -e 's|dir: "./engines"|dir: "/usr/local/bin"|' \
+    -e 's|token: "XXXXXXXXXXXXXXXXXXXXXXXX"|token: ""|' \
+    -e 's|dir: "./engines"|dir: "/opt/stockdory-bin"|' \
     -e 's|name: "engine_executable"|name: "StockDory"|' \
-    /config/config.yml && \
-    chown -R 1000:1000 /config
+    -e 's|      Threads: 4|      Threads: 1|' \
+    /config/config.yml
+
+USER stockdory
+
+RUN uv sync
 
 VOLUME ["/config"]
 
-ENTRYPOINT ["/usr/local/bin/stockdory-entrypoint", "--"]
-CMD ["uv", "run", "/app/user_interface.py", "--config", "/config/config.yml"]
+ENTRYPOINT ["/usr/local/bin/stockdory-entrypoint", "--", "/app/.venv/bin/python", "/app/user_interface.py", "--config", "/config/config.yml"]

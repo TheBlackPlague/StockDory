@@ -40,6 +40,8 @@ docker pull ghcr.io/theblackplague/stockdory:latest
 docker run --rm -i ghcr.io/theblackplague/stockdory:latest
 ```
 
+The published container images currently target `linux/amd64`.
+
 Unlike a conventional precompiled container image, StockDory is compiled **natively for the host CPU when the container
 starts**. This allows the container to retain the portability and isolation of Docker while still taking advantage of
 the instruction-set capabilities available on the machine running it.
@@ -55,6 +57,12 @@ interaction from a terminal, a pseudo-terminal may also be allocated using the `
 
 ```bash
 docker run --rm -it ghcr.io/theblackplague/stockdory:latest
+```
+
+A BotLi-based Lichess image is also available:
+
+```bash
+docker run --rm -i -e LICHESS_BOT_TOKEN=<token> ghcr.io/theblackplague/stockdory-lichess:latest
 ```
 
 Per Docker guidelines, for production use it's recommended to pin the container to a specific tag of the image rather 

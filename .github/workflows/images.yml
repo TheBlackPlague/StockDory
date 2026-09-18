@@ -200,3 +200,7 @@ jobs:
                       --build-arg STOCKDORY_IMAGE=${{ steps.image_info.outputs.stockdory_base }} \
                       --tag stockdory-lichess:ci \
                       .
+
+            - name: Smoke Test StockDory Lichess for PR
+              if: github.event_name == 'pull_request'
+              run: docker run --rm --network none stockdory-lichess:ci --help

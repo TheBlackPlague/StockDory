@@ -3,7 +3,7 @@ set -eu
 
 SOURCE_DIR=/opt/stockdory
 BUILD_DIR=/tmp/stockdory-build
-ENGINE=/usr/local/bin/StockDory
+ENGINE=/opt/stockdory-bin/StockDory
 BUILD_JOBS="${STOCKDORY_BUILD_JOBS:-$(nproc)}"
 
 printf 'Compiling StockDory natively for this host (%s)...\n' "$(uname -m)"
