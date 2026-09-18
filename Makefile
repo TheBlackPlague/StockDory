@@ -19,16 +19,17 @@ else
     EXT   =
     SLASH = /
 
+    CXX_PATH   := $(shell command -v $(CXX))
+    CXX_DIR    := $(dir $(CXX_PATH))
+    CXX_SUFFIX := $(lastword $(subst -, ,$(notdir $(CXX_PATH))))
+
     LLVM_PROFDATA ?= $(shell \
-        CXX_PATH="$(command -v $(CXX))"; \
-        CXX_DIR="$(dirname "$CXX_PATH")"; \
-        CXX_VERSION="$(basename "$CXX_PATH" | sed -n 's/.*-\([0-9][0-9]*\)$/\1/p')"; \
-        if [ -n "$CXX_VERSION" ] && [ -x "$CXX_DIR/llvm-profdata-$CXX_VERSION" ]; then \
-            echo "$CXX_DIR/llvm-profdata-$CXX_VERSION"; \
-        elif [ -x "$CXX_DIR/llvm-profdata" ]; then \
-            echo "$CXX_DIR/llvm-profdata"; \
-        elif [ -n "$CXX_VERSION" ] && command -v "llvm-profdata-$CXX_VERSION" >/dev/null 2>&1; then \
-            command -v "llvm-profdata-$CXX_VERSION"; \
+        if [ -x "$(CXX_DIR)llvm-profdata-$(CXX_SUFFIX)" ]; then \
+            echo "$(CXX_DIR)llvm-profdata-$(CXX_SUFFIX)"; \
+        elif [ -x "$(CXX_DIR)llvm-profdata" ]; then \
+            echo "$(CXX_DIR)llvm-profdata"; \
+        elif command -v "llvm-profdata-$(CXX_SUFFIX)" >/dev/null 2>&1; then \
+            command -v "llvm-profdata-$(CXX_SUFFIX)"; \
         elif command -v llvm-profdata >/dev/null 2>&1; then \
             command -v llvm-profdata; \
         else \
