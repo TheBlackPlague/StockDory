@@ -2,7 +2,7 @@ name: Image Publishing
 
 on:
     push:
-        branches: [ master, lichess ]
+        branches: [ master ]
         paths:
             - "src/**"
             - "docker/**"
