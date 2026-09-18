@@ -12,6 +12,8 @@ FROM ubuntu:${UBUNTU_VERSION} AS botli_prep
 ARG BOTLI_REF
 ENV DEBIAN_FRONTEND=noninteractive
 
+RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
+
 WORKDIR /src_data
 
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
@@ -37,6 +39,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV TZ=America/Chicago
+
+RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 
 RUN mkdir -p /config && chown -R 1000:1000 /config
 VOLUME ["/config"]
