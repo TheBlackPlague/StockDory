@@ -17,7 +17,8 @@ ENV CPM_SOURCE_CACHE=/opt/stockdory-cpm
 
 WORKDIR /opt/stockdory
 
-RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
+RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 && \
+    printf 'ipv4\n' > /root/.curlrc
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates cmake curl git gnupg ninja-build lsb-release software-properties-common build-essential && \
