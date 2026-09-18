@@ -20,13 +20,18 @@ WORKDIR /opt/stockdory
 RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates cmake curl git gnupg ninja-build lsb-release software-properties-common build-essential && \
+    ca-certificates cmake curl git ninja-build build-essential && \
     rm -rf /var/lib/apt/lists/*
 
-RUN curl -4 -fsSL https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh && \
-    chmod 0755 /tmp/llvm.sh && \
-    /tmp/llvm.sh 22 && \
-    rm -f /tmp/llvm.sh
+RUN . /etc/os-release && \
+    curl -4 --retry 3 --retry-all-errors -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
+        -o /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
+    printf 'deb https://apt.llvm.org/%s/ llvm-toolchain-%s-22 main\n' \
+        "$VERSION_CODENAME" "$VERSION_CODENAME" \
+        > /etc/apt/sources.list.d/llvm.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends clang-22 && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN clang++-22 --version
 
