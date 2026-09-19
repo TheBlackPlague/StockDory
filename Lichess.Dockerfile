@@ -50,7 +50,7 @@ RUN mkdir -p /config && chown stockdory:stockdory /config
 WORKDIR /app
 
 COPY --from=botli_prep --chown=stockdory:stockdory /src_data/BotLi /app
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.12.17 /uv /usr/local/bin/uv
 
 COPY --from=botli_prep --chown=stockdory:stockdory /src_data/BotLi/config.yml.default /config/config.yml
 RUN sed -i \
