@@ -54,6 +54,7 @@ namespace StockDory
     constexpr uint16_t LMRNotImprovingBonus = 1024;
     constexpr uint16_t LMRGaveCheckPenalty  = 1024;
     constexpr uint16_t LMRHistoryWeight     = 1024;
+    constexpr uint16_t LMRTacticalPenalty   = 1024;
     constexpr uint16_t LMRHistoryPartition  =    2;
 
     constexpr uint8_t FutilityDepthFactor = 150;

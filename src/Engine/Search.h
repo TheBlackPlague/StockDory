@@ -868,16 +868,16 @@ namespace StockDory
             const bool    doLMP        = !Root && !checked && depth <= LMPMaximumDepth;
             const bool    doLMR        =          !checked && depth >= LMRMinimumDepth;
 
-            Score bestEvaluation = -Infinity;
+            uint8_t searchedQuiets = 0;
 
-            uint8_t quietMoves = 0;
+            Score bestEvaluation = -Infinity;
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move = moves[i];
 
-                const bool capture = move.Capture();
-                const bool quiet   = !capture && move.Promotion() == NAP;
+                const bool tactical = move.Tactical();
+                const bool quiet    = !tactical;
 
-                quietMoves += quiet;
+                searchedQuiets += quiet;
 
                 // Futility Pruning (FP):
                 //
@@ -913,7 +913,7 @@ namespace StockDory
                     // and will be searched earlier. If we are at a point where we've even searched a few quiet moves,
                     // then it is very likely we've already searched the good moves and searching further is not going
                     // to change the outcome of this branch - so we can stop early
-                    if (doLMP && quietMoves > lmpLastQuiet && bestEvaluation > -Infinity) break;
+                    if (doLMP && searchedQuiets > lmpLastQuiet && bestEvaluation > -Infinity) break;
                 }
 
                 const Piece movingPiece = Board[move.From()].Piece();
@@ -970,10 +970,15 @@ namespace StockDory
                         // the move may be tactical and in certain cases, extend the search depth instead
                         if (Board.Checked<OColor>()) r -= LMRGaveCheckPenalty;
 
-                        // Increase reduction for bad history moves and reduce for good history moves (possibly
-                        // extending the search depth)
-                        const int16_t history = History[Color][movingPiece][move.To()];
-                        r -= history / ((HistoryLimit / LMRHistoryPartition) / LMRHistoryWeight);
+                        if (quiet) {
+                            // Increase reduction for bad history moves and reduce for good history moves (possibly
+                            // extending the search depth)
+                            const int16_t history = History[Color][movingPiece][move.To()];
+                            r -= history / ((HistoryLimit / LMRHistoryPartition) / LMRHistoryWeight);
+                        }
+
+                        // Reduce reduction (and possibly extend the search depth) for tactical moves
+                        if (tactical) r -= LMRTacticalPenalty;
 
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
                         // mapped to discrete reduction
@@ -1044,10 +1049,10 @@ namespace StockDory
                     // cause a beta cut-off
 
                     uint8_t updated = 0;
-                    for (uint8_t j = 1; updated < quietMoves - 1; j++) {
+                    for (uint8_t j = 1; updated < searchedQuiets - 1; j++) {
                         const Move m = moves.UnsortedAccess(i - j);
 
-                        if (m.Capture() || m.Promotion() != NAP) continue;
+                        if (m.Tactical()) continue;
 
                         UpdateHistory<Color, false>(m, depth);
                         updated++;

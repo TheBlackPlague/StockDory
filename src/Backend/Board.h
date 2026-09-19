@@ -499,7 +499,7 @@ namespace StockDory
                 return ::Move(from, to, to > from ? MoveFlag::KingCastle : MoveFlag::QueenCastle);
             }
 
-            return ::Move(from, to, capture ? MoveFlag::Capture : MoveFlag::Quiet);
+            return ::Move(from, to, capture ? MoveFlag::Capture : MoveFlag::Base);
         }
 
         PreviousStateNull Move()
