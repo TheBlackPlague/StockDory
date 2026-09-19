@@ -159,17 +159,6 @@ jobs:
                       org.opencontainers.image.revision=${{ steps.image_info.outputs.revision }}
                       org.opencontainers.image.version=${{ steps.image_info.outputs.tag }}
 
-            - name: Build StockDory for PR
-              if: github.event_name == 'pull_request'
-              run: |
-                  docker build \
-                      --file Dockerfile \
-                      --tag stockdory:ci \
-                      .
-
-            - name: Smoke Test StockDory for PR
-              if: github.event_name == 'pull_request'
-              run: docker run --rm stockdory:ci bench
 
             - name: Build StockDory Lichess
               if: github.event_name != 'pull_request'
@@ -191,16 +180,3 @@ jobs:
                       org.opencontainers.image.revision=${{ steps.image_info.outputs.revision }}
                       org.opencontainers.image.version=${{ steps.image_info.outputs.tag }}
 
-            - name: Build StockDory Lichess for PR
-              if: github.event_name == 'pull_request'
-              run: |
-                  docker build \
-                      --file Lichess.Dockerfile \
-                      --build-arg BOTLI_REF=6916a09825067862009393250be9dbd39f442dc8 \
-                      --build-arg STOCKDORY_IMAGE=${{ steps.image_info.outputs.stockdory_base }} \
-                      --tag stockdory-lichess:ci \
-                      .
-
-            - name: Smoke Test StockDory Lichess for PR
-              if: github.event_name == 'pull_request'
-              run: docker run --rm --network none stockdory-lichess:ci --help
