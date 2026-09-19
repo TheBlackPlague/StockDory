@@ -1,16 +1,18 @@
-# syntax=docker/dockerfile:1.7
-
 ARG UBUNTU_VERSION=24.04
 
 # -----------------------------------------------------------------------------
-# StockDory runtime and native build environment
+# Image Configuration
 # -----------------------------------------------------------------------------
-FROM ubuntu:${UBUNTU_VERSION} AS stockdory_runtime
+FROM ubuntu:${UBUNTU_VERSION} AS stockdory_configure
 
 LABEL org.opencontainers.image.title="StockDory" \
       org.opencontainers.image.description="Strong Neural Network Chess Engine" \
       org.opencontainers.image.source="https://github.com/TheBlackPlague/StockDory" \
       org.opencontainers.image.licenses="AGPL-3.0-only"
+
+# -----------------------------------------------------------------------------
+# Environment Configuration
+# -----------------------------------------------------------------------------
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CPM_SOURCE_CACHE=/opt/stockdory-cpm
@@ -31,8 +33,11 @@ RUN curl -4 -fsSL https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh && \
 
 COPY . .
 
-# Resolve and cache build dependencies while the image is built. The engine
-# itself is intentionally not compiled here; it is built natively on startup.
+# -----------------------------------------------------------------------------
+# Native Build Configuration
+# -----------------------------------------------------------------------------
+
+# Cache dependencies & configure the build process but build the engine later, natively on startup
 RUN cmake -S . -B /tmp/stockdory-configure -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_CXX_COMPILER=clang++-22 \

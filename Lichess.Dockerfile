@@ -1,13 +1,11 @@
-# syntax=docker/dockerfile:1.7
-
 ARG UBUNTU_VERSION=24.04
 ARG BOTLI_REF=6916a09825067862009393250be9dbd39f442dc8
 ARG STOCKDORY_IMAGE=ghcr.io/theblackplague/stockdory:latest
 
 # -----------------------------------------------------------------------------
-# Prepare BotLi
+# Lichess Configuration
 # -----------------------------------------------------------------------------
-FROM ubuntu:${UBUNTU_VERSION} AS botli_prep
+FROM ubuntu:${UBUNTU_VERSION} AS lichess_configuration
 
 ARG BOTLI_REF
 ENV DEBIAN_FRONTEND=noninteractive
@@ -26,9 +24,9 @@ RUN git init BotLi && \
     rm -rf .git
 
 # -----------------------------------------------------------------------------
-# Lichess Bot (extended from the StockDory image)
+# Lichess Runtime
 # -----------------------------------------------------------------------------
-FROM ${STOCKDORY_IMAGE} AS lichess_bot
+FROM ${STOCKDORY_IMAGE} AS lichess_runtime
 
 USER root
 
@@ -49,10 +47,10 @@ RUN mkdir -p /config && chown stockdory:stockdory /config
 
 WORKDIR /app
 
-COPY --from=botli_prep --chown=stockdory:stockdory /src_data/BotLi /app
+COPY --from=lichess_configuration --chown=stockdory:stockdory /src_data/BotLi /app
 COPY --from=ghcr.io/astral-sh/uv:0.12.17 /uv /usr/local/bin/uv
 
-COPY --from=botli_prep --chown=stockdory:stockdory /src_data/BotLi/config.yml.default /config/config.yml
+COPY --from=lichess_configuration --chown=stockdory:stockdory /src_data/BotLi/config.yml.default /config/config.yml
 RUN sed -i \
     -e 's|token: "XXXXXXXXXXXXXXXXXXXXXXXX"|token: ""|' \
     -e 's|dir: "./engines"|dir: "/opt/stockdory-bin"|' \
@@ -66,4 +64,8 @@ USER stockdory
 
 VOLUME ["/config"]
 
-ENTRYPOINT ["/usr/local/bin/stockdory-entrypoint", "--", "/app/.venv/bin/python", "/app/user_interface.py", "--config", "/config/config.yml"]
+ENTRYPOINT [
+    "/usr/local/bin/stockdory-entrypoint", "--",
+    "/app/.venv/bin/python", "/app/user_interface.py",
+    "--config", "/config/config.yml"
+]
