@@ -84,3 +84,7 @@ dist/
 
 # Makefile
 Build/
+
+# Generated source metadata
+.stockdory-revision
+.stockdory-release

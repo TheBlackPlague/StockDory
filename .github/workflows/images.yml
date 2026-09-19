@@ -1,0 +1,182 @@
+name: Image Publishing
+
+on:
+    push:
+        branches: [ master ]
+        tags: [ "*" ]
+        paths:
+            - "src/**"
+            - "docker/**"
+            - "CMakeLists.txt"
+            - "*.cmake"
+            - "Dockerfile"
+            - "Dockerfile.dockerignore"
+            - "Lichess.Dockerfile"
+            - "Lichess.Dockerfile.dockerignore"
+            - ".github/workflows/images.yml"
+    pull_request:
+        branches: [ master ]
+        types: [ opened, synchronize, reopened ]
+        paths:
+            - "src/**"
+            - "docker/**"
+            - "CMakeLists.txt"
+            - "*.cmake"
+            - "Dockerfile"
+            - "Dockerfile.dockerignore"
+            - "Lichess.Dockerfile"
+            - "Lichess.Dockerfile.dockerignore"
+            - ".github/workflows/images.yml"
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: images-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        permissions:
+            contents: read
+            packages: write
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+
+            - name: Image Names & Tags
+              id: image_info
+              shell: bash
+              env:
+                  EVENT_NAME: ${{ github.event_name }}
+                  PR_BRANCH: ${{ github.head_ref }}
+                  PR_SHA: ${{ github.event.pull_request.head.sha }}
+                  REF: ${{ github.ref }}
+                  REF_NAME: ${{ github.ref_name }}
+                  COMMIT_SHA: ${{ github.sha }}
+              run: |
+                  set -euo pipefail
+
+                  release=false
+
+                  if [[ "$EVENT_NAME" == "pull_request" ]]; then
+                      branch="$PR_BRANCH"
+                      revision="$PR_SHA"
+                  else
+                      branch="$REF_NAME"
+                      revision="$COMMIT_SHA"
+
+                      if [[ "$REF" == refs/tags/* ]]; then
+                          release=true
+                      fi
+                  fi
+
+                  branch="$(printf '%s' "$branch" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_.-]+/-/g; s/^[.-]+//; s/[.-]+$//')"
+                  branch="${branch:0:111}"
+                  short_revision="${revision:0:10}"
+
+                  if [[ "$release" == "true" ]]; then
+                      tag="$branch"
+                  else
+                      tag="${branch:-image}-${short_revision}"
+                  fi
+                  owner="${GITHUB_REPOSITORY_OWNER,,}"
+                  stockdory="ghcr.io/${owner}/stockdory"
+                  lichess="ghcr.io/${owner}/stockdory-lichess"
+
+                  if [[ "$EVENT_NAME" == "pull_request" ]]; then
+                      stockdory_base="stockdory:ci"
+                  else
+                      stockdory_base="${stockdory}:${tag}"
+                  fi
+
+                  {
+                      printf 'stockdory=%s\n' "$stockdory"
+                      printf 'lichess=%s\n' "$lichess"
+                      printf 'tag=%s\n' "$tag"
+                      printf 'short_revision=%s\n' "$short_revision"
+                      printf 'revision=%s\n' "$revision"
+                      printf 'release=%s\n' "$release"
+                      printf 'stockdory_base=%s\n' "$stockdory_base"
+
+                      printf 'stockdory_tags<<EOF\n%s:%s\n' "$stockdory" "$tag"
+                      if [[ "$EVENT_NAME" != "pull_request" && "$GITHUB_REF" == "refs/heads/master" ]]; then
+                          printf '%s:latest\n' "$stockdory"
+                      fi
+                      printf 'EOF\n'
+
+                      printf 'lichess_tags<<EOF\n%s:%s\n' "$lichess" "$tag"
+                      if [[ "$EVENT_NAME" != "pull_request" && "$GITHUB_REF" == "refs/heads/master" ]]; then
+                          printf '%s:latest\n' "$lichess"
+                      fi
+                      printf 'EOF\n'
+                  } >> "$GITHUB_OUTPUT"
+
+            - name: Write Source Metadata
+              shell: bash
+              env:
+                  STOCKDORY_REVISION: ${{ steps.image_info.outputs.short_revision }}
+                  STOCKDORY_RELEASE: ${{ steps.image_info.outputs.release }}
+              run: |
+                  if [[ "$STOCKDORY_RELEASE" == "true" ]]; then
+                      : > .stockdory-release
+                  else
+                      printf '%s\n' "$STOCKDORY_REVISION" > .stockdory-revision
+                  fi
+
+            - name: Docker Setup
+              if: github.event_name != 'pull_request'
+              uses: docker/setup-buildx-action@v4
+
+            - name: GHCR Login
+              if: github.event_name != 'pull_request'
+              uses: docker/login-action@v4
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Build StockDory
+              if: github.event_name != 'pull_request'
+              uses: docker/build-push-action@v7
+              with:
+                  context: .
+                  file: Dockerfile
+                  platforms: linux/amd64
+                  push: true
+                  tags: ${{ steps.image_info.outputs.stockdory_tags }}
+                  cache-from: type=gha,scope=stockdory
+                  cache-to: type=gha,mode=max,scope=stockdory
+                  labels: |
+                      org.opencontainers.image.title=StockDory
+                      org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+                      org.opencontainers.image.revision=${{ steps.image_info.outputs.revision }}
+                      org.opencontainers.image.version=${{ steps.image_info.outputs.tag }}
+
+
+            - name: Build StockDory Lichess
+              if: github.event_name != 'pull_request'
+              uses: docker/build-push-action@v7
+              with:
+                  context: .
+                  file: Lichess.Dockerfile
+                  platforms: linux/amd64
+                  push: true
+                  build-args: |
+                      BOTLI_REF=6916a09825067862009393250be9dbd39f442dc8
+                      STOCKDORY_IMAGE=${{ steps.image_info.outputs.stockdory_base }}
+                  tags: ${{ steps.image_info.outputs.lichess_tags }}
+                  cache-from: type=gha,scope=stockdory-lichess
+                  cache-to: type=gha,mode=max,scope=stockdory-lichess
+                  labels: |
+                      org.opencontainers.image.title=StockDory Lichess Bot
+                      org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+                      org.opencontainers.image.revision=${{ steps.image_info.outputs.revision }}
+                      org.opencontainers.image.version=${{ steps.image_info.outputs.tag }}
+
