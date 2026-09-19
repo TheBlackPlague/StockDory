@@ -29,8 +29,6 @@ RUN curl -4 -fsSL https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh && \
     /tmp/llvm.sh 22 && \
     rm -f /tmp/llvm.sh
 
-RUN clang++-22 --version
-
 COPY . .
 
 # Resolve and cache build dependencies while the image is built. The engine
