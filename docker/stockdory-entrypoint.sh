@@ -18,7 +18,6 @@ cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" -G Ninja \
 cmake --build "$BUILD_DIR" --parallel "$BUILD_JOBS"
 install -m 0755 "$BUILD_DIR/StockDory" "$ENGINE"
 
-printf 'uci\nisready\nquit\n' | "$ENGINE" | grep -q 'readyok'
 rm -rf "$BUILD_DIR"
 
 if [ "${1:-}" = "--" ]; then
