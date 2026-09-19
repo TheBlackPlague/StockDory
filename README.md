@@ -21,14 +21,14 @@ human ability.
 
 ### 🎮 Building & Using
 
-> [!NOTE]
+> [!TIP]
 > StockDory is a command-line program that communicates through the **standard input and output streams** using the
-> **Universal Chess Interface (UCI)** protocol. For normal use, it is recommended to pair StockDory with a
+> **Universal Chess Interface (UCI)** protocol. For personal use, it is recommended to pair StockDory with a 
 > **UCI-compatible** graphical interface such as [En Croissant](https://encroissant.org/).
 
 For the quickest way to get started, it is recommended to use one of the
-[official release binaries](https://github.com/TheBlackPlague/StockDory/releases) (which target the three most widely used desktop operating systems) or use an official 
-container image (see below).
+[official release binaries](https://github.com/TheBlackPlague/StockDory/releases) (which target the three most widely 
+used desktop operating systems) or use an official container image (see below).
 
 #### 🐳 Container
 
@@ -40,7 +40,9 @@ docker pull ghcr.io/theblackplague/stockdory:latest
 docker run --rm -i ghcr.io/theblackplague/stockdory:latest
 ```
 
-The published container images currently target `linux/amd64`.
+> [!CAUTION]
+> StockDory's official container images currently only support `x86` (also known as `amd64`) architecture CPUs. They do
+> not support being run on CPUs of the `arm` (`arm32` or `arm64`) architecture.
 
 Unlike a conventional precompiled container image, StockDory is compiled **natively for the host CPU when the container
 starts**. This allows the container to retain the portability and isolation of Docker while still taking advantage of
@@ -59,14 +61,8 @@ interaction from a terminal, a pseudo-terminal may also be allocated using the `
 docker run --rm -it ghcr.io/theblackplague/stockdory:latest
 ```
 
-A BotLi-based Lichess image is also available:
-
-```bash
-docker run --rm -i -e LICHESS_BOT_TOKEN=<token> ghcr.io/theblackplague/stockdory-lichess:latest
-```
-
-Per Docker guidelines, for production use it's recommended to pin the container to a specific tag of the image rather 
-than the forward-sliding `latest` tag. 
+For production use it's recommended to pin the container to a specific tag of the image rather than the forward-sliding 
+`latest` tag. 
 
 #### ⚙️ Native Build
 
@@ -84,7 +80,7 @@ is:
 * 🥷 Ninja >= 1.10 (recommended: 1.12)
 * 🐉 LLVM >= 22 (recommended: 22.1.8)
 
-> [!CAUTION]
+> [!WARNING]
 > Other toolchains or build-system substitutions may work, but they are not officially supported and may produce builds
 > with different behavior or performance characteristics. Maintaining equivalent support across multiple compiler
 > toolchains is impractical due to differences in compiler behavior, optimization capabilities, and platform 
@@ -115,7 +111,6 @@ cd StockDory
 # capabilities.
 cmake -B Build -G Ninja \
       -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_C_COMPILER=clang \
       -DCMAKE_CXX_COMPILER=clang++
 
 # OPTION B ---
@@ -129,7 +124,6 @@ cmake -B Build -G Ninja \
 # may not achieve the maximum possible performance on any one machine.
 cmake -B Build -G Ninja \
       -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_C_COMPILER=clang \
       -DCMAKE_CXX_COMPILER=clang++ \
       -DBUILD_NATIVE=OFF \
       -DARCHITECTURE=<architecture>
