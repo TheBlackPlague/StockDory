@@ -25,7 +25,8 @@ namespace StockDory
             limit.Timed = true;
             limit.Fixed = true;
 
-            limit.ActualTime  = MS(Time);
+            limit. ActualTime = MS(Time);
+            limit.   BaseTime = MS(Time);
             limit.OptimalTime = MS(Time);
         }
 
@@ -35,12 +36,11 @@ namespace StockDory
     struct UCITime<false>
     {
 
-        uint64_t WhiteTime  = 0;
-        uint64_t BlackTime  = 0;
-        uint64_t WhiteInc   = 0;
-        uint64_t BlackInc   = 0;
-
-        uint16_t MovesToGo  = 0;
+        uint64_t WhiteTime = 0;
+        uint64_t BlackTime = 0;
+        uint64_t WhiteInc  = 0;
+        uint64_t BlackInc  = 0;
+        uint64_t MovesToGo = 0;
 
         Color ColorToMove = NAC;
 
@@ -52,16 +52,23 @@ namespace StockDory
             const uint64_t time = ColorToMove == White ? WhiteTime : BlackTime;
             const uint64_t inc  = ColorToMove == White ? WhiteInc  : BlackInc ;
 
-            uint64_t actualTime = time * TimeBasePartitionNumerator / TimeBasePartitionDenominator;
+            const uint64_t usableTime = time > TimeProcessingOverhead ? time - TimeProcessingOverhead : 0;
 
-            actualTime = MovesToGo > 0 ? std::max(actualTime, time / MovesToGo) : actualTime;
+            const uint64_t movesToGo = MovesToGo > 0 ? MovesToGo : TimeDefaultMovesToGo;
 
-            actualTime += inc * TimeIncrementPartitionNumerator / TimeIncrementPartitionDenominator;
+            const uint64_t timePerMove = usableTime / movesToGo + (usableTime % movesToGo != 0);
 
-            actualTime -= TimeProcessingOverhead;
+            const uint64_t incrementTime = inc / TimeIncrementPartitionDenominator * TimeIncrementPartitionNumerator +
+                                           inc % TimeIncrementPartitionDenominator * TimeIncrementPartitionNumerator /
+                                                 TimeIncrementPartitionDenominator;
 
-            limit.ActualTime  = MS(actualTime);
-            limit.OptimalTime = MS(actualTime);
+            const uint64_t optimalTime = timePerMove + std::min<uint64_t>(incrementTime, usableTime - timePerMove);
+            const uint64_t  actualTime = optimalTime > usableTime / TimeHardLimitMultiplier ?
+                                                       usableTime : optimalTime * TimeHardLimitMultiplier;
+
+            limit. ActualTime = MS( actualTime);
+            limit.   BaseTime = MS(optimalTime);
+            limit.OptimalTime = MS(optimalTime);
         }
 
     };
