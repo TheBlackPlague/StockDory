@@ -322,6 +322,9 @@ namespace StockDory
 
         TP StartTime = {};
 
+        uint64_t     RootNodes = 0;
+        uint64_t BestMoveNodes = 0;
+
         bool SingleMove = false;
 
         size_t ThreadId = 0;
@@ -380,6 +383,8 @@ namespace StockDory
                     // to choose from
 
                     const auto time = ElapsedTime();
+
+                    SearchTimeManagement();
 
                     EventHandler::HandleIterativeDeepeningIterationCompletion({
                         .Depth          = IDepth,
@@ -457,6 +462,30 @@ namespace StockDory
             Limit.ActualTime = Limit.BaseTime;
         }
 
+        void SearchTimeManagement()
+        {
+            if (!Limit.Timed) return;
+            if ( Limit.Fixed) return;
+            if (  SingleMove) return;
+
+            if (IDepth < TimeManagementMinimumDepth) return;
+
+            double factor = 1.0;
+
+            if (RootNodes > 0) {
+                const double effort = std::clamp(static_cast<double>(BestMoveNodes) / RootNodes, 0.0, 1.0);
+                factor *= TimeNodeBase - TimeNodeEffortWeight * effort;
+            }
+
+            const double scaledTime = static_cast<double>(Limit.BaseTime.count()) * factor;
+
+            const uint64_t optimalTime = static_cast<uint64_t>(
+                std::min(scaledTime, static_cast<double>(Limit.ActualTime.count()))
+            );
+
+            Limit.OptimalTime = MS(optimalTime);
+        }
+
         template<Color Color>
         Score Aspiration(const int16_t depth)
         {
@@ -492,6 +521,11 @@ namespace StockDory
                 // window and try again for future search iterations with a better understanding of the search space
                 if (alpha < -AspirationWindowFallbackBound) alpha = -Infinity;
                 if (beta  >  AspirationWindowFallbackBound) beta  =  Infinity;
+
+                if (ThreadType == Main) {
+                    RootNodes     = 0;
+                    BestMoveNodes = 0;
+                }
 
                 const Score bestEvaluation = PVS<Color, true, true>(0, depth, alpha, beta);
 
@@ -909,6 +943,10 @@ namespace StockDory
 
                 const Piece movingPiece = Board[move.From()].Piece();
 
+                uint64_t nodesBeforeMove = 0;
+
+                if (Root && ThreadType == Main) nodesBeforeMove = GetNodes();
+
                 const PreviousState state = DoMove<true>(move, ply);
 
                 // Principle Variation Search (PVS):
@@ -988,9 +1026,18 @@ namespace StockDory
 
                 UndoMove<true>(state, move);
 
+                uint64_t moveNodes = 0;
+
+                if (Root && ThreadType == Main) {
+                    moveNodes = GetNodes() - nodesBeforeMove;
+                    RootNodes += moveNodes;
+                }
+
                 if (evaluation <= bestEvaluation) continue;
 
                 bestEvaluation = evaluation;
+
+                if (Root && ThreadType == Main) BestMoveNodes = moveNodes;
 
                 if (evaluation <= alpha) continue;
 
