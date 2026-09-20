@@ -175,7 +175,8 @@ namespace StockDory
         bool Timed = false;
         bool Fixed = false;
 
-        MS ActualTime  {};
+        MS  ActualTime {};
+        MS    BaseTime {};
         MS OptimalTime {};
 
     };
@@ -321,7 +322,16 @@ namespace StockDory
 
         TP StartTime = {};
 
-        uint8_t SearchStability = 0;
+        uint64_t     RootNodes = 0;
+        uint64_t BestMoveNodes = 0;
+
+        Score ExpectedEvaluation = None;
+        Move  TimeBestMove       =  {} ;
+
+        uint8_t  MoveStability = 1;
+        uint8_t ScoreStability = 1;
+
+        bool SingleMove = false;
 
         size_t ThreadId = 0;
 
@@ -364,8 +374,6 @@ namespace StockDory
 
             IDepth = 1;
             while (IDepth <= Limit.Depth && !OutOfTime<Limit::Optimal>()) {
-                const Move lastBestMove = BestMove;
-
                 if (Board.ColorToMove() ==   White)
                      Evaluation = Aspiration<White>(IDepth);
                 else Evaluation = Aspiration<Black>(IDepth);
@@ -382,7 +390,7 @@ namespace StockDory
 
                     const auto time = ElapsedTime();
 
-                    SearchStabilityTimeOptimization(lastBestMove);
+                    SearchTimeManagement();
 
                     EventHandler::HandleIterativeDeepeningIterationCompletion({
                         .Depth          = IDepth,
@@ -450,26 +458,59 @@ namespace StockDory
                 moveCount = moves.Count();
             }
 
-            if (moveCount > 1) return;
+            SingleMove = moveCount <= 1;
 
-            const uint64_t time = Limit.OptimalTime.count();
+            if (!SingleMove) return;
 
-            Limit.OptimalTime = MS(time * TimeBasePartitionNumerator / TimeBasePartitionDenominator);
+            Limit.OptimalTime = MS(
+                Limit.BaseTime.count() * TimeSingleMovePartitionNumerator / TimeSingleMovePartitionDenominator
+            );
+            Limit.ActualTime = Limit.BaseTime;
         }
 
-        void SearchStabilityTimeOptimization(const Move lastBestMove)
+        void SearchTimeManagement()
         {
             if (!Limit.Timed) return;
             if ( Limit.Fixed) return;
+            if (  SingleMove) return;
 
-            if (lastBestMove == BestMove) SearchStability = std::min<uint8_t>(SearchStability + 1, 4);
-            else                          SearchStability = 0;
+            if (IDepth < TimeManagementMinimumDepth) return;
 
-            const auto factor = SearchStabilityTimeOptimizationFactor[SearchStability];
+            if (TimeBestMove && TimeBestMove == BestMove)
+                MoveStability = std::min<uint8_t>(MoveStability + 1, TimeMoveStabilityMax);
+            else {
+                MoveStability = 1;
+                TimeBestMove = BestMove;
+            }
 
-            const uint64_t time = Limit.OptimalTime.count();
+            if (ExpectedEvaluation != None &&
+                std::abs(ExpectedEvaluation - Evaluation) <= TimeScoreStabilityMargin) {
+                ExpectedEvaluation = (ExpectedEvaluation + Evaluation) / 2;
 
-            Limit.OptimalTime = MS(std::min<uint64_t>(time * factor / 100, Limit.ActualTime.count()));
+                ScoreStability = std::min<uint8_t>(ScoreStability + 1, TimeScoreStabilityMax);
+            } else {
+                ScoreStability = 1;
+                ExpectedEvaluation = Evaluation;
+            }
+
+            double factor = 1.0;
+
+            if (RootNodes > 0) {
+                const double effort = std::clamp(static_cast<double>(BestMoveNodes) / RootNodes, 0.0, 1.0);
+                factor *= TimeNodeBase - TimeNodeEffortWeight * effort;
+            }
+
+            factor *= TimeMoveStabilityBase + TimeMoveStabilityWeight / MoveStability;
+
+            factor *= TimeScoreStabilityBase + TimeScoreStabilityWeight / ScoreStability;
+
+            const double scaledTime = static_cast<double>(Limit.BaseTime.count()) * factor;
+
+            const uint64_t optimalTime = static_cast<uint64_t>(
+                std::min(scaledTime, static_cast<double>(Limit.ActualTime.count()))
+            );
+
+            Limit.OptimalTime = MS(optimalTime);
         }
 
         template<Color Color>
@@ -507,6 +548,15 @@ namespace StockDory
                 // window and try again for future search iterations with a better understanding of the search space
                 if (alpha < -AspirationWindowFallbackBound) alpha = -Infinity;
                 if (beta  >  AspirationWindowFallbackBound) beta  =  Infinity;
+
+                // Node Distribution:
+                //
+                // Reset node distribution prior to each PVS call so that the final successful PVS call supplies the
+                // statistics used for the completed iteration
+                if (ThreadType == Main) {
+                    RootNodes     = 0;
+                    BestMoveNodes = 0;
+                }
 
                 const Score bestEvaluation = PVS<Color, true, true>(0, depth, alpha, beta);
 
@@ -924,6 +974,10 @@ namespace StockDory
 
                 const Piece movingPiece = Board[move.From()].Piece();
 
+                uint64_t nodesBeforeMove = 0;
+
+                if (Root && ThreadType == Main) nodesBeforeMove = GetNodes();
+
                 const PreviousState state = DoMove<true>(move, ply);
 
                 // Principle Variation Search (PVS):
@@ -1003,9 +1057,18 @@ namespace StockDory
 
                 UndoMove<true>(state, move);
 
+                uint64_t moveNodes = 0;
+
+                if (Root && ThreadType == Main) {
+                    moveNodes = GetNodes() - nodesBeforeMove;
+                    RootNodes += moveNodes;
+                }
+
                 if (evaluation <= bestEvaluation) continue;
 
                 bestEvaluation = evaluation;
+
+                if (Root && ThreadType == Main) BestMoveNodes = moveNodes;
 
                 if (evaluation <= alpha) continue;
 
