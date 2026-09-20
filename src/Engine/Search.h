@@ -966,8 +966,8 @@ namespace StockDory
                         // If we are not improving positionally, we can afford to reduce the search depth further
                         if (!improving) r += LMRNotImprovingBonus;
 
-                        // Reduce reduction (and possibly extend the search depth) for tactical moves
-                        if (tactical) r -= LMRTacticalPenalty;
+                        // Decrease reduction (and possibly extend the search depth) for tactical moves
+                        if (!tactical) r -= LMRTacticalPenalty;
 
                         if (quiet) {
                             // Increase reduction for bad history moves and reduce for good history moves (possibly
@@ -1048,7 +1048,7 @@ namespace StockDory
                     for (uint8_t j = 1; updated < searchedQuiets - 1; j++) {
                         const Move m = moves.UnsortedAccess(i - j);
 
-                        if (m.Tactical()) continue;
+                        if (Board.IsMoveTactical<Color>(m)) continue;
 
                         UpdateHistory<Color, false>(m, depth);
                         updated++;

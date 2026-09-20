@@ -513,7 +513,7 @@ namespace StockDory
             const BitBoard fromBB = FromSquare(from);
             const BitBoard   toBB = FromSquare(  to);
 
-            const Square theirKing = ToSquare(PieceBoard<Them>(King));
+            const Square theirKing = ToSquare(BB[Them][King]);
 
             BitBoard occupied = ~Empty();
 
@@ -562,7 +562,7 @@ namespace StockDory
 
         template<Color We>
         [[nodiscard]]
-        bool IsMoveTactical(const ::Move move) const
+        bool IsMoveTactical(const ::Move move) const requires Engine
         { return move.Capture() || move.Promotion() || GivesCheck<We>(move); }
 
         PreviousStateNull Move()
