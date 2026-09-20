@@ -542,7 +542,7 @@ namespace StockDory
             }
         }
 
-        template<Color Color, bool PV, bool Root>
+        template<Color Color, bool PV, bool Root, bool NMPAllowed = true>
         Score PVS(const uint8_t ply, int16_t depth, Score alpha, Score beta)
         {
             // Opponent's color for recursive calls
@@ -801,7 +801,13 @@ namespace StockDory
                 // binary search window, centered around our upper bound (beta) as their lower bound (alpha). If the
                 // branch is bad for the opponent, they'll be unable to improve upon their lower bound and fail-low. In
                 // turn, this can allow us to produce a beta cut-off and prune this branch
-                if (!Root && depth >= NullMoveMinimumDepth && staticEvaluation >= beta) {
+                const BitBoard nonPawnMaterial = Board.PieceBoard<Color>(Knight) |
+                                                 Board.PieceBoard<Color>(Bishop) |
+                                                 Board.PieceBoard<Color>(Rook  ) |
+                                                 Board.PieceBoard<Color>(Queen ) ;
+
+                if (!Root && NMPAllowed && depth >= NullMoveMinimumDepth && staticEvaluation >= beta &&
+                    nonPawnMaterial && !IsMate(beta) && !IsMate(staticEvaluation)) {
                     // The reduced depth is determined by the below formula:
                     //
                     // d = current depth
@@ -831,7 +837,7 @@ namespace StockDory
 
                     const PreviousStateNull state = Board.Move();
 
-                    const auto evaluation = -PVS<OColor, false, false>(
+                    const auto evaluation = -PVS<OColor, false, false, false>(
                         ply + 1,
                         reducedDepth,
                         -beta,
