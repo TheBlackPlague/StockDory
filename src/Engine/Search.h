@@ -325,6 +325,10 @@ namespace StockDory
         uint64_t     RootNodes = 0;
         uint64_t BestMoveNodes = 0;
 
+        Move TimeBestMove = {};
+
+        uint8_t MoveStability = 1;
+
         bool SingleMove = false;
 
         size_t ThreadId = 0;
@@ -470,12 +474,21 @@ namespace StockDory
 
             if (IDepth < TimeManagementMinimumDepth) return;
 
+            if (TimeBestMove && TimeBestMove == BestMove)
+                MoveStability = std::min<uint8_t>(MoveStability + 1, TimeMoveStabilityMax);
+            else {
+                MoveStability = 1;
+                TimeBestMove = BestMove;
+            }
+
             double factor = 1.0;
 
             if (RootNodes > 0) {
                 const double effort = std::clamp(static_cast<double>(BestMoveNodes) / RootNodes, 0.0, 1.0);
                 factor *= TimeNodeBase - TimeNodeEffortWeight * effort;
             }
+
+            factor *= TimeMoveStabilityBase + TimeMoveStabilityWeight / MoveStability;
 
             const double scaledTime = static_cast<double>(Limit.BaseTime.count()) * factor;
 
