@@ -175,7 +175,8 @@ namespace StockDory
         bool Timed = false;
         bool Fixed = false;
 
-        MS ActualTime  {};
+        MS  ActualTime {};
+        MS    BaseTime {};
         MS OptimalTime {};
 
     };
@@ -321,7 +322,7 @@ namespace StockDory
 
         TP StartTime = {};
 
-        uint8_t SearchStability = 0;
+        bool SingleMove = false;
 
         size_t ThreadId = 0;
 
@@ -364,8 +365,6 @@ namespace StockDory
 
             IDepth = 1;
             while (IDepth <= Limit.Depth && !OutOfTime<Limit::Optimal>()) {
-                const Move lastBestMove = BestMove;
-
                 if (Board.ColorToMove() ==   White)
                      Evaluation = Aspiration<White>(IDepth);
                 else Evaluation = Aspiration<Black>(IDepth);
@@ -381,8 +380,6 @@ namespace StockDory
                     // to choose from
 
                     const auto time = ElapsedTime();
-
-                    SearchStabilityTimeOptimization(lastBestMove);
 
                     EventHandler::HandleIterativeDeepeningIterationCompletion({
                         .Depth          = IDepth,
@@ -450,26 +447,14 @@ namespace StockDory
                 moveCount = moves.Count();
             }
 
-            if (moveCount > 1) return;
+            SingleMove = moveCount <= 1;
 
-            const uint64_t time = Limit.OptimalTime.count();
+            if (!SingleMove) return;
 
-            Limit.OptimalTime = MS(time * TimeBasePartitionNumerator / TimeBasePartitionDenominator);
-        }
-
-        void SearchStabilityTimeOptimization(const Move lastBestMove)
-        {
-            if (!Limit.Timed) return;
-            if ( Limit.Fixed) return;
-
-            if (lastBestMove == BestMove) SearchStability = std::min<uint8_t>(SearchStability + 1, 4);
-            else                          SearchStability = 0;
-
-            const auto factor = SearchStabilityTimeOptimizationFactor[SearchStability];
-
-            const uint64_t time = Limit.OptimalTime.count();
-
-            Limit.OptimalTime = MS(std::min<uint64_t>(time * factor / 100, Limit.ActualTime.count()));
+            Limit.OptimalTime = MS(
+                Limit.BaseTime.count() * TimeSingleMovePartitionNumerator / TimeSingleMovePartitionDenominator
+            );
+            Limit.ActualTime = Limit.BaseTime;
         }
 
         template<Color Color>
