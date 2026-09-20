@@ -30,6 +30,11 @@ namespace StockDory
     constexpr double  TimeMoveStabilityWeight = 0.75;
     constexpr uint8_t TimeMoveStabilityMax    = 7   ;
 
+    constexpr int16_t TimeScoreStabilityMargin = 10   ;
+    constexpr double  TimeScoreStabilityBase   =  0.67;
+    constexpr double  TimeScoreStabilityWeight =  0.66;
+    constexpr uint8_t TimeScoreStabilityMax    =  5   ;
+
     constexpr uint16_t AspirationWindowFallbackBound = 3500;
     constexpr uint8_t  AspirationWindowMargin        = 16;
     constexpr uint8_t  AspirationWindowMarginDelta   = 23;

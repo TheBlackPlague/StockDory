@@ -325,9 +325,11 @@ namespace StockDory
         uint64_t     RootNodes = 0;
         uint64_t BestMoveNodes = 0;
 
-        Move TimeBestMove = {};
+        Score ExpectedEvaluation = None;
+        Move  TimeBestMove       =  {} ;
 
-        uint8_t MoveStability = 1;
+        uint8_t  MoveStability = 1;
+        uint8_t ScoreStability = 1;
 
         bool SingleMove = false;
 
@@ -481,6 +483,16 @@ namespace StockDory
                 TimeBestMove = BestMove;
             }
 
+            if (ExpectedEvaluation != None &&
+                std::abs(ExpectedEvaluation - Evaluation) <= TimeScoreStabilityMargin) {
+                ExpectedEvaluation = (ExpectedEvaluation + Evaluation) / 2;
+
+                ScoreStability = std::min<uint8_t>(ScoreStability + 1, TimeScoreStabilityMax);
+            } else {
+                ScoreStability = 1;
+                ExpectedEvaluation = Evaluation;
+            }
+
             double factor = 1.0;
 
             if (RootNodes > 0) {
@@ -489,6 +501,8 @@ namespace StockDory
             }
 
             factor *= TimeMoveStabilityBase + TimeMoveStabilityWeight / MoveStability;
+
+            factor *= TimeScoreStabilityBase + TimeScoreStabilityWeight / ScoreStability;
 
             const double scaledTime = static_cast<double>(Limit.BaseTime.count()) * factor;
 
