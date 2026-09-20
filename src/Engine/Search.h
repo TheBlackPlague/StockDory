@@ -968,7 +968,7 @@ namespace StockDory
 
                         // If our move was tactical or gave check, we should try to reduce the search depth less as
                         // the move may be tactical and in certain cases, extend the search depth instead
-                        if (tactical || Board.Checked<OColor>()) r -= LMRTacticalOrCheckPenalty;
+                        if (Board.Checked<OColor>()) r -= LMRTacticalOrCheckPenalty;
 
                         if (quiet) {
                             // Increase reduction for bad history moves and reduce for good history moves (possibly
