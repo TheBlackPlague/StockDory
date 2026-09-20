@@ -502,6 +502,69 @@ namespace StockDory
             return ::Move(from, to, capture ? MoveFlag::Capture : MoveFlag::Base);
         }
 
+        template<Color We>
+        bool GivesCheck(const ::Move move) const requires Engine
+        {
+            constexpr Color Them = Opposite(We);
+
+            const Square from = move.From();
+            const Square   to = move.  To();
+
+            const BitBoard fromBB = FromSquare(from);
+            const BitBoard   toBB = FromSquare(  to);
+
+            const Square theirKing = ToSquare(PieceBoard<Them>(King));
+
+            BitBoard occupied = ~Empty();
+
+            occupied &= ~fromBB;
+            occupied |=    toBB;
+
+            Array<BitBoard, 6> pieceBB = BB[We];
+
+            const Piece piece = PieceAndColor[from].Piece();
+
+            if (move.EnPassant()) {
+                const auto attacked = static_cast<Square>(to + (We == White ? -8 : 8));
+
+                occupied &= ~FromSquare(attacked);
+            }
+
+            pieceBB[                                           piece] &= ~fromBB;
+            pieceBB[move.Promotion() ? move.PromotionPiece() : piece] |=    toBB;
+
+            if (move.Castling()) {
+                const bool kingSide = to > from;
+
+                const Square rookFrom = We == White ? (kingSide ? H1 : A1) : (kingSide ? H8 : A8);
+                const Square rookTo   = We == White ? (kingSide ? F1 : D1) : (kingSide ? F8 : D8);
+
+                const BitBoard rookBBFrom = FromSquare(rookFrom);
+                const BitBoard rookBBTo   = FromSquare(rookTo  );
+
+                occupied      &= ~rookBBFrom;
+                occupied      |=  rookBBTo  ;
+                pieceBB[Rook] &= ~rookBBFrom;
+                pieceBB[Rook] |=  rookBBTo  ;
+            }
+
+            if (AttackTable::Pawn  [Them][theirKing] & pieceBB[Pawn  ]) return true;
+            if (AttackTable::Knight      [theirKing] & pieceBB[Knight]) return true;
+
+            const uint32_t mIndexBishop = BlackMagicFactory::MagicIndex(Bishop, theirKing, occupied);
+            if (AttackTable::Sliding[mIndexBishop] & (pieceBB[Bishop] | pieceBB[Queen])) return true;
+
+            const uint32_t mIndexRook   = BlackMagicFactory::MagicIndex(Rook  , theirKing, occupied);
+            if (AttackTable::Sliding[mIndexRook  ] & (pieceBB[Rook  ] | pieceBB[Queen])) return true;
+
+            return AttackTable::King[theirKing] & pieceBB[King];
+        }
+
+        template<Color We>
+        [[nodiscard]]
+        bool IsMoveTactical(const ::Move move) const
+        { return move.Capture() || move.Promotion() || GivesCheck<We>(move); }
+
         PreviousStateNull Move()
         {
             const PreviousStateNull state (EnPassantSquare());
@@ -538,10 +601,12 @@ namespace StockDory
             if (T & NNUE) Evaluation::PreMove(threadId);
 
             const Square from = move.From();
-            const Square to   = move.To();
+            const Square   to = move.  To();
+
             const PieceColor moved = PieceAndColor[from];
-            const Piece piece = moved.Piece();
-            const Color color = moved.Color();
+            const Piece      piece = moved.Piece();
+
+            const Color color    = moved.Color();
             const Color opposite = Opposite(color);
 
             assert(piece != NAP && color == ColorToMove());
@@ -579,17 +644,17 @@ namespace StockDory
                 state.EnPassantCapture = move.EnPassant();
             }
 
-            if (move.Promotion() != NAP) {
-                state.PromotedPiece = move.Promotion();
+            if (move.PromotionPiece() != NAP) {
+                state.PromotedPiece = move.PromotionPiece();
 
-                RemovePiece (Pawn            , color, from);
-                PlacePiece  (move.Promotion(), color,   to);
-                HashPiece<T>(Pawn            , color, from);
-                HashPiece<T>(move.Promotion(), color,   to);
+                RemovePiece (Pawn                 , color, from);
+                PlacePiece  (move.PromotionPiece(), color,   to);
+                HashPiece<T>(Pawn                 , color, from);
+                HashPiece<T>(move.PromotionPiece(), color,   to);
 
                 if (T & NNUE) {
-                    Evaluation::Deactivate(Pawn, color, from, threadId);
-                    Evaluation::Activate(move.Promotion(), color, to, threadId);
+                    Evaluation::Deactivate(Pawn            , color, from, threadId);
+                    Evaluation::Activate  (move.PromotionPiece(), color,   to, threadId);
                 }
             } else {
                 TransitionPiece(piece, color, from, to);

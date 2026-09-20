@@ -874,7 +874,7 @@ namespace StockDory
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move = moves[i];
 
-                const bool tactical = move.Tactical();
+                const bool tactical = Board.IsMoveTactical<Color>(move);
                 const bool quiet    = !tactical;
 
                 searchedQuiets += quiet;
@@ -966,9 +966,8 @@ namespace StockDory
                         // If we are not improving positionally, we can afford to reduce the search depth further
                         if (!improving) r += LMRNotImprovingBonus;
 
-                        // If our last move gave check to the opponent, we should try to reduce the search depth less as
-                        // the move may be tactical and in certain cases, extend the search depth instead
-                        if (Board.Checked<OColor>()) r -= LMRGaveCheckPenalty;
+                        // Reduce reduction (and possibly extend the search depth) for tactical moves
+                        if (tactical) r -= LMRTacticalPenalty;
 
                         if (quiet) {
                             // Increase reduction for bad history moves and reduce for good history moves (possibly
@@ -976,9 +975,6 @@ namespace StockDory
                             const int16_t history = History[Color][movingPiece][move.To()];
                             r -= history / ((HistoryLimit / LMRHistoryPartition) / LMRHistoryWeight);
                         }
-
-                        // Reduce reduction (and possibly extend the search depth) for tactical moves
-                        if (tactical) r -= LMRTacticalPenalty;
 
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
                         // mapped to discrete reduction

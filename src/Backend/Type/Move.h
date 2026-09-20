@@ -123,9 +123,15 @@ struct Move
     }
 
     [[nodiscard]]
-    constexpr Piece Promotion() const noexcept
+    constexpr bool Promotion() const noexcept
     {
-        return Internal & PromotionMask ? static_cast<Piece>((Internal >> FlagPos & 3) + Knight) : NAP;
+        return Internal & PromotionMask;
+    }
+
+    [[nodiscard]]
+    constexpr Piece PromotionPiece() const noexcept
+    {
+        return Promotion() ? static_cast<Piece>((Internal >> FlagPos & 3) + Knight) : NAP;
     }
 
     [[nodiscard]]
@@ -161,7 +167,7 @@ struct Move
     [[nodiscard]]
     constexpr bool SameIdentity(const Move other) const noexcept
     {
-        return (Internal & 0x0FFF) == (other.Internal & 0x0FFF) && Promotion() == other.Promotion();
+        return (Internal & 0x0FFF) == (other.Internal & 0x0FFF) && PromotionPiece() == other.PromotionPiece();
     }
 
     [[nodiscard]]
@@ -180,7 +186,7 @@ struct Move
 
         std::string result = ::ToString(From()) + ::ToString(To());
 
-        if (const Piece promotion = Promotion(); promotion != NAP)
+        if (const Piece promotion = PromotionPiece(); promotion != NAP)
             result += static_cast<char>(FirstLetter(promotion) + ('a' - 'A'));
 
         return result;

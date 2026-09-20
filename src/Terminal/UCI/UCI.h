@@ -242,10 +242,12 @@ namespace StockDory
             if (check.DoubleCheck && Piece != King) return {};
 
             const MoveList<Piece, Color> moves(Board, move.From(), pin, check);
-            if (moves.Promotion(move.From()) != (move.Promotion() != NAP)) return {};
+
+            if (moves.Promotion(move.From()) != (move.PromotionPiece() != NAP)) return {};
+
             if (!moves.Mask(FromSquare(move.To())).Count()) return {};
 
-            return Board.CreateMove<Piece>(move.From(), move.To(), move.Promotion());
+            return Board.CreateMove<Piece>(move.From(), move.To(), move.PromotionPiece());
         }
 
         template<Color Color>
