@@ -46,7 +46,9 @@ namespace StockDory
             output << "score ";
 
             if (IsMate(event.Evaluation)) {
-                output << "mate " << (PlyToMate(event.Evaluation) + 1) / 2 << " ";
+                const Score ply = PlyToMate(event.Evaluation);
+
+                output << "mate " << (ply > 0 ? (ply + 1) / 2 : (ply - 1) / 2) << " ";
             } else {
                 output << "cp " << event.Evaluation << " ";
             }

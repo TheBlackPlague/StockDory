@@ -12,7 +12,7 @@ if (NOT APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-avx512vnni")
 endif ()
 
-set(VERSION  "0.2"    )
+set(VERSION  "0.2.1"  )
 set(CODENAME "Piranha")
 
 option(BUILD_NATIVE     "Build with native optimizations enabled"          ON )
