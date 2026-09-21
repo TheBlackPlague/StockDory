@@ -11,15 +11,15 @@
 namespace StockDory
 {
 
-    constexpr uint8_t TimeBasePartitionNumerator        = 1;
-    constexpr uint8_t TimeBasePartitionDenominator      = 20;
-    constexpr uint8_t TimeIncrementPartitionNumerator   = 3;
-    constexpr uint8_t TimeIncrementPartitionDenominator = 4;
-    constexpr uint8_t TimeProcessingOverhead            = 10;
+    constexpr uint8_t TimeDefaultMovesToGo = 24;
 
-    constexpr Array<uint16_t, 5> SearchStabilityTimeOptimizationFactor {
-        250, 180, 120, 99, 97
-    };
+    constexpr uint8_t TimeIncrementPartitionNumerator   =  3;
+    constexpr uint8_t TimeIncrementPartitionDenominator =  4;
+    constexpr uint8_t TimeProcessingOverhead            = 10;
+    constexpr uint8_t TimeHardLimitMultiplier           =  5;
+
+    constexpr uint8_t TimeSingleMovePartitionNumerator   =  1;
+    constexpr uint8_t TimeSingleMovePartitionDenominator = 20;
 
     constexpr uint16_t AspirationWindowFallbackBound = 3500;
     constexpr uint8_t  AspirationWindowMargin        = 16;
