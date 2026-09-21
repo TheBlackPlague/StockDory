@@ -322,6 +322,9 @@ namespace StockDory
 
         TP StartTime = {};
 
+        uint64_t     RootNodes = 0;
+        uint64_t BestMoveNodes = 0;
+
         bool SingleMove = false;
 
         size_t ThreadId = 0;
@@ -374,12 +377,12 @@ namespace StockDory
 
                 if (ThreadType == Main) {
                     // On the main thread, we need to fire events to notify handlers about the completion of the
-                    // iterative deepening iteration and provide them with the results. Furthermore, if we are on the
-                    // main thread, we should also try to see if our search is stable enough. If it is, we can avoid
-                    // spending much more time on the search and instead save time for when we have multiple good moves
-                    // to choose from
+                    // iterative deepening iteration and provide them with the results. Furthermore, if needed, the
+                    // main thread is also responsible for optimizing the time allocation for the next iterations
 
                     const auto time = ElapsedTime();
+
+                    SearchTimeManagement();
 
                     EventHandler::HandleIterativeDeepeningIterationCompletion({
                         .Depth          = IDepth,
@@ -457,6 +460,31 @@ namespace StockDory
             Limit.ActualTime = Limit.BaseTime;
         }
 
+        void SearchTimeManagement()
+        {
+            if (!Limit.Timed) return;
+            if ( Limit.Fixed) return;
+
+            if (SingleMove) return;
+
+            if (IDepth < TimeManagementMinimumDepth) return;
+
+            double factor = 1.0;
+
+            if (RootNodes > 0) {
+                const double effort = static_cast<double>(BestMoveNodes) / RootNodes;
+                factor *= TimeNodeBase - TimeNodeEffortWeight * effort;
+            }
+
+            const double scaledTime = static_cast<double>(Limit.BaseTime.count()) * factor;
+
+            const uint64_t optimalTime = static_cast<uint64_t>(
+                std::min(scaledTime, static_cast<double>(Limit.ActualTime.count()))
+            );
+
+            Limit.OptimalTime = MS(optimalTime);
+        }
+
         template<Color Color>
         Score Aspiration(const int16_t depth)
         {
@@ -492,6 +520,11 @@ namespace StockDory
                 // window and try again for future search iterations with a better understanding of the search space
                 if (alpha < -AspirationWindowFallbackBound) alpha = -Infinity;
                 if (beta  >  AspirationWindowFallbackBound) beta  =  Infinity;
+
+                if (ThreadType == Main) {
+                    RootNodes     = 0;
+                    BestMoveNodes = 0;
+                }
 
                 const Score bestEvaluation = PVS<Color, true, true>(0, depth, alpha, beta);
 
@@ -909,6 +942,10 @@ namespace StockDory
 
                 const Piece movingPiece = Board[move.From()].Piece();
 
+                uint64_t nodesBeforeMove = 0;
+
+                if (Root && ThreadType == Main) nodesBeforeMove = GetNodes();
+
                 const PreviousState state = DoMove<true>(move, ply);
 
                 // Principle Variation Search (PVS):
@@ -988,9 +1025,18 @@ namespace StockDory
 
                 UndoMove<true>(state, move);
 
+                uint64_t moveNodes = 0;
+
+                if (Root && ThreadType == Main) {
+                    moveNodes = GetNodes() - nodesBeforeMove;
+                    RootNodes += moveNodes;
+                }
+
                 if (evaluation <= bestEvaluation) continue;
 
                 bestEvaluation = evaluation;
+
+                if (Root && ThreadType == Main) BestMoveNodes = moveNodes;
 
                 if (evaluation <= alpha) continue;
 
