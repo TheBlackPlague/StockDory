@@ -325,6 +325,10 @@ namespace StockDory
         uint64_t     RootNodes = 0;
         uint64_t BestMoveNodes = 0;
 
+        Move LastBestMove = {};
+
+        uint8_t BestMoveStability = 1;
+
         bool SingleMove = false;
 
         size_t ThreadId = 0;
@@ -368,6 +372,8 @@ namespace StockDory
 
             IDepth = 1;
             while (IDepth <= Limit.Depth && !OutOfTime<Limit::Optimal>()) {
+                if (ThreadType == Main) LastBestMove = BestMove;
+
                 if (Board.ColorToMove() ==   White)
                      Evaluation = Aspiration<White>(IDepth);
                 else Evaluation = Aspiration<Black>(IDepth);
@@ -475,6 +481,11 @@ namespace StockDory
                 const double effort = static_cast<double>(BestMoveNodes) / RootNodes;
                 factor *= TimeNodeBase - TimeNodeEffortWeight * effort;
             }
+
+            BestMoveStability = LastBestMove && LastBestMove == BestMove ?
+                                std::min<uint8_t>(BestMoveStability + 1, TimeMoveStabilityMax) : 1;
+
+            factor *= TimeMoveStabilityBase + TimeMoveStabilityWeight / BestMoveStability;
 
             const double scaledTime = static_cast<double>(Limit.BaseTime.count()) * factor;
 
