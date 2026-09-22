@@ -135,17 +135,12 @@ namespace StockDory
         private:
         void SortNext(const uint8_t sorted)
         {
-            uint8_t index = sorted;
-            uint8_t i     = sorted + 1;
+            uint32_t best = Internal[sorted].Score << 8 | (MaxMove - sorted);
+            for (uint8_t i = sorted + 1; i < Size; i++) best = std::max(best, Internal[i].Score << 8 | (MaxMove - i));
 
-            while (i < Size) {
-                if (Internal[i].Score > Internal[index].Score) index = i;
-                i++;
-            }
+            const uint8_t index = MaxMove - (best & 0xFF);
 
-            const OrderedMove temp = Internal[ index];
-            Internal[ index]       = Internal[sorted];
-            Internal[sorted]       = temp;
+            std::swap(Internal[index], Internal[sorted]);
         }
 
     };
