@@ -60,10 +60,10 @@ namespace StockDory
                 Encode(value),
                 Encode( min ),
                 Encode( max ),
-                [](const int32_t value)
+                [](const int32_t _value)
                 {
-                    if (std::is_floating_point_v<T>) Variable = static_cast<T>(value / 1000.0);
-                    else                             Variable = static_cast<T>(value         );
+                    if (std::is_floating_point_v<T>) Variable = static_cast<T>(_value / 1000.0);
+                    else                             Variable = static_cast<T>(_value         );
                 }
             });
 

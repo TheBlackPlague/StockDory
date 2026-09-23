@@ -140,7 +140,17 @@ namespace StockDory
                     (parameter.Name, parameter.Default, parameter.Min, parameter.Max,
                         [parameter](const int32_t& value) -> void
                         {
-                            if (value < parameter.Min || value > parameter.Max) return;
+                            if (value < parameter.Min) {
+                                std::cerr << "Parameter "             << parameter.Name            ;
+                                std::cerr << " must be greater than " << parameter.Min << std::endl;
+                                return;
+                            }
+
+                            if (value > parameter.Max) {
+                                std::cerr << "Parameter "             << parameter.Name            ;
+                                std::cerr << " must be less than "    << parameter.Max << std::endl;
+                                return;
+                            }
 
                             parameter.Set(value);
                         }
@@ -150,6 +160,7 @@ namespace StockDory
             }
 
 #endif
+
         }
 
         static void HandleInput(const std::string& input)

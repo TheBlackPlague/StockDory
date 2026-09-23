@@ -122,6 +122,7 @@ namespace StockDory
 
                 OptionHandler(parsed);
             }
+
 #else
 
             OptionHandler(strutil::parse_string<T>(value));
