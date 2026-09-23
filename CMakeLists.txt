@@ -18,6 +18,7 @@ set(CODENAME "Koi")
 option(BUILD_NATIVE     "Build with native optimizations enabled"          ON )
 option(BUILD_PGO        "Build with Profile Guided Optimization"           OFF)
 option(BUILD_CI         "Build for CI - BUILD_NATIVE/BUILD_PGO is ignored" OFF)
+option(BUILD_TUNING     "Build with tunable UCI parameters"                OFF)
 option(BUILD_PRODUCTION "Build for production - Version is solidified"     OFF)
 
 set(RELEASE_FILE  "${CMAKE_CURRENT_SOURCE_DIR}/.stockdory-release")
@@ -108,6 +109,10 @@ endif ()
 file(GLOB_RECURSE HEADER "src/*.h")
 
 add_executable(StockDory src/main.cpp ${HEADER})
+
+if (BUILD_TUNING)
+    target_compile_definitions(StockDory PRIVATE BUILD_TUNING)
+endif ()
 
 target_include_directories(StockDory PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/BuildSystem)
 target_link_libraries(StockDory MantaRay nanothread)

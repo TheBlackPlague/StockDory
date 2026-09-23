@@ -131,6 +131,36 @@ namespace StockDory
             UCIOptionSwitch.emplace(   hash->GetName(), hash   );
             UCIOptionSwitch.emplace(threads->GetName(), threads);
             UCIOptionSwitch.emplace(    wdl->GetName(), wdl    );
+
+#ifdef BUILD_TUNING
+
+            for (const auto& parameter : TunableParameter::All()) {
+                auto option =
+                    std::make_shared<UCIOption<int32_t>>
+                    (parameter.Name, parameter.Default, parameter.Min, parameter.Max,
+                        [parameter](const int32_t& value) -> void
+                        {
+                            if (value < parameter.Min) {
+                                std::cerr << "Parameter "                         << parameter.Name            ;
+                                std::cerr << " must be greater than or equal to " << parameter.Min << std::endl;
+                                return;
+                            }
+
+                            if (value > parameter.Max) {
+                                std::cerr << "Parameter "                        << parameter.Name            ;
+                                std::cerr << " must be less than or equal to"    << parameter.Max << std::endl;
+                                return;
+                            }
+
+                            parameter.Set(value);
+                        }
+                    );
+
+                UCIOptionSwitch.emplace(option->GetName(), option);
+            }
+
+#endif
+
         }
 
         static void HandleInput(const std::string& input)
@@ -167,6 +197,9 @@ namespace StockDory
             if (!UCIPrompted || args.size() < 4) return;
 
             if (!UCIOptionSwitch.contains(args[1])) return;
+
+            if (UCISearch::Searching.Load(MemoryOrder::acquire)) UCISearch::MainTask.Stop();
+            UCISearch::Searching.Wait(true, MemoryOrder::acquire);
 
             const std::vector<std::string> parameterLeading = {args.begin() + 3, args.end()};
             const std::string              parameter        = strutil::join(parameterLeading, "");

@@ -4,7 +4,9 @@
 ifeq ($(origin CXX), default)
     CXX = clang++
 endif
+
 EXE ?= StockDory
+BUILD_TUNING ?= $(if $(filter StockDoryTuning-%,$(EXE)),ON,OFF)
 
 # Detect OS and set environment-specific variables
 ifeq ($(OS),Windows_NT)
@@ -50,6 +52,7 @@ endif
 	cmake -B Build -G Ninja \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_CXX_COMPILER=$(CXX) \
+		-DBUILD_TUNING=$(BUILD_TUNING) \
 		-DBUILD_PGO=ON
 	cmake --build Build --config Release
 
@@ -63,9 +66,10 @@ endif
 
 	@echo "[*] Performing optimized build with profiling data..."
 	cmake -B Build -G Ninja \
-    	-DCMAKE_BUILD_TYPE=Release \
-    	-DCMAKE_CXX_COMPILER=$(CXX) \
-    	-DBUILD_PGO=ON
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_CXX_COMPILER=$(CXX) \
+		-DBUILD_TUNING=$(BUILD_TUNING) \
+		-DBUILD_PGO=ON
 	cmake --build Build --config Release
 
 	@echo "[*] Copying final binary to root directory..."
