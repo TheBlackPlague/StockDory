@@ -141,14 +141,14 @@ namespace StockDory
                         [parameter](const int32_t& value) -> void
                         {
                             if (value < parameter.Min) {
-                                std::cerr << "Parameter "             << parameter.Name            ;
-                                std::cerr << " must be greater than " << parameter.Min << std::endl;
+                                std::cerr << "Parameter "                         << parameter.Name            ;
+                                std::cerr << " must be greater than or equal to " << parameter.Min << std::endl;
                                 return;
                             }
 
                             if (value > parameter.Max) {
-                                std::cerr << "Parameter "             << parameter.Name            ;
-                                std::cerr << " must be less than "    << parameter.Max << std::endl;
+                                std::cerr << "Parameter "                        << parameter.Name            ;
+                                std::cerr << " must be less than or equal to"    << parameter.Max << std::endl;
                                 return;
                             }
 
