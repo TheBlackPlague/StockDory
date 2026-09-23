@@ -52,8 +52,8 @@ endif
 	cmake -B Build -G Ninja \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_CXX_COMPILER=$(CXX) \
-		-DBUILD_PGO=ON \
-		-DBUILD_TUNING=$(BUILD_TUNING)
+		-DBUILD_TUNING=$(BUILD_TUNING) \
+		-DBUILD_PGO=ON
 	cmake --build Build --config Release
 
 	@echo "[*] Running benchmark to generate profiling data..."
@@ -68,8 +68,8 @@ endif
 	cmake -B Build -G Ninja \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_CXX_COMPILER=$(CXX) \
-		-DBUILD_PGO=ON \
-		-DBUILD_TUNING=$(BUILD_TUNING)
+		-DBUILD_TUNING=$(BUILD_TUNING) \
+		-DBUILD_PGO=ON
 	cmake --build Build --config Release
 
 	@echo "[*] Copying final binary to root directory..."
