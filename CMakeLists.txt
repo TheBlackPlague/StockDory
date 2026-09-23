@@ -18,7 +18,7 @@ set(CODENAME "Koi")
 option(BUILD_NATIVE     "Build with native optimizations enabled"          ON )
 option(BUILD_PGO        "Build with Profile Guided Optimization"           OFF)
 option(BUILD_CI         "Build for CI - BUILD_NATIVE/BUILD_PGO is ignored" OFF)
-option(BUILD_TUNING     "Build with tunable UCI parameters"                ON )
+option(BUILD_TUNING     "Build with tunable UCI parameters"                OFF)
 option(BUILD_PRODUCTION "Build for production - Version is solidified"     OFF)
 
 set(RELEASE_FILE  "${CMAKE_CURRENT_SOURCE_DIR}/.stockdory-release")

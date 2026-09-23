@@ -182,6 +182,7 @@ namespace StockDory
             ss << "id nnue " << Evaluation::Name() << "\n";
             ss << "id author " << AUTHOR << "\n";
             ss << "id license " << LICENSE << "\n";
+            ss << "\n";
 
             for (const auto& option: UCIOptionSwitch | std::views::values)
                 ss << option->Log() << "\n";
