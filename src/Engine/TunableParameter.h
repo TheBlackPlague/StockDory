@@ -134,7 +134,6 @@ namespace StockDory
     PARAMETER(uint16_t, HistoryMultiplier, 300, 150, 450);
     PARAMETER(uint16_t, HistoryShiftDown , 250,   0, 500);
 
-    PARAMETER(uint16_t, MaterialScalingWeightedStartValue, 6688, 4000, 10000);
     PARAMETER(uint16_t, MaterialScalingWeightPawn        ,    0,    0,   100);
     PARAMETER(uint16_t, MaterialScalingWeightKnight      ,  308,  150,   500);
     PARAMETER(uint16_t, MaterialScalingWeightBishop      ,  346,  150,   550);

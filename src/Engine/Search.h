@@ -1229,6 +1229,7 @@ namespace StockDory
         }
 
         template<Color Color>
+        [[clang::noinline]]
         Score EvaluateScaled() const
         {
             const BitBoard pawn   = Board.PieceBoard(Pawn  , White) | Board.PieceBoard(Pawn  , Black);
@@ -1237,13 +1238,12 @@ namespace StockDory
             const BitBoard rook   = Board.PieceBoard(Rook  , White) | Board.PieceBoard(Rook  , Black);
             const BitBoard queen  = Board.PieceBoard(Queen , White) | Board.PieceBoard(Queen , Black);
 
-            uint16_t weightedMaterial = Count(pawn  ) * MaterialScalingWeightPawn   +
-                                        Count(knight) * MaterialScalingWeightKnight +
-                                        Count(bishop) * MaterialScalingWeightBishop +
-                                        Count(rook  ) * MaterialScalingWeightRook   +
-                                        Count(queen ) * MaterialScalingWeightQueen  ;
-
-            weightedMaterial += MaterialScalingQuantization - MaterialScalingWeightedStartValue;
+            const int32_t weightedMaterial = MaterialScalingQuantization                                             +
+                                             (static_cast<int32_t>(Count(pawn  )) -16) * MaterialScalingWeightPawn   +
+                                             (static_cast<int32_t>(Count(knight)) - 4) * MaterialScalingWeightKnight +
+                                             (static_cast<int32_t>(Count(bishop)) - 4) * MaterialScalingWeightBishop +
+                                             (static_cast<int32_t>(Count(rook  )) - 4) * MaterialScalingWeightRook   +
+                                             (static_cast<int32_t>(Count(queen )) - 2) * MaterialScalingWeightQueen  ;
 
             return (Evaluation::Evaluate(Color, ThreadId) * weightedMaterial) / MaterialScalingQuantization;
         }
