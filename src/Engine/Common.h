@@ -27,6 +27,9 @@ namespace StockDory
 
     constexpr Score MateInMaxDepth = Mate - MaxDepth * 4;
 
+    constexpr uint16_t LMRQuantization             =  1024;
+    constexpr uint16_t MaterialScalingQuantization = 16384;
+
     constexpr uint16_t HistoryLimit = 16384;
 
     constexpr size_t MB = 1024 * 1024;

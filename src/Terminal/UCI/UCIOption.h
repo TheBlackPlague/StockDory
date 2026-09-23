@@ -6,6 +6,7 @@
 #ifndef STOCKDORY_UCIOPTION_H
 #define STOCKDORY_UCIOPTION_H
 
+#include <charconv>
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -111,7 +112,22 @@ namespace StockDory
                 if (strutil::compare_ignore_case(value, "false")) { OptionHandler(false); return; }
             }
 
+#ifdef BUILD_TUNING
+
+            if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
+                T parsed {};
+
+                const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), parsed);
+                if (error != std::errc() || end != value.data() + value.size()) return;
+
+                OptionHandler(parsed);
+            }
+#else
+
             OptionHandler(strutil::parse_string<T>(value));
+
+#endif
+
         }
 
     };
