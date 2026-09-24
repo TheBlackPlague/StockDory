@@ -3,7 +3,7 @@ include(DownloadCPM.cmake)
 CPMAddPackage(
         NAME MantaRay
         GITHUB_REPOSITORY TheBlackPlague/MantaRay
-        GIT_TAG c1aaf591f835d148a64ff4ea65dbda32b65ea996
+        GIT_TAG 080ab8c8de2db65a178cd16698b5a772efb87347
         OPTIONS
         "BUILD_TESTS OFF"
         "BUILD_BENCHMARKS OFF"
