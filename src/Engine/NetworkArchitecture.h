@@ -6,25 +6,30 @@
 #ifndef STOCKDORY_NETWORKARCHITECTURE_H
 #define STOCKDORY_NETWORKARCHITECTURE_H
 
-#include <MantaRay/Backend/Kernel/Activation/ClippedReLU.h>
-#include <MantaRay/Frontend/Architecture/Perspective.h>
-#include <MantaRay/Frontend/Architecture/Common/AccumulatorStack.h>
+#include <MantaRay/MantaRay.h>
 
-// Activation Function:
-constexpr auto ClippedReLU = &MantaRay::ClippedReLU<MantaRay::i16, 0, 255>::Activate;
+template<MantaRay::s00 HiddenSize>
+using MantaRayArchitecture = MantaRay::Network<
+    MantaRay::Quantization<255, 64, 400>,
+    MantaRay::Mirror<
+        MantaRay::Accumulate<
+            MantaRay::Layer<768, HiddenSize, MantaRay::ClippedReLU<0, 1>>
+        >
+    >,
+    MantaRay::Concat,
+    MantaRay::Layer<HiddenSize * 2, 1>
+>;
 
-// Architecture:
-using Starshard = MantaRay::Perspective<
-    MantaRay::i16, MantaRay::i32, ClippedReLU, 768, 256, 1, 400, 255, 64
->;
-using Aurora    = MantaRay::Perspective<
-    MantaRay::i16, MantaRay::i32, ClippedReLU, 768, 384, 1, 400, 255, 64
->;
+using StarshardArchitecture = MantaRayArchitecture<256>;
+using    AuroraArchitecture = MantaRayArchitecture<384>;
+
+using Starshard = MantaRay::Runtime::Network<StarshardArchitecture>;
+using    Aurora = MantaRay::Runtime::Network<   AuroraArchitecture>;
 
 // Accumulator Stack:
 constexpr size_t AccumulatorStackSize = StockDory::MaxDepth * 4;
 
-using StarshardStack = MantaRay::AccumulatorStack<MantaRay::i16, 256, AccumulatorStackSize>;
-using    AuroraStack = MantaRay::AccumulatorStack<MantaRay::i16, 384, AccumulatorStackSize>;
+using StarshardStack = MantaRay::Runtime::AccumulatorStack<StarshardArchitecture, AccumulatorStackSize>;
+using    AuroraStack = MantaRay::Runtime::AccumulatorStack<   AuroraArchitecture, AccumulatorStackSize>;
 
 #endif //STOCKDORY_NETWORKARCHITECTURE_H
