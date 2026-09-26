@@ -6,6 +6,7 @@
 #ifndef STOCKDORY_TRANSPOSITIONTABLE_H
 #define STOCKDORY_TRANSPOSITIONTABLE_H
 
+#include <array>
 #include <vector>
 
 #include "../Backend/ThreadPool.h"
@@ -21,6 +22,18 @@ namespace StockDory
     {
 
         using Entry = Atomic<T>;
+
+        static constexpr size_t ClusterSize = 4;
+
+        struct alignas(32) Cluster
+        {
+
+            std::array<Entry, ClusterSize> Entries;
+
+        };
+
+        static_assert(sizeof(Entry) == 8);
+        static_assert(sizeof(Cluster) == 32);
 
         class Reference
         {
@@ -45,7 +58,7 @@ namespace StockDory
 
         };
 
-        std::vector<Entry> Internal;
+        std::vector<Cluster> Internal;
 
         size_t Count = 0;
 
@@ -57,24 +70,54 @@ namespace StockDory
 
         void Resize(const size_t bytes)
         {
-            Count = bytes / sizeof(Entry);
+            Count = bytes / sizeof(Cluster);
 
             Clear();
         }
 
         void Clear()
         {
-            Internal = std::vector<Entry>(Count);
+            Internal = std::vector<Cluster>(Count);
         }
 
         Reference operator [](const ZobristHash hash)
         {
-            return Reference(Internal[fastrange64(hash, Count)]);
+            auto& entries = Internal[fastrange64(hash, Count)].Entries;
+
+            const auto key = CompressHash(hash);
+
+            size_t replacement = 0;
+
+            T previous = entries[0].Load(MemoryOrder::relaxed);
+
+            if (previous.Type != T::EntryType::Invalid && previous.Hash == key) return Reference(entries[0]);
+
+            for (size_t i = 1; i < ClusterSize; i++) {
+                const T entry = entries[i].Load(MemoryOrder::relaxed);
+
+                if (entry.Type != T::EntryType::Invalid && entry.Hash == key) return Reference(entries[i]);
+
+                if (previous.Type != T::EntryType::Invalid &&
+                   (   entry.Type == T::EntryType::Invalid || entry.Depth < previous.Depth)) {
+                    replacement = i;
+                    previous = entry;
+                }
+            }
+
+            return Reference(entries[replacement]);
         }
 
         T operator [](const ZobristHash hash) const
         {
-            return Internal[fastrange64(hash, Count)].Load(MemoryOrder::relaxed);
+            const auto key = static_cast<decltype(T::Hash)>(hash);
+
+            for (const auto& atomic : Internal[fastrange64(hash, Count)].Entries) {
+                const T entry = atomic.Load(MemoryOrder::relaxed);
+
+                if (entry.Type != T::EntryType::Invalid && entry.Hash == key) return entry;
+            }
+
+            return {};
         }
 
         void Prefetch(const ZobristHash hash) const
@@ -85,7 +128,7 @@ namespace StockDory
         [[nodiscard]]
         size_t Size() const
         {
-            return Internal.size();
+            return Internal.size() * ClusterSize;
         }
 
     };

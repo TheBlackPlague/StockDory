@@ -34,21 +34,6 @@ namespace StockDory
 
     };
 
-    using CompressedHash  = uint16_t;
-    using CompressedScore =  int16_t;
-
-    CompressedHash  CompressHash (const ZobristHash hash) { return hash; }
-
-    CompressedScore CompressScore(const Score score, const uint8_t ply)
-    {
-        return IsWin(score) ? score + ply : IsLoss(score) ? score - ply : score;
-    }
-
-    Score DecompressScore(const CompressedScore score, const uint8_t ply)
-    {
-        return IsWin(score) ? score - ply : IsLoss(score) ? score + ply : score;
-    }
-
     struct SearchTranspositionEntry
     {
 
@@ -662,10 +647,10 @@ namespace StockDory
             // exists a transposition entry - if the entry is valid, depending on the quality of the entry, we can
             // return the evaluation from the entry. Even if the entry isn't of sufficient quality to return directly,
             // we can still search the move in the entry first, since it most likely is the best move in the position
-            SearchTranspositionEntry ttEntry      = TT[hash];
-            Move                     ttMove       = {};
-            bool                     ttHit        = false;
-            Score                    ttEvaluation = None;
+            const SearchTranspositionEntry ttEntry      = TT[hash];
+            Move                           ttMove       = {};
+            bool                           ttHit        = false;
+            Score                          ttEvaluation = None;
 
             if (ttEntry.Type != Invalid && ttEntry.Hash == CompressHash(hash)) {
                 ttHit  = true;
@@ -1274,13 +1259,15 @@ namespace StockDory
 
         static void TryReplaceTT(const ZobristHash hash, const SearchTranspositionEntry nEntry)
         {
-            const SearchTranspositionEntry pEntry = TT[hash];
+            auto entry = TT[hash];
+
+            const SearchTranspositionEntry pEntry = entry;
 
             if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
                (pEntry.Type == Alpha &&
                 nEntry.Type == Beta) ||
                 nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
-                TT[hash] = nEntry;
+                entry = nEntry;
         }
 
     };

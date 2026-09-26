@@ -59,6 +59,21 @@ namespace StockDory
                IsLoss(score) ? -Mate - score : 0;
     }
 
+    using CompressedHash  = uint16_t;
+    using CompressedScore =  int16_t;
+
+    CompressedHash  CompressHash (const ZobristHash hash) { return hash; }
+
+    CompressedScore CompressScore(const Score score, const uint8_t ply)
+    {
+        return IsWin(score) ? score + ply : IsLoss(score) ? score - ply : score;
+    }
+
+    Score DecompressScore(const CompressedScore score, const uint8_t ply)
+    {
+        return IsWin(score) ? score - ply : IsLoss(score) ? score + ply : score;
+    }
+
 } // StockDory
 
 #endif //STOCKDORY_COMMON_H
