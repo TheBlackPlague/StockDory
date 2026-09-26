@@ -92,6 +92,9 @@ namespace StockDory
             Score   StaticEvaluation = None;
             uint8_t HalfMoveCounter  =    0;
 
+            Piece PieceToMove = NAP;
+            Move         Move = { };
+
         };
 
         private:
@@ -304,6 +307,8 @@ namespace StockDory
         KTable Killer  {};
         HTable History {};
 
+        CHTable ContinuationHistory {};
+
         SearchStack Stack {};
 
         RepetitionStack Repetition {};
@@ -443,10 +448,10 @@ namespace StockDory
             uint8_t moveCount;
 
             if (Board.ColorToMove() == White) {
-                const OrderedMoveList<White> moves (Board, 0, Killer, History);
+                const OrderedMoveList<White, false, false> moves (Board);
                 moveCount = moves.Count();
             } else {
-                const OrderedMoveList<Black> moves (Board, 0, Killer, History);
+                const OrderedMoveList<Black, false, false> moves (Board);
                 moveCount = moves.Count();
             }
 
@@ -855,6 +860,9 @@ namespace StockDory
 
                     const PreviousStateNull state = Board.Move();
 
+                    Stack[ply].PieceToMove = NAP;
+                    Stack[ply].       Move = { };
+
                     const auto evaluation = -PVS<OColor, false, false, false>(
                         ply + 1,
                         reducedDepth,
@@ -873,7 +881,10 @@ namespace StockDory
 
             using MoveList = OrderedMoveList<Color>;
 
-            MoveList moves (Board, ply, Killer, History, ttMove);
+            const HTable& continuation = Stack[ply - 1].Move ?
+                ContinuationHistory[Stack[ply - 1].PieceToMove][Stack[ply - 1].Move.To()] : NullHistory;
+
+            MoveList moves (Board, ply, Killer, History, continuation, ttMove);
 
             // Out of Moves:
             //
@@ -1060,11 +1071,10 @@ namespace StockDory
                 if (evaluation < beta) continue;
 
                 if (!Stopped() && quiet) {
-                    // Killer and History Table Updates:
+                    // Killer Updates:
                     //
-                    // Update the Killer and History Table if a quiet move caused a beta cut-off to ensure we search
-                    // this move earlier in the future. Make sure not to do this if the search was stopped, as we'll
-                    // otherwise corrupt the Killer and history table
+                    // Update the Killer table if a quiet move caused a beta cut-off to ensure we search this move
+                    // earlier in the future
 
                     // If Killer Move 0 is different from the current move:
                     //    Killer Move 0 -> Killer Move 1
@@ -1074,19 +1084,23 @@ namespace StockDory
                         Killer[0][ply] = move;
                     }
 
-                    // Increase the history value for the current move in the history table
-                    UpdateHistory<Color, true>(move, depth);
+                    // History Updates:
+                    //
+                    // We should update histories (raise the move that caused the beta cut-off and diminish the moves
+                    // that didn't) so that we search them earlier in the future and can use their values to make
+                    // better reduction & pruning decisions
 
-                    // Reduce the history value for all other quiet moves that were searched, since they didn't
-                    // cause a beta cut-off
+                    // Bonus for the quiet that caused a beta cut-off
+                    UpdateHistory<Color, true>(move, depth, ply);
 
+                    // Malus for all other quiets as they didn't cause a beta cut-off
                     uint8_t updated = 0;
                     for (uint8_t j = 1; updated < quietMoves - 1; j++) {
                         const Move m = moves.UnsortedAccess(i - j);
 
                         if (m.Capture() || m.Promotion() != NAP) continue;
 
-                        UpdateHistory<Color, false>(m, depth);
+                        UpdateHistory<Color, false>(m, depth, ply);
                         updated++;
                     }
                 }
@@ -1154,7 +1168,7 @@ namespace StockDory
 
             using MoveList = OrderedMoveList<Color, true>;
 
-            MoveList moves (Board, ply, Killer, History);
+            MoveList moves (Board, ply, Killer, NullHistory, NullHistory);
 
             Score bestEvaluation = staticEvaluation;
             for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -1196,6 +1210,9 @@ namespace StockDory
 
             Stack[ply + 1].HalfMoveCounter = resetHalfMoveCounter ? 1 : Stack[ply].HalfMoveCounter + 1;
 
+            Stack[ply].       Move = move;
+            Stack[ply].PieceToMove = Board[move.From()].Piece();
+
             const PreviousState state = Board.Move<MT>(move, ThreadId);
             IncrementNodes();
 
@@ -1219,13 +1236,20 @@ namespace StockDory
         }
 
         template<Color Color, bool Increase>
-        void UpdateHistory(const Move move, const int16_t depth)
+        void UpdateHistory(const Move move, const int16_t depth, const uint8_t ply)
         {
-            const int16_t bonus = std::min<int16_t>(HistoryMultiplier * depth - HistoryShiftDown, HistoryLimit);
+            const int16_t bonus = std::clamp<int32_t>(HistoryMultiplier * depth - HistoryShiftDown, 0, HistoryLimit);
 
             int16_t& history = History[Color][Board[move.From()].Piece()][move.To()];
 
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
+
+            if (!Stack[ply - 1].Move) return;
+
+            int16_t& continuation = ContinuationHistory[Stack[ply - 1].PieceToMove][Stack[ply - 1].Move.To()]
+                                    [Color][Board[move.From()].Piece()][move.To()];
+
+            continuation += bonus * (Increase ? 1 : -1) - continuation * bonus / HistoryLimit;
         }
 
         template<Color Color>
