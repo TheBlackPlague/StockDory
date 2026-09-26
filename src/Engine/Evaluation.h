@@ -24,7 +24,11 @@ namespace StockDory
         static inline Aurora NN = [] -> Aurora
         {
             MantaRay::BinaryMemoryStream stream (_NeuralNetworkBinaryData, sizeof _NeuralNetworkBinaryData);
-            return Aurora(stream);
+
+            Aurora network;
+            network.ReadLegacyV2(stream);
+
+            return network;
         }();
 
         static inline std::vector<AuroraStack> ThreadLocalStack;
