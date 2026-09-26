@@ -26,12 +26,12 @@ namespace StockDory
         struct OrderedMove
         {
 
-            uint32_t Score;
-            Move     Move ;
+            int32_t Score;
+            Move    Move ;
 
             OrderedMove() = default;
 
-            OrderedMove(const uint32_t score, const ::Move move) : Score(score), Move(move) {}
+            OrderedMove(const int32_t score, const ::Move move) : Score(score), Move(move) {}
 
             OrderedMove(const OrderedMove& other) : Score(other.Score), Move(other.Move) {}
 
@@ -135,7 +135,7 @@ namespace StockDory
         private:
         void SortNext(const uint8_t sorted)
         {
-            uint32_t best = Internal[sorted].Score << 8 | (MaxMove - sorted);
+            int32_t best = Internal[sorted].Score << 8 | (MaxMove - sorted);
             for (uint8_t i = sorted + 1; i < Size; i++) best = std::max(best, Internal[i].Score << 8 | (MaxMove - i));
 
             const uint8_t index = MaxMove - (best & 0xFF);

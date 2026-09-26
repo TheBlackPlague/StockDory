@@ -29,11 +29,10 @@ namespace StockDory
             {0000, 0000, 0000, 0000, 0000, 0000, 0000}
         }};
 
-        constexpr static uint32_t MaximumScore = std::numeric_limits<uint32_t>::max();
+        // Reserving the 8 upper bits for the index to be used for fast sorting
+        constexpr static int32_t MaximumScore = std::numeric_limits<int32_t>::max() >> 8;
 
-        constexpr static uint32_t PromotionMultiplier = 100000;
-
-        constexpr static uint32_t ScoreAnchor = 1000000;
+        constexpr static int32_t PromotionMultiplier = 100000;
 
         constexpr static Array<uint8_t, 5> PromotionFactor = {
             0, //   Pawn
@@ -52,7 +51,7 @@ namespace StockDory
         Policy(const Move kOne, const Move kTwo, const Move tt) : KillerOne(kOne), KillerTwo(kTwo), TTMove(tt) {}
 
         template<Piece Piece, enum Piece PromotionPiece = NAP>
-        uint32_t Score(const Board& board, const HTable& history, const Move move) const
+        int32_t Score(const Board& board, const HTable& history, const Move move) const
         {
             // Policy:
             //
@@ -72,7 +71,7 @@ namespace StockDory
 
             if (move == TTMove) return MaximumScore;
 
-            uint32_t score = ScoreAnchor;
+            int32_t score = 0;
 
             if (PromotionPiece != NAP) score += PromotionFactor[PromotionPiece] * PromotionMultiplier;
 
