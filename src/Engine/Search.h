@@ -1014,6 +1014,9 @@ namespace StockDory
                         const int16_t history = History[Color][movingPiece][move.To()];
                         r -= history / ((HistoryLimit / LMRHistoryPartition) / LMRHistoryWeight);
 
+                        if (quiet) r -= continuation[Color][movingPiece][move.To()] *
+                                        LMRContinuationHistoryWeight / HistoryLimit;
+
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
                         // mapped to discrete reduction
                         r /= LMRQuantization;
