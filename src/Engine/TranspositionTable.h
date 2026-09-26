@@ -14,6 +14,8 @@
 
 #include "../External/fastrange.h"
 
+#include "Common.h"
+
 namespace StockDory
 {
 
@@ -23,7 +25,8 @@ namespace StockDory
 
         using Entry = Atomic<T>;
 
-        static constexpr size_t ClusterSize = 4;
+        static constexpr size_t  ClusterSize    = 4;
+        static constexpr uint8_t GenerationMask = 63;
 
         struct alignas(32) Cluster
         {
@@ -62,6 +65,8 @@ namespace StockDory
 
         size_t Count = 0;
 
+        uint8_t Generation = 0;
+
         public:
         explicit TranspositionTable(const size_t bytes)
         {
@@ -78,6 +83,18 @@ namespace StockDory
         void Clear()
         {
             Internal = std::vector<Cluster>(Count);
+            Generation = 0;
+        }
+
+        void NewGeneration()
+        {
+            Generation = (Generation + 1) & GenerationMask;
+        }
+
+        [[nodiscard]]
+        uint8_t CurrentGeneration() const
+        {
+            return Generation;
         }
 
         Reference operator [](const ZobristHash hash)
@@ -98,7 +115,7 @@ namespace StockDory
                 if (entry.Type != T::EntryType::Invalid && entry.Hash == key) return Reference(entries[i]);
 
                 if (previous.Type != T::EntryType::Invalid &&
-                   (   entry.Type == T::EntryType::Invalid || entry.Depth < previous.Depth)) {
+                   (   entry.Type == T::EntryType::Invalid || Value(entry) < Value(previous))) {
                     replacement = i;
                     previous = entry;
                 }
@@ -109,7 +126,7 @@ namespace StockDory
 
         T operator [](const ZobristHash hash) const
         {
-            const auto key = static_cast<decltype(T::Hash)>(hash);
+            const auto key = CompressHash(hash);
 
             for (const auto& atomic : Internal[fastrange64(hash, Count)].Entries) {
                 const T entry = atomic.Load(MemoryOrder::relaxed);
@@ -129,6 +146,14 @@ namespace StockDory
         size_t Size() const
         {
             return Internal.size() * ClusterSize;
+        }
+
+        private:
+        int32_t Value(const T& entry) const
+        {
+            const int32_t age = (Generation - entry.Generation) & GenerationMask;
+
+            return static_cast<int32_t>(entry.Depth) - 4 * age;
         }
 
     };

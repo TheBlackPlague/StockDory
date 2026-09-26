@@ -43,6 +43,8 @@ namespace StockDory
 
                 repetition.Push(board.Zobrist());
 
+                TT.NewGeneration();
+
                 SearchTask<> search (BenchLimit, board, repetition, hmc);
                 search.IterativeDeepening();
 

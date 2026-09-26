@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <ranges>
+#include <utility>
 
 #include "../Backend/Board.h"
 #include "../Backend/Misc.h"
@@ -43,7 +44,9 @@ namespace StockDory
         CompressedScore Evaluation = 0;
         Move            Move       = ::Move();
         uint8_t         Depth      = 0;
-        EntryType       Type       = Invalid;
+
+        EntryType Type       : 2 = Invalid;
+        uint8_t   Generation : 6 = 0;
 
     };
 
@@ -647,7 +650,7 @@ namespace StockDory
             // exists a transposition entry - if the entry is valid, depending on the quality of the entry, we can
             // return the evaluation from the entry. Even if the entry isn't of sufficient quality to return directly,
             // we can still search the move in the entry first, since it most likely is the best move in the position
-            const SearchTranspositionEntry ttEntry      = TT[hash];
+            const SearchTranspositionEntry ttEntry      = std::as_const(TT)[hash];
             Move                           ttMove       = {};
             bool                           ttHit        = false;
             Score                          ttEvaluation = None;
@@ -881,7 +884,8 @@ namespace StockDory
                 .Hash       = CompressHash(hash),
                 .Move       = ttMove,
                 .Depth      = static_cast<uint8_t>(depth),
-                .Type       = Alpha
+                .Type       = Alpha,
+                .Generation = TT.CurrentGeneration()
             };
 
             const uint8_t lmpLastQuiet = LMPLastQuietBase +   depth * depth;
@@ -1126,7 +1130,7 @@ namespace StockDory
 
                 const ZobristHash hash = Board.Zobrist();
 
-                const SearchTranspositionEntry ttEntry = TT[hash];
+                const SearchTranspositionEntry ttEntry = std::as_const(TT)[hash];
 
                 if (ttEntry.Hash == CompressHash(hash)) {
                     const Score ttEvaluation = DecompressScore(ttEntry.Evaluation, ply);
@@ -1263,7 +1267,7 @@ namespace StockDory
 
             const SearchTranspositionEntry pEntry = entry;
 
-            if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
+            if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash || nEntry.Generation != pEntry.Generation ||
                (pEntry.Type == Alpha &&
                 nEntry.Type == Beta) ||
                 nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
@@ -1359,6 +1363,9 @@ namespace StockDory
         static void Run(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc)
         {
             if (Searching.Exchange(true, MemoryOrder::acq_rel)) return;
+
+            // Each search must start as a new generation with respect to the transposition table
+            TT.NewGeneration();
 
             // Symmetric MultiProcessing (SMP):
             //

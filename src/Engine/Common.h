@@ -10,6 +10,7 @@
 
 #include "../Backend/Misc.h"
 #include "../Backend/Type/Move.h"
+#include "../Backend/Type/Zobrist.h"
 
 namespace StockDory
 {
