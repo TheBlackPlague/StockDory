@@ -256,11 +256,11 @@ namespace StockDory
             if (!args.empty() && strutil::compare_ignore_case(args[0], "moves")) {
                 ss << "\nMoves: ";
                 if (Board.ColorToMove() == White) {
-                    OrderedMoveList<White> moves (Board, 0, {}, {}, {});
+                    OrderedMoveList<White, false, false> moves (Board);
 
                     for (uint8_t i = 0; i < moves.Count(); i++) ss << "\n" << moves[i].ToString();
                 } else {
-                    OrderedMoveList<Black> moves (Board, 0, {}, {}, {});
+                    OrderedMoveList<Black, false, false> moves (Board);
 
                     for (uint8_t i = 0; i < moves.Count(); i++) ss << "\n" << moves[i].ToString();
                 }

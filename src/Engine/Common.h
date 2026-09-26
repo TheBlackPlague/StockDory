@@ -41,6 +41,9 @@ namespace StockDory
 
     using KTable = Array<Move, 2, MaxDepth>;
     using HTable = Array<int16_t, 2, 6, 64>;
+    using CHTable = Array<HTable, 6, 64>;
+
+    constexpr HTable NullHistory = {};
 
     bool IsMate(const Score score) { return abs(score) >= MateInMaxDepth; }
 
