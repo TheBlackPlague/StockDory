@@ -49,6 +49,9 @@ namespace StockDory
         return IsWin(score) ? score - ply : IsLoss(score) ? score + ply : score;
     }
 
+    constexpr uint8_t TTGenerationBits = 6;
+    constexpr uint8_t TTGenerationMask = (1 << TTGenerationBits) - 1;
+
     struct SearchTranspositionEntry
     {
 
@@ -58,11 +61,17 @@ namespace StockDory
         CompressedScore Evaluation = 0;
         Move            Move       = ::Move();
         uint8_t         Depth      = 0;
-        EntryType       Type       = Invalid;
+
+        EntryType Type       : 8 - TTGenerationBits = Invalid;
+        uint8_t   Generation :     TTGenerationBits = 0;
 
     };
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
+
+    inline uint8_t TTGeneration = 0;
+
+    void AdvanceTTGeneration() { TTGeneration = (TTGeneration + 1) & TTGenerationMask; }
 
     inline auto LMRTable =
     [] -> Array<int32_t, MaxDepth, MaxMove>
@@ -894,7 +903,6 @@ namespace StockDory
             SearchTranspositionEntry ttEntryNew
             {
                 .Hash       = CompressHash(hash),
-                .Move       = ttMove,
                 .Depth      = static_cast<uint8_t>(depth),
                 .Type       = Alpha
             };
@@ -1115,7 +1123,7 @@ namespace StockDory
             //
             // As long as the search has not stopped, we should try to insert/replace the transposition table entry
             // with the new entry as it is most likely more relevant than the old entry
-            if (!Stopped()) TryReplaceTT(hash, ttEntryNew);
+            if (!Stopped()) TryReplaceTT<PV>(hash, ttEntryNew);
 
             return bestEvaluation;
         }
@@ -1272,15 +1280,25 @@ namespace StockDory
             return (Evaluation::Evaluate(Color, ThreadId) * weightedMaterial) / MaterialScalingQuantization;
         }
 
-        static void TryReplaceTT(const ZobristHash hash, const SearchTranspositionEntry nEntry)
+        template<bool PV>
+        static void TryReplaceTT(const ZobristHash hash, SearchTranspositionEntry nEntry)
         {
-            const SearchTranspositionEntry pEntry = TT[hash];
+            auto slot = TT[hash];
 
-            if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
-               (pEntry.Type == Alpha &&
-                nEntry.Type == Beta) ||
-                nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
-                TT[hash] = nEntry;
+            SearchTranspositionEntry pEntry = slot;
+
+            const bool samePosition = pEntry.Type != Invalid && nEntry.Hash == pEntry.Hash;
+
+            if (samePosition && !nEntry.Move) nEntry.Move = pEntry.Move;
+
+            if (!samePosition || nEntry.Type == Exact || pEntry.Generation != TTGeneration ||
+                nEntry.Depth + PV * TTReplacementPVBonus > pEntry.Depth - TTReplacementDepthMargin) {
+                nEntry.Generation = TTGeneration;
+                slot = nEntry;
+            } else if (nEntry.Move != pEntry.Move) {
+                pEntry.Move = nEntry.Move;
+                slot = pEntry;
+            }
         }
 
     };
@@ -1372,6 +1390,8 @@ namespace StockDory
         static void Run(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc)
         {
             if (Searching.Exchange(true, MemoryOrder::acq_rel)) return;
+
+            AdvanceTTGeneration();
 
             // Symmetric MultiProcessing (SMP):
             //

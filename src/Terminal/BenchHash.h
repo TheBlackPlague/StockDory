@@ -53,6 +53,7 @@ namespace StockDory
                 std::cout << " -> " << evaluation << " cp " << nodes[i] << " nodes" << std::endl;
 
                 TT.Clear();
+                TTGeneration = 0;
             }
 
             const auto nodeC = std::accumulate(nodes.begin(), nodes.end(),    0ULL);
