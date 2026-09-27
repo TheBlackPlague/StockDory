@@ -22,7 +22,7 @@ namespace StockDory
     constexpr Score Infinity = Mate + 1;
     constexpr Score     None = Mate + 2;
 
-    constexpr uint8_t MaxDepth = 128;
+    constexpr uint8_t MaxDepth = 246;
     constexpr uint8_t MaxMove  = 218;
 
     constexpr Score MateInMaxDepth = Mate - MaxDepth * 4;
@@ -39,7 +39,7 @@ namespace StockDory
     using MS = std::chrono::milliseconds;
     using TP = std::chrono::time_point<std::chrono::steady_clock>;
 
-    using KTable = Array<Move, 2, MaxDepth>;
+    using KTable = Array<Move, 2, MaxDepth + 1>;
     using HTable = Array<int16_t, 2, 6, 64>;
     using CHTable = Array<HTable, 6, 64>;
 
