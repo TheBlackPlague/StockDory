@@ -374,7 +374,7 @@ namespace StockDory
 
             if (args.size() == 2) {
                 if (strutil::compare_ignore_case(args[0], "depth"))
-                    limit.Depth = static_cast<uint8_t>(std::stoull(args[1]));
+                    limit.Depth = static_cast<uint8_t>(std::clamp<uint64_t>(std::stoull(args[1]), 1, MaxDepth - 1));
                 if (strutil::compare_ignore_case(args[0], "nodes"))
                     limit.Nodes =                      std::stoull(args[1]) ;
                 if (strutil::compare_ignore_case(args[0], "movetime")) {

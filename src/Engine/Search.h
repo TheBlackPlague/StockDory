@@ -67,7 +67,7 @@ namespace StockDory
     inline auto LMRTable =
     [] -> Array<int32_t, MaxDepth, MaxMove>
     {
-        const auto formula = [](const uint8_t depth, const uint8_t move) -> int32_t
+        const auto formula = [](const size_t depth, const size_t move) -> int32_t
         {
             const int32_t value = (std::log(depth) * std::log(move) / 2 - 0.2) * LMRQuantization;
 
@@ -76,8 +76,8 @@ namespace StockDory
 
         Array<int32_t, MaxDepth, MaxMove> temp {};
 
-        for (uint8_t depth = 1; depth < MaxDepth; depth++)
-        for (uint8_t move  = 1; move  < MaxMove ;  move++) temp[depth][move] = formula(depth, move);
+        for (size_t depth = 1; depth < MaxDepth; depth++)
+        for (size_t move  = 1; move  < MaxMove ;  move++) temp[depth][move] = formula(depth, move);
 
         return temp;
     }();
@@ -100,7 +100,7 @@ namespace StockDory
         private:
         constexpr static size_t Padding = 8;
 
-        Array<Frame, Padding + MaxDepth> Internal {};
+        Array<Frame, Padding + MaxDepth + 1> Internal {};
 
         public:
               Frame& operator [](const size_t index)       { return Internal[index + Padding]; }
@@ -149,7 +149,7 @@ namespace StockDory
 
     };
 
-    using PVTable = Array<PVEntry, MaxDepth>;
+    using PVTable = Array<PVEntry, MaxDepth + 1>;
 
     enum SearchTaskStatus : uint8_t
     {
@@ -173,7 +173,7 @@ namespace StockDory
         enum TimeType : uint8_t { Actual, Optimal };
 
         uint64_t Nodes = std::numeric_limits<uint64_t>::max();
-        uint8_t  Depth = MaxDepth / 2;
+        uint8_t  Depth = MaxDepth - 1;
 
         bool Timed = false;
         bool Fixed = false;
@@ -374,7 +374,7 @@ namespace StockDory
             Board.LoadForEvaluation(ThreadId);
 
             IDepth = 1;
-            while (IDepth <= Limit.Depth && !OutOfTime<Limit::Optimal>()) {
+            while (IDepth < MaxDepth && IDepth <= Limit.Depth && !OutOfTime<Limit::Optimal>()) {
                 if (Board.ColorToMove() ==   White)
                      Evaluation = Aspiration<White>(IDepth);
                 else Evaluation = Aspiration<Black>(IDepth);
@@ -600,6 +600,13 @@ namespace StockDory
 
             const bool checked = Board.Checked<Color>();
 
+            // We should stop searching if we have reached the maximum depth as otherwise we may start accessing
+            // memory we haven't allocated
+            if (ply >= MaxDepth) [[unlikely]]
+                return checked ? Draw : CorrectEvaluation<Color>(ScaleEvaluation<Color>());
+
+            depth = std::min<int16_t>(depth, MaxDepth - 1);
+
             // If we've exhausted our search depth and aren't in check, we should check if there are any tactical
             // sequences just over the horizon. If there are, we should get a more accurate evaluation through a
             // Quiescence search. If we are in check, we should go down the normal search path, extending as needed to
@@ -729,7 +736,7 @@ namespace StockDory
                 //
                 // If we are under check, we should search this branch deeper since we need to find a good way to evade
                 // the check
-                depth += CheckExtension;
+                depth = std::min<int16_t>(depth + CheckExtension, MaxDepth - 1);
 
                 // Avoid Risky Pruning:
                 //
@@ -1162,6 +1169,11 @@ namespace StockDory
 
             // The main thread is responsible for ensuring that the correct selective depth is reported
             if (ThreadType == Main && PV) SelectiveDepth = std::max(SelectiveDepth, ply);
+
+            // We should stop searching if we have reached the maximum depth as otherwise we may start accessing
+            // memory we haven't allocated
+            if (ply >= MaxDepth) [[unlikely]]
+                return Board.Checked<Color>() ? Draw : CorrectEvaluation<Color>(ScaleEvaluation<Color>());
 
             if (!PV) {
                 // Transposition Table Reading:
