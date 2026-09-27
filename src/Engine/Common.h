@@ -32,6 +32,10 @@ namespace StockDory
 
     constexpr uint16_t HistoryLimit = 16384;
 
+    constexpr size_t  CorrectionHistorySize         = 16384;
+    constexpr int32_t CorrectionHistoryLimit        =  1024;
+    constexpr int32_t CorrectionHistoryQuantization =  1024;
+
     constexpr size_t MB = 1024 * 1024;
 
     constexpr size_t CacheLineSize = 64;
@@ -41,7 +45,10 @@ namespace StockDory
 
     using KTable = Array<Move, 2, MaxDepth>;
     using HTable = Array<int16_t, 2, 6, 64>;
+
     using CHTable = Array<HTable, 6, 64>;
+
+    using CTable = Array<int16_t, 2, CorrectionHistorySize>;
 
     constexpr HTable NullHistory = {};
 

@@ -23,6 +23,7 @@ struct PreviousState
     uint8_t    CastlingRightAndColorToMove;
 
     ZobristHash Hash;
+    ZobristHash PawnHash = 0;
 
     constexpr PreviousState(const PieceColor  movedPiece, const PieceColor capturedPiece,
                             const Square      enPassant,  const uint8_t    castlingRightAndColorToMove,

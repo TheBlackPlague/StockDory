@@ -309,6 +309,8 @@ namespace StockDory
 
         CHTable ContinuationHistory {};
 
+        CTable CorrectionHistory {};
+
         SearchStack Stack {};
 
         RepetitionStack Repetition {};
@@ -701,8 +703,9 @@ namespace StockDory
             if (depth >= IIRMinimumDepth && !ttMove)
                 depth -= IIRDepthReduction;
 
+            Score scaledEvaluation;
             Score staticEvaluation;
-            bool  improving       ;
+            bool  improving;
 
             if (checked) {
                 // Last non-checked Static Evaluation:
@@ -739,28 +742,34 @@ namespace StockDory
 
             // Static Evaluation:
             //
-            // If we are not under check, we should use the static evaluation of the current position - this is done
-            // via two possible ways:
-            // - If we have a valid transposition table entry:
-            //   - If the entry's bound is exact, it is representative of a search that is at least more accurate
-            //     than whatever our neural network evaluation would provide
-            //   - If the entry's bound is beta, it means that the evaluation caused a beta cut-off, but our
-            //     neural network evaluation may be even more likely to cause a beta cut-off, so we should use
-            //     whichever is more likely - in simple terms, use whichever evaluation is more optimistic
-            //   - If the entry's bound is alpha, it means that the evaluation never exceeded alpha, but our neural
-            //     network evaluation may be more unlikely to exceed alpha, so we should use whichever is more
-            //     unlikely to exceed alpha - in simple terms, use whichever evaluation is more pessimistic
-            // - If we do not have a valid transposition table entry, use the neural network evaluation
+            // If we're not in check, then we are more-so safe to use the static evaluation to guide some aggressive
+            // pruning & reduction techniques in an attempt to narrow the search space. We calculate it by applying
+            // material scaling to the neural network's evaluation of the position and then adjusting it using the
+            // search-trained correction history; it is important to retain the evaluation pre-adjustment so we can
+            // later use it for error criterion to train the correction history.
+            //
+            // A valid transposition table entry can then replace or refine this static evaluation:
+            //
+            // - Exact:
+            //   We can use the search result directly as it will almost always be just as accurate (if not more) then
+            //   whatever our static evaluation is.
+            //
+            // - Beta :
+            // - Alpha:
+            //   In this case, the type indicates the position is either too good or too unsalvageable. Thus we will go
+            //   one step further in the direction of the extremity and respectively use either the more optimistic or
+            //   pessimistic evaluation.
+            //
+            // Without a valid entry, the corrected evaluation should be used; correction history is never applied to
+            // the evaluation the transposition table
+            scaledEvaluation =   ScaleEvaluation<Color>(                );
+            staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation);
+
             if (ttHit) {
-                staticEvaluation = ttEvaluation;
-
-                if (ttEntry.Type != Exact) {
-                    const Score nnEvaluation = EvaluateScaled<Color>();
-
-                    if      (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, nnEvaluation);
-                    else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, nnEvaluation);
-                }
-            } else staticEvaluation = EvaluateScaled<Color>();
+                if      (ttEntry.Type == Exact) staticEvaluation =                                   ttEvaluation ;
+                else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttEvaluation);
+                else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttEvaluation);
+            }
 
             Stack[ply].StaticEvaluation = staticEvaluation;
 
@@ -1111,11 +1120,28 @@ namespace StockDory
 
             ttEntryNew.Evaluation = CompressScore(bestEvaluation, ply);
 
-            // Transposition Table Writing:
-            //
-            // As long as the search has not stopped, we should try to insert/replace the transposition table entry
-            // with the new entry as it is most likely more relevant than the old entry
-            if (!Stopped()) TryReplaceTT(hash, ttEntryNew);
+            if (!Stopped()) {
+                const bool ttMoveIsTactical = ttEntryNew.Move.Capture() || ttEntryNew.Move.Promotion() != NAP;
+
+                // Correction History Update:
+                //
+                // As long as we don't expect the neural network evaluation to be off (we expect that in tactical
+                // positions), we should update our correction history so we may remember the misguidedness of the
+                // neural network evaluation and can make better decisions in the future
+                if (!checked && !IsMate(bestEvaluation) && (ttEntryNew.Type == Alpha || !ttMoveIsTactical)) {
+                    const Score correctedEvaluation = CorrectEvaluation<Color>(scaledEvaluation);
+
+                    if ((ttEntryNew.Type != Beta  || bestEvaluation > correctedEvaluation) &&
+                        (ttEntryNew.Type != Alpha || bestEvaluation < correctedEvaluation))
+                        UpdateCorrectionHistory<Color>(bestEvaluation - correctedEvaluation, depth);
+                }
+
+                // Transposition Table Writing:
+                //
+                // As long as the search has not stopped, we should try to insert/replace the transposition table entry
+                // with the new entry as it is most likely more relevant than the old entry
+                TryReplaceTT(hash, ttEntryNew);
+            }
 
             return bestEvaluation;
         }
@@ -1155,7 +1181,7 @@ namespace StockDory
             // Static Evaluation:
             //
             // In Quiescence search, we use the neural network evaluation directly as the static evaluation
-            const Score staticEvaluation = EvaluateScaled<Color>();
+            const Score staticEvaluation = CorrectEvaluation<Color>(ScaleEvaluation<Color>());
 
             // Window Adjustment:
             //
@@ -1253,8 +1279,34 @@ namespace StockDory
         }
 
         template<Color Color>
+        Score CorrectEvaluation(const Score evaluation) const
+        {
+            const int16_t correction = CorrectionHistory[Color][Board.PawnZobrist() % CorrectionHistorySize];
+
+            return std::clamp<Score>(
+                evaluation + correction * CorrectionHistoryWeight / CorrectionHistoryQuantization,
+                -MateInMaxDepth + 1,
+                 MateInMaxDepth - 1
+            );
+        }
+
+        template<Color Color>
+        void UpdateCorrectionHistory(const Score difference, const int16_t depth)
+        {
+            const int32_t bonus = std::clamp<int32_t>(
+                difference * depth / CorrectionHistoryDepthDivisor,
+                -CorrectionHistoryMaximumBonus,
+                 CorrectionHistoryMaximumBonus
+            );
+
+            int16_t& correction = CorrectionHistory[Color][Board.PawnZobrist() % CorrectionHistorySize];
+
+            correction += bonus - correction * abs(bonus) / CorrectionHistoryLimit;
+        }
+
+        template<Color Color>
         [[clang::noinline]]
-        Score EvaluateScaled() const
+        Score ScaleEvaluation() const
         {
             const BitBoard pawn   = Board.PieceBoard(Pawn  , White) | Board.PieceBoard(Pawn  , Black);
             const BitBoard knight = Board.PieceBoard(Knight, White) | Board.PieceBoard(Knight, Black);
