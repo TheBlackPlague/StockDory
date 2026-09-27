@@ -762,13 +762,19 @@ namespace StockDory
             //
             // Without a valid entry, the corrected evaluation should be used; correction history is never applied to
             // the evaluation the transposition table
-            scaledEvaluation =   ScaleEvaluation<Color>(                );
-            staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation);
-
             if (ttHit) {
-                if      (ttEntry.Type == Exact) staticEvaluation =                                   ttEvaluation ;
-                else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttEvaluation);
-                else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttEvaluation);
+                staticEvaluation = ttEvaluation;
+
+                if (ttEntry.Type != Exact) {
+                    scaledEvaluation =   ScaleEvaluation<Color>(                );
+                    staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation);
+
+                    if      (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttEvaluation);
+                    else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttEvaluation);
+                }
+            } else {
+                scaledEvaluation =   ScaleEvaluation<Color>(                );
+                staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation);
             }
 
             Stack[ply].StaticEvaluation = staticEvaluation;
@@ -1129,6 +1135,8 @@ namespace StockDory
                 // positions), we should update our correction history so we may remember the misguidedness of the
                 // neural network evaluation and can make better decisions in the future
                 if (!checked && !IsMate(bestEvaluation) && (ttEntryNew.Type == Alpha || !ttMoveIsTactical)) {
+                    if (ttHit && ttEntry.Type == Exact) scaledEvaluation = ScaleEvaluation<Color>();
+
                     const Score correctedEvaluation = CorrectEvaluation<Color>(scaledEvaluation);
 
                     if ((ttEntryNew.Type != Beta  || bestEvaluation > correctedEvaluation) &&
