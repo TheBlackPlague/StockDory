@@ -139,7 +139,7 @@ namespace StockDory
 
     };
 
-    using PV = Array<Move, MaxDepth + 1>;
+    using PV = Array<Move, MaxDepth>;
 
     struct PVEntry
     {

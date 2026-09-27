@@ -39,7 +39,7 @@ namespace StockDory
     using MS = std::chrono::milliseconds;
     using TP = std::chrono::time_point<std::chrono::steady_clock>;
 
-    using KTable = Array<Move, 2, MaxDepth + 1>;
+    using KTable = Array<Move, 2, MaxDepth>;
     using HTable = Array<int16_t, 2, 6, 64>;
     using CHTable = Array<HTable, 6, 64>;
 
