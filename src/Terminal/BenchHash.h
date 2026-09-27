@@ -43,7 +43,7 @@ namespace StockDory
 
                 repetition.Push(board.Zobrist());
 
-                TT.NewGeneration();
+                NewTTGeneration();
 
                 SearchTask<> search (BenchLimit, board, repetition, hmc);
                 search.IterativeDeepening();
@@ -55,6 +55,7 @@ namespace StockDory
                 std::cout << " -> " << evaluation << " cp " << nodes[i] << " nodes" << std::endl;
 
                 TT.Clear();
+                TTGeneration = 0;
             }
 
             const auto nodeC = std::accumulate(nodes.begin(), nodes.end(),    0ULL);

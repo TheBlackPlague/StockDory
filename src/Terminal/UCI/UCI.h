@@ -96,6 +96,7 @@ namespace StockDory
                         }
 
                         TT.Resize(value * MB);
+                        TTGeneration = 0;
                     }
                 );
 
@@ -221,6 +222,7 @@ namespace StockDory
             Repetition.Push(Board.Zobrist());
 
             TT.Clear();
+            TTGeneration = 0;
         }
 
         static void IsReady()

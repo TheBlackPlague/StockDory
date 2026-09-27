@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <cmath>
 #include <ranges>
-#include <utility>
 
 #include "../Backend/Board.h"
 #include "../Backend/Misc.h"
@@ -51,6 +50,27 @@ namespace StockDory
     };
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
+
+    inline uint8_t TTGeneration = 0;
+    inline constexpr uint8_t TTGenerationMask = 63;
+
+    inline void NewTTGeneration()
+    {
+        TTGeneration = (TTGeneration + 1) & TTGenerationMask;
+    }
+
+    inline SearchTranspositionEntry ReadTT(const ZobristHash hash)
+    {
+        const auto check = CompressHash(hash);
+
+        for (const auto& atomic : TT[hash].Entries) {
+            const SearchTranspositionEntry entry = atomic.Load(MemoryOrder::relaxed);
+
+            if (entry.Type != Invalid && entry.Hash == check) return entry;
+        }
+
+        return {};
+    }
 
     inline auto LMRTable =
     [] -> Array<int32_t, MaxDepth, MaxMove>
@@ -650,7 +670,7 @@ namespace StockDory
             // exists a transposition entry - if the entry is valid, depending on the quality of the entry, we can
             // return the evaluation from the entry. Even if the entry isn't of sufficient quality to return directly,
             // we can still search the move in the entry first, since it most likely is the best move in the position
-            const SearchTranspositionEntry ttEntry      = std::as_const(TT)[hash];
+            const SearchTranspositionEntry ttEntry      = ReadTT(hash);
             Move                           ttMove       = {};
             bool                           ttHit        = false;
             Score                          ttEvaluation = None;
@@ -885,7 +905,7 @@ namespace StockDory
                 .Move       = ttMove,
                 .Depth      = static_cast<uint8_t>(depth),
                 .Type       = Alpha,
-                .Generation = TT.CurrentGeneration()
+                .Generation = TTGeneration
             };
 
             const uint8_t lmpLastQuiet = LMPLastQuietBase +   depth * depth;
@@ -1130,7 +1150,7 @@ namespace StockDory
 
                 const ZobristHash hash = Board.Zobrist();
 
-                const SearchTranspositionEntry ttEntry = std::as_const(TT)[hash];
+                const SearchTranspositionEntry ttEntry = ReadTT(hash);
 
                 if (ttEntry.Hash == CompressHash(hash)) {
                     const Score ttEvaluation = DecompressScore(ttEntry.Evaluation, ply);
@@ -1263,15 +1283,41 @@ namespace StockDory
 
         static void TryReplaceTT(const ZobristHash hash, const SearchTranspositionEntry nEntry)
         {
-            auto entry = TT[hash];
+            auto& entries = TT[hash].Entries;
 
-            const SearchTranspositionEntry pEntry = entry;
+            size_t replacement = 0;
+            SearchTranspositionEntry pEntry = entries[0].Load(MemoryOrder::relaxed);
+
+            if (pEntry.Type == Invalid || pEntry.Hash != nEntry.Hash) {
+                for (size_t i = 1; i < entries.size(); i++) {
+                    const SearchTranspositionEntry entry = entries[i].Load(MemoryOrder::relaxed);
+
+                    if (entry.Type != Invalid && entry.Hash == nEntry.Hash) {
+                        replacement = i;
+                        pEntry = entry;
+                        break;
+                    }
+
+                    const int32_t         age = (TTGeneration -  entry.Generation) & TTGenerationMask;
+                    const int32_t previousAge = (TTGeneration - pEntry.Generation) & TTGenerationMask;
+
+                    if (pEntry.Type != Invalid &&
+                       ( entry.Type == Invalid || entry.Depth - 4 * age < pEntry.Depth - 4 * previousAge)) {
+                        replacement = i;
+                        pEntry = entry;
+                    }
+                }
+            }
 
             if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash || nEntry.Generation != pEntry.Generation ||
                (pEntry.Type == Alpha &&
                 nEntry.Type == Beta) ||
-                nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
-                entry = nEntry;
+                nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin) {
+                entries[replacement].Store(nEntry, MemoryOrder::relaxed);
+            } else if (nEntry.Type == Beta && nEntry.Move != pEntry.Move) {
+                pEntry.Move = nEntry.Move;
+                entries[replacement].Store(pEntry, MemoryOrder::relaxed);
+            }
         }
 
     };
@@ -1365,7 +1411,7 @@ namespace StockDory
             if (Searching.Exchange(true, MemoryOrder::acq_rel)) return;
 
             // Each search must start as a new generation with respect to the transposition table
-            TT.NewGeneration();
+            NewTTGeneration();
 
             // Symmetric MultiProcessing (SMP):
             //
