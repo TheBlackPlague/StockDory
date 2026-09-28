@@ -93,7 +93,9 @@ namespace StockDory
         std::conditional_t<Engine, BitBoard, Square> EnPassantTarget {};
 
         NO_UNIQUE_ADDRESS
-        std::conditional_t<Engine, ZobristHash, EmptyBoardState> Hash {};
+        std::conditional_t<Engine, ZobristHash, EmptyBoardState> Hash     {};
+        NO_UNIQUE_ADDRESS
+        std::conditional_t<Engine, ZobristHash, EmptyBoardState> HashPawn {};
 
         public:
         BasicBoard() : BasicBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
@@ -183,7 +185,10 @@ namespace StockDory
 
             UpdateNACBB();
 
-            if constexpr (Engine) Hash = ComputeHash();
+            if constexpr (Engine) {
+                Hash     = ComputeHash();
+                HashPawn = ComputeHashPawn();
+            }
         }
 
         template<BoardType Other> requires (Other != Profile)
@@ -220,6 +225,8 @@ namespace StockDory
             if constexpr (Engine) {
                 if constexpr (Other == BoardType::Packed) Hash = ComputeHash();
                 else Hash = other.Zobrist();
+
+                HashPawn = ComputeHashPawn();
             }
         }
 
@@ -282,6 +289,13 @@ namespace StockDory
         {
             if constexpr (Engine) return Hash;
             else return ComputeHash();
+        }
+
+        [[nodiscard]]
+        ZobristHash PawnZobrist() const
+        {
+            if constexpr (Engine) return HashPawn;
+            else return ComputeHashPawn();
         }
 
         [[nodiscard]]
@@ -555,7 +569,10 @@ namespace StockDory
                 0
             };
 
-            if constexpr (Engine && (T & ZOBRIST)) state.Hash = Hash;
+            if constexpr (Engine && (T & ZOBRIST)) {
+                state.Hash = Hash;
+                state.PawnHash = HashPawn;
+            }
 
             HashEnPassant<T>(state.EnPassant);
             SetEnPassant(NASQ);
@@ -636,7 +653,10 @@ namespace StockDory
             CastlingRightAndColorToMove = state.CastlingRightAndColorToMove;
             SetEnPassant(state.EnPassant);
 
-            if constexpr (Engine && (T & ZOBRIST)) Hash = state.Hash;
+            if constexpr (Engine && (T & ZOBRIST)) {
+                Hash = state.Hash;
+                HashPawn = state.PawnHash;
+            }
 
             const Piece piece = state.MovedPiece.Piece();
             const Color color = state.MovedPiece.Color();
@@ -738,7 +758,11 @@ namespace StockDory
         template<MoveType T>
         void HashPiece(const Piece piece, const Color color, const Square sq)
         {
-            if constexpr (Engine && (T & ZOBRIST)) Hash = Zobrist::HashPiece<T>(Hash, piece, color, sq);
+            if constexpr (Engine && (T & ZOBRIST)) {
+                Hash = Zobrist::HashPiece<T>(Hash, piece, color, sq);
+
+                if (piece == Pawn) HashPawn = Zobrist::HashPiece<T>(HashPawn, piece, color, sq);
+            }
         }
 
         template<MoveType T>
@@ -753,9 +777,22 @@ namespace StockDory
             if constexpr (Engine && (T & ZOBRIST)) Hash = Zobrist::HashCastling<T>(Hash, CastlingRights());
         }
 
+        ZobristHash ComputeHashPawn() const
+        {
+            ZobristHash result = 0;
+
+            BitBoardIterator iterator(PieceBoard(Pawn, White) | PieceBoard(Pawn, Black));
+
+            for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value())
+                result = Zobrist::HashPiece<ZOBRIST>(result, Pawn, PieceAndColor[sq].Color(), sq);
+
+            return result;
+        }
+
         ZobristHash ComputeHash() const
         {
             ZobristHash result = 0;
+
             BitBoardIterator iterator(~Empty());
 
             for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
