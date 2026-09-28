@@ -1027,9 +1027,9 @@ namespace StockDory
                         // If we are not improving positionally, we can afford to reduce the search depth further
                         if (!improving) r += LMRNotImprovingBonus;
 
-                        // If our move was tactical or gave check, we should try to reduce the search depth less as
-                        // the move may be tactical and in certain cases, extend the search depth instead
-                        if (tactical || Board.Checked<OColor>()) r -= LMRTacticalOrCheckPenalty;
+                        // If our move gave check, we should try to reduce the search depth less as the move may be
+                        // tactical and in certain cases, extend the search depth instead
+                        if (Board.Checked<OColor>()) r -= LMRGaveCheckPenalty;
 
                         if (quiet) {
                             // Increase reduction for bad history moves and reduce for good history moves (possibly
