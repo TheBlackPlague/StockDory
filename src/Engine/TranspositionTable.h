@@ -13,6 +13,8 @@
 
 #include "../External/fastrange.h"
 
+#include "Common.h"
+
 namespace StockDory
 {
 

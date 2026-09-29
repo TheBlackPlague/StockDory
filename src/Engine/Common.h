@@ -29,7 +29,14 @@
 
 #endif
 
+#include <bit>
 #include <chrono>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <limits>
+#include <new>
 
 #include "../Backend/Misc.h"
 #include "../Backend/Type/Move.h"
@@ -170,38 +177,48 @@ namespace StockDory
 
         #ifdef __linux__
 
-        size_t NormalPageSize = [] -> size_t
+        size_t NormalPageSize()
         {
-            const long value = sysconf(_SC_PAGESIZE);
+            static const size_t size = [] -> size_t
+            {
+                const long value = sysconf(_SC_PAGESIZE);
 
-            if (value <= 0) UnrecoverableError();
+                if (value <= 0) UnrecoverableError();
 
-            return static_cast<size_t>(value);
-        }();
+                return static_cast<size_t>(value);
+            }();
 
-        size_t HugePageSize = [] -> size_t
+            return size;
+        }
+
+        size_t HugePageSize()
         {
-            size_t value = 0;
+            static const size_t size = [] -> size_t
+            {
+                size_t value = 0;
 
-            if (FILE* file = std::fopen("/sys/kernel/mm/transparent_hugepage/hpage_pmd_size", "r")) {
-                if (std::fscanf(file, "%zu", &value) != 1) value = 0;
+                if (FILE* file = std::fopen("/sys/kernel/mm/transparent_hugepage/hpage_pmd_size", "r")) {
+                    if (std::fscanf(file, "%zu", &value) != 1) value = 0;
 
-                std::fclose(file);
-            }
+                    std::fclose(file);
+                }
 
-            const size_t page = NormalPageSize;
+                const size_t page = NormalPageSize();
 
-            return value >= page && std::has_single_bit(value) ? value : page;
-        }();
+                return value >= page && std::has_single_bit(value) ? value : page;
+            }();
+
+            return size;
+        }
 
         void* Allocate(const size_t bytes, const size_t)
         {
-            const size_t page  = NormalPageSize;
+            const size_t page  = NormalPageSize();
 
             if (bytes > std::numeric_limits<size_t>::max() - (page - 1)) UnrecoverableError();
 
             const size_t size      = (bytes + page - 1) / page * page;
-            const size_t alignment = HugePageSize;
+            const size_t alignment = HugePageSize();
 
             auto memory = MAP_FAILED;
 
