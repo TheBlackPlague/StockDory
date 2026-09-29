@@ -45,7 +45,9 @@ namespace StockDory
 
         };
 
-        std::vector<Entry> Internal;
+        using Storage = std::vector<Entry, Memory::HugePageAllocator<Entry>>;
+
+        Storage Internal;
 
         size_t Count = 0;
 
@@ -64,7 +66,7 @@ namespace StockDory
 
         void Clear()
         {
-            Internal = std::vector<Entry>(Count);
+            Internal = Storage(Count);
         }
 
         Reference operator [](const ZobristHash hash)
