@@ -117,7 +117,9 @@ endif ()
 target_include_directories(StockDory PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/BuildSystem)
 target_link_libraries(StockDory MantaRay nanothread)
 
-if (NOT WIN32)
+if (WIN32)
+    target_link_libraries(StockDory advapi32)
+else ()
     target_link_libraries(StockDory pthread)
 endif ()
 
