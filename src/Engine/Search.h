@@ -309,7 +309,8 @@ namespace StockDory
 
         CHTable ContinuationHistory {};
 
-        CTable CorrectionHistory {};
+        MinorCTable MinorCorrectionHistory {};
+        MajorCTable MajorCorrectionHistory {};
 
         SearchStack Stack {};
 
@@ -1301,10 +1302,25 @@ namespace StockDory
         template<Color Color>
         Score CorrectEvaluation(const Score evaluation) const
         {
-            const int16_t correction = CorrectionHistory[Color][Board.PawnZobrist() % CorrectionHistorySize];
+            const       ZobristHash     minor = Board.ZobristMinor();
+            const Array<ZobristHash, 2> major = {
+                Board.ZobristMajor(White), Board.ZobristMajor(Black)
+            };
+
+            const int16_t minorHistory = MinorCorrectionHistory[Color][minor % CorrectionHistorySize];
+
+            const Array<int16_t, 2> majorHistory = {
+                MajorCorrectionHistory[White][Color][major[White] % CorrectionHistorySize],
+                MajorCorrectionHistory[Black][Color][major[Black] % CorrectionHistorySize]
+            };
+
+            const int32_t minorCorrection =                minorHistory                 * MinorCorrectionHistoryWeight;
+            const int32_t majorCorrection = (majorHistory[White] + majorHistory[Black]) * MajorCorrectionHistoryWeight;
+
+            const int32_t correction = minorCorrection + majorCorrection;
 
             return std::clamp<Score>(
-                evaluation + correction * CorrectionHistoryWeight / CorrectionHistoryQuantization,
+                evaluation + correction / CorrectionHistoryQuantization,
                 -MateInMaxDepth + 1,
                  MateInMaxDepth - 1
             );
@@ -1319,9 +1335,17 @@ namespace StockDory
                  CorrectionHistoryMaximumBonus
             );
 
-            int16_t& correction = CorrectionHistory[Color][Board.PawnZobrist() % CorrectionHistorySize];
+            const ZobristHash minor = Board.ZobristMinor();
+            int16_t& minorCorrection = MinorCorrectionHistory[Color][minor % CorrectionHistorySize];
 
-            correction += bonus - correction * abs(bonus) / CorrectionHistoryLimit;
+            minorCorrection += bonus - minorCorrection * abs(bonus) / CorrectionHistoryLimit;
+
+            for (const auto color : { White, Black }) {
+                const ZobristHash major = Board.ZobristMajor(color);
+                int16_t& majorCorrection = MajorCorrectionHistory[color][Color][major % CorrectionHistorySize];
+
+                majorCorrection += bonus - majorCorrection * abs(bonus) / CorrectionHistoryLimit;
+            }
         }
 
         template<Color Color>

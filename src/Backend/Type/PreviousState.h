@@ -22,25 +22,9 @@ struct PreviousState
     Square     CastlingTo                 ;
     uint8_t    CastlingRightAndColorToMove;
 
-    ZobristHash Hash;
-    ZobristHash PawnHash = 0;
-
-    constexpr PreviousState(const PieceColor  movedPiece, const PieceColor capturedPiece,
-                            const Square      enPassant,  const uint8_t    castlingRightAndColorToMove,
-                            const ZobristHash hash)
-    {
-        MovedPiece                  = movedPiece;
-        CapturedPiece               = capturedPiece;
-        EnPassant                   = enPassant;
-        CastlingRightAndColorToMove = castlingRightAndColorToMove;
-
-        EnPassantCapture = false;
-        PromotedPiece    = NAP;
-        CastlingFrom     = NASQ;
-        CastlingTo       = NASQ;
-
-        Hash = hash;
-    }
+          ZobristHash     Hash     ;
+          ZobristHash     HashMinor;
+    Array<ZobristHash, 2> HashMajor;
 
 };
 
@@ -48,11 +32,6 @@ struct PreviousStateNull
 {
 
     Square EnPassant;
-
-    constexpr PreviousStateNull(const Square enPassant)
-    {
-        EnPassant = enPassant;
-    }
 
 };
 
