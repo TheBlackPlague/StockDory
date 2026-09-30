@@ -308,12 +308,11 @@ namespace StockDory
         KTable Killer  {};
         HTable History {};
 
-        CHTable ContinuationHistory {};
+         CHTable           ContinuationHistory {};
+        CCHTable CorrectionContinuationHistory {};
 
         MinorCTable MinorCorrectionHistory {};
         MajorCTable MajorCorrectionHistory {};
-
-        ContinuationCTable ContinuationCorrectionHistory {};
 
         SearchStack Stack {};
 
@@ -1329,11 +1328,11 @@ namespace StockDory
                 const auto   ourPreviousTarget = Stack[ply - 2].Move.To();
                 const auto theirPreviousTarget = Stack[ply - 1].Move.To();
 
-                const int16_t continuationCorrectionHistory = ContinuationCorrectionHistory[Color]
+                const int16_t correctionContinuationHistory = CorrectionContinuationHistory[Color]
                     [  ourPreviousPiece][  ourPreviousTarget]
                     [theirPreviousPiece][theirPreviousTarget];
 
-                continuationCorrection = continuationCorrectionHistory * CorrectionHistoryContinuationWeight;
+                continuationCorrection = correctionContinuationHistory * CorrectionHistoryContinuationWeight;
             }
 
             const int32_t correction = minorCorrection + majorCorrection + continuationCorrection;
@@ -1373,11 +1372,11 @@ namespace StockDory
                 const auto   ourPreviousTarget = Stack[ply - 2].Move.To();
                 const auto theirPreviousTarget = Stack[ply - 1].Move.To();
 
-                int16_t& continuationCorrection = ContinuationCorrectionHistory[Color]
+                int16_t& correctionContinuation = CorrectionContinuationHistory[Color]
                     [  ourPreviousPiece][  ourPreviousTarget]
                     [theirPreviousPiece][theirPreviousTarget];
 
-                continuationCorrection += bonus - continuationCorrection * abs(bonus) / CorrectionHistoryLimit;
+                correctionContinuation += bonus - correctionContinuation * abs(bonus) / CorrectionHistoryLimit;
             }
         }
 
