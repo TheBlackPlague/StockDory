@@ -9,9 +9,11 @@
 #include <array>
 #include <cstddef>
 #include <iomanip>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 #if defined(_MSC_VER)
 #define NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
@@ -30,6 +32,16 @@ std::string ToHex(const T v)
     return ss.str();
 }
 
+template<typename T, typename... Args>
+T& ReplaceInline(T& object, Args&&... args)
+{
+    T* address = std::addressof(object);
+
+    std::destroy_at(address);
+
+    return *std::construct_at(address, std::forward<Args>(args)...);
+}
+
 template<typename T, size_t N, size_t... Ns>
 struct IArray { using Internal = std::array<typename IArray<T, Ns...>::Internal, N>; };
 
@@ -37,7 +49,7 @@ template<typename T, size_t N>
 struct IArray<T, N> { using Internal = std::array<T, N>; };
 
 template<typename T, size_t... Ns>
-using Array = typename IArray<T, Ns...>::Internal; // Fixed size N-dimensional array of values
+using Array = IArray<T, Ns...>::Internal; // Fixed size N-dimensional array of values
 
 template<typename T, size_t N, typename V>
 constexpr void Fill(std::array<T, N>& array, const V& value)
