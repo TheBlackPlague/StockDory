@@ -88,6 +88,8 @@ namespace StockDory
     using MinorCTable = Array<int16_t, 2, CorrectionHistorySize>;
     using MajorCTable = Array<MinorCTable, 2>;
 
+    using ContinuationCTable = Array<int16_t, 2, 6, 64, 6, 64>;
+
     constexpr HTable NullHistory = {};
 
     bool IsMate(const Score score) { return abs(score) >= MateInMaxDepth; }

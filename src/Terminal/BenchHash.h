@@ -9,6 +9,7 @@
 #include <numeric>
 #include <array>
 #include <string>
+#include <vector>
 
 #include "../Engine/Search.h"
 #include "../External/strutil.h"
@@ -22,10 +23,11 @@ namespace StockDory
         constexpr static        uint8_t BenchLength =                  50  ;
                   static inline auto    BenchLimit  = Limit { .Depth = 15 };
 
-        static std::array<std::string, BenchLength> Positions;
+        static Array<std::string, BenchLength> Positions;
+
+        static SearchTask<> Search;
 
         public:
-
         static void Run()
         {
             Array<uint64_t, BenchLength> nodes;
@@ -43,13 +45,13 @@ namespace StockDory
 
                 repetition.Push(board.Zobrist());
 
-                SearchTask<> search (BenchLimit, board, repetition, hmc);
-                search.IterativeDeepening();
+                Search = SearchTask<>(BenchLimit, board, repetition, hmc);
+                Search.IterativeDeepening();
 
-                times[i] = search.ElapsedTime();
-                nodes[i] = search.GetNodes();
+                times[i] = Search.ElapsedTime();
+                nodes[i] = Search.GetNodes();
 
-                const Score evaluation = search.GetEvaluation();
+                const Score evaluation = Search.GetEvaluation();
                 std::cout << " -> " << evaluation << " cp " << nodes[i] << " nodes" << std::endl;
 
                 TT.Clear();
@@ -69,7 +71,7 @@ namespace StockDory
 
 } // StockDory
 
-std::array<std::string, StockDory::BenchHash::BenchLength> StockDory::BenchHash::Positions = {
+Array<std::string, StockDory::BenchHash::BenchLength> StockDory::BenchHash::Positions = {
     "r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14",
     "4rrk1/2p1b1p1/p1p3q1/4p3/2P2n1p/1P1NR2P/PB3PP1/3R1QK1 b - - 2 24",
     "r3qbrk/6p1/2b2pPp/p3pP1Q/PpPpP2P/3P1B2/2PB3K/R5R1 w - - 16 42",
@@ -121,5 +123,7 @@ std::array<std::string, StockDory::BenchHash::BenchLength> StockDory::BenchHash:
     "3br1k1/p1pn3p/1p3n2/5pNq/2P1p3/1PN3PP/P2Q1PB1/4R1K1 w - - 0 23",
     "2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93"
 };
+
+StockDory::SearchTask<> StockDory::BenchHash::Search = SearchTask();
 
 #endif //STOCKDORY_BENCHHASH_H

@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <ranges>
 
 #include "../Backend/Board.h"
@@ -312,6 +313,8 @@ namespace StockDory
         MinorCTable MinorCorrectionHistory {};
         MajorCTable MajorCorrectionHistory {};
 
+        ContinuationCTable ContinuationCorrectionHistory {};
+
         SearchStack Stack {};
 
         RepetitionStack Repetition {};
@@ -604,7 +607,7 @@ namespace StockDory
             // We should stop searching if we have reached the maximum depth as otherwise we may start accessing
             // memory we haven't allocated
             if (ply >= MaxDepth) [[unlikely]]
-                return checked ? Draw : CorrectEvaluation<Color>(ScaleEvaluation<Color>());
+                return checked ? Draw : CorrectEvaluation<Color>(ScaleEvaluation<Color>(), ply);
 
             depth = std::min<int16_t>(depth, MaxDepth - 1);
 
@@ -774,15 +777,15 @@ namespace StockDory
                 staticEvaluation = ttEvaluation;
 
                 if (ttEntry.Type != Exact) {
-                    scaledEvaluation =   ScaleEvaluation<Color>(                );
-                    staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation);
+                    scaledEvaluation =   ScaleEvaluation<Color>(                     );
+                    staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
 
                     if      (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttEvaluation);
                     else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttEvaluation);
                 }
             } else {
-                scaledEvaluation =   ScaleEvaluation<Color>(                );
-                staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation);
+                scaledEvaluation =   ScaleEvaluation<Color>(                     );
+                staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
             }
 
             Stack[ply].StaticEvaluation = staticEvaluation;
@@ -1145,11 +1148,11 @@ namespace StockDory
                 if (!checked && !IsMate(bestEvaluation) && (ttEntryNew.Type == Alpha || !ttMoveIsTactical)) {
                     if (ttHit && ttEntry.Type == Exact) scaledEvaluation = ScaleEvaluation<Color>();
 
-                    const Score correctedEvaluation = CorrectEvaluation<Color>(scaledEvaluation);
+                    const Score correctedEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
 
                     if ((ttEntryNew.Type != Beta  || bestEvaluation > correctedEvaluation) &&
                         (ttEntryNew.Type != Alpha || bestEvaluation < correctedEvaluation))
-                        UpdateCorrectionHistory<Color>(bestEvaluation - correctedEvaluation, depth);
+                        UpdateCorrectionHistory<Color>(bestEvaluation - correctedEvaluation, depth, ply);
                 }
 
                 // Transposition Table Writing:
@@ -1174,7 +1177,7 @@ namespace StockDory
             // We should stop searching if we have reached the maximum depth as otherwise we may start accessing
             // memory we haven't allocated
             if (ply >= MaxDepth) [[unlikely]]
-                return Board.Checked<Color>() ? Draw : CorrectEvaluation<Color>(ScaleEvaluation<Color>());
+                return Board.Checked<Color>() ? Draw : CorrectEvaluation<Color>(ScaleEvaluation<Color>(), ply);
 
             if (!PV) {
                 // Transposition Table Reading:
@@ -1202,7 +1205,7 @@ namespace StockDory
             // Static Evaluation:
             //
             // In Quiescence search, we use the neural network evaluation directly as the static evaluation
-            const Score staticEvaluation = CorrectEvaluation<Color>(ScaleEvaluation<Color>());
+            const Score staticEvaluation = CorrectEvaluation<Color>(ScaleEvaluation<Color>(), ply);
 
             // Window Adjustment:
             //
@@ -1300,7 +1303,7 @@ namespace StockDory
         }
 
         template<Color Color>
-        Score CorrectEvaluation(const Score evaluation) const
+        Score CorrectEvaluation(const Score evaluation, const uint8_t ply) const
         {
             const       ZobristHash     minor = Board.ZobristMinor();
             const Array<ZobristHash, 2> major = {
@@ -1317,7 +1320,23 @@ namespace StockDory
             const int32_t minorCorrection =                minorHistory                 * CorrectionHistoryMinorWeight;
             const int32_t majorCorrection = (majorHistory[White] + majorHistory[Black]) * CorrectionHistoryMajorWeight;
 
-            const int32_t correction = minorCorrection + majorCorrection;
+            int32_t continuationCorrection = 0;
+
+            if (ply >= 2 && Stack[ply - 2].Move && Stack[ply - 1].Move) {
+                const auto   ourPreviousPiece = Stack[ply - 2].PieceToMove;
+                const auto theirPreviousPiece = Stack[ply - 1].PieceToMove;
+
+                const auto   ourPreviousTarget = Stack[ply - 2].Move.To();
+                const auto theirPreviousTarget = Stack[ply - 1].Move.To();
+
+                const int16_t continuationCorrectionHistory = ContinuationCorrectionHistory[Color]
+                    [  ourPreviousPiece][  ourPreviousTarget]
+                    [theirPreviousPiece][theirPreviousTarget];
+
+                continuationCorrection = continuationCorrectionHistory * CorrectionHistoryContinuationWeight;
+            }
+
+            const int32_t correction = minorCorrection + majorCorrection + continuationCorrection;
 
             return std::clamp<Score>(
                 evaluation + correction / CorrectionHistoryQuantization,
@@ -1327,7 +1346,7 @@ namespace StockDory
         }
 
         template<Color Color>
-        void UpdateCorrectionHistory(const Score difference, const int16_t depth)
+        void UpdateCorrectionHistory(const Score difference, const int16_t depth, const uint8_t ply)
         {
             const int32_t bonus = std::clamp<int32_t>(
                 difference * depth / CorrectionHistoryDepthDivisor,
@@ -1345,6 +1364,20 @@ namespace StockDory
                 int16_t& majorCorrection = MajorCorrectionHistory[color][Color][major % CorrectionHistorySize];
 
                 majorCorrection += bonus - majorCorrection * abs(bonus) / CorrectionHistoryLimit;
+            }
+
+            if (ply >= 2 && Stack[ply - 2].Move && Stack[ply - 1].Move) {
+                const auto   ourPreviousPiece = Stack[ply - 2].PieceToMove;
+                const auto theirPreviousPiece = Stack[ply - 1].PieceToMove;
+
+                const auto   ourPreviousTarget = Stack[ply - 2].Move.To();
+                const auto theirPreviousTarget = Stack[ply - 1].Move.To();
+
+                int16_t& continuationCorrection = ContinuationCorrectionHistory[Color]
+                    [  ourPreviousPiece][  ourPreviousTarget]
+                    [theirPreviousPiece][theirPreviousTarget];
+
+                continuationCorrection += bonus - continuationCorrection * abs(bonus) / CorrectionHistoryLimit;
             }
         }
 
