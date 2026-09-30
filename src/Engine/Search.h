@@ -1539,7 +1539,7 @@ namespace StockDory
                 ParallelTaskPool.Execute();
             }
 
-            MainTask = MainSearchTask(l, b, r, hmc, 0);
+            ReplaceInline(MainTask, l, b, r, hmc, 0);
 
             ThreadPool.Execute(
                 [] -> void
