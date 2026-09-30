@@ -1314,8 +1314,8 @@ namespace StockDory
                 MajorCorrectionHistory[Black][Color][major[Black] % CorrectionHistorySize]
             };
 
-            const int32_t minorCorrection =                minorHistory                 * MinorCorrectionHistoryWeight;
-            const int32_t majorCorrection = (majorHistory[White] + majorHistory[Black]) * MajorCorrectionHistoryWeight;
+            const int32_t minorCorrection =                minorHistory                 * CorrectionHistoryMinorWeight;
+            const int32_t majorCorrection = (majorHistory[White] + majorHistory[Black]) * CorrectionHistoryMajorWeight;
 
             const int32_t correction = minorCorrection + majorCorrection;
 
