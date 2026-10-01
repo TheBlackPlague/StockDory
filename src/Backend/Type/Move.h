@@ -17,7 +17,7 @@
 enum class MoveFlag : uint8_t
 {
 
-    Quiet                  =  0,
+    Base                   =  0,
     DoublePush             =  1,
     KingCastle             =  2,
     QueenCastle            =  3,
@@ -86,7 +86,7 @@ struct Move
     constexpr Move() = default;
 
     constexpr Move(const Square from, const Square to, const Piece promotion = NAP) noexcept
-        : Move(from, to, promotion == NAP ? MoveFlag::Quiet : static_cast<MoveFlag>(8 + promotion - Knight))
+        : Move(from, to, promotion == NAP ? MoveFlag::Base : static_cast<MoveFlag>(8 + promotion - Knight))
     {
         assert(promotion == NAP || (promotion >= Knight && promotion <= Queen));
     }
@@ -144,6 +144,18 @@ struct Move
     constexpr bool EnPassant() const noexcept
     {
         return Flags() == MoveFlag::EnPassant;
+    }
+
+    [[nodiscard]]
+    constexpr bool Tactical() const noexcept
+    {
+        return Internal & CaptureMask || Internal & PromotionMask;
+    }
+
+    [[nodiscard]]
+    constexpr bool Quiet() const noexcept
+    {
+        return !Tactical();
     }
 
     [[nodiscard]]
