@@ -308,6 +308,8 @@ namespace StockDory
         KTable Killer  {};
         HTable History {};
 
+        CaptureHTable CaptureHistory {};
+
          CHTable           ContinuationHistory {};
         CCHTable CorrectionContinuationHistory {};
 
@@ -909,7 +911,7 @@ namespace StockDory
             const HTable& continuation = Stack[ply - 1].Move ?
                 ContinuationHistory[Stack[ply - 1].PieceToMove][Stack[ply - 1].Move.To()] : NullHistory;
 
-            MoveList moves (Board, ply, Killer, History, continuation, ttMove);
+            MoveList moves (Board, ply, Killer, History, continuation, CaptureHistory, ttMove);
 
             // Out of Moves:
             //
@@ -934,7 +936,8 @@ namespace StockDory
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move = moves[i];
 
-                const bool quiet = move.Quiet();
+                const bool capture = move.Capture();
+                const bool quiet   = move.Quiet  ();
 
                 searchedQuiets += quiet;
 
@@ -1096,38 +1099,56 @@ namespace StockDory
 
                 if (evaluation < beta) continue;
 
-                if (!Stopped() && quiet) {
-                    // Killer Updates:
-                    //
-                    // Update the Killer table if a quiet move caused a beta cut-off to ensure we search this move
-                    // earlier in the future
+                if (!Stopped()) {
+                    if (quiet) {
+                        // Killer Updates:
+                        //
+                        // Update the Killer table if a quiet move caused a beta cut-off to ensure we search this move
+                        // earlier in the future
 
-                    // If Killer Move 0 is different from the current move:
-                    //    Killer Move 0 -> Killer Move 1
-                    //   Current Move   -> Killer Move 0
-                    if (!Killer[0][ply].SameIdentity(move)) {
-                        Killer[1][ply] = Killer[0][ply];
-                        Killer[0][ply] = move;
-                    }
+                        // If Killer Move 0 is different from the current move:
+                        //    Killer Move 0 -> Killer Move 1
+                        //   Current Move   -> Killer Move 0
+                        if (!Killer[0][ply].SameIdentity(move)) {
+                            Killer[1][ply] = Killer[0][ply];
+                            Killer[0][ply] = move;
+                        }
 
-                    // History Updates:
-                    //
-                    // We should update histories (raise the move that caused the beta cut-off and diminish the moves
-                    // that didn't) so that we search them earlier in the future and can use their values to make
-                    // better reduction & pruning decisions
+                        // History Updates:
+                        //
+                        // We should update histories (raise the move that caused the beta cut-off and diminish the
+                        // moves that didn't) so that we search them earlier in the future and can use their values to
+                        // make better reduction & pruning decisions and order similar moves earlier
 
-                    // Bonus for the quiet that caused a beta cut-off
-                    UpdateHistory<Color, true>(move, depth, ply);
+                        // Bonus for the quiet that caused a beta cut-off
+                        UpdateHistory<Color, true>(move, depth, ply);
 
-                    // Malus for all other quiets as they didn't cause a beta cut-off
-                    uint8_t updated = 0;
-                    for (uint8_t j = 1; updated < searchedQuiets - 1; j++) {
-                        const Move m = moves.UnsortedAccess(i - j);
+                        // Malus for all other quiets as they didn't cause a beta cut-off
+                        uint8_t updated = 0;
+                        for (uint8_t j = 1; updated < searchedQuiets - 1; j++) {
+                            const Move m = moves.UnsortedAccess(i - j);
 
-                        if (m.Tactical()) continue;
+                            if (m.Tactical()) continue;
 
-                        UpdateHistory<Color, false>(m, depth, ply);
-                        updated++;
+                            UpdateHistory<Color, false>(m, depth, ply);
+                            updated++;
+                        }
+                    } else if (capture) {
+                        // Capture History Updates:
+                        //
+                        // We should update capture histories (raise the move that caused the beta cut-off and diminish
+                        // the moves that didn't) so that we search them earlier in the future and can use their values
+                        // to order similar moves earlier
+
+                        // Bonus for the capture that caused a beta cut-off
+                        UpdateCaptureHistory<Color, true>(move, depth);
+
+                        // Malus for all the other captures as they didn't cause a beta cut-off
+                        for (uint8_t j = 0; j < i; j++) {
+                            const Move m = moves.UnsortedAccess(j);
+
+                            if (m.Capture()) UpdateCaptureHistory<Color, false>(m, depth);
+                        }
                     }
                 }
 
@@ -1218,7 +1239,7 @@ namespace StockDory
 
             using MoveList = OrderedMoveList<Color, true>;
 
-            MoveList moves (Board, ply, Killer, NullHistory, NullHistory);
+            MoveList moves (Board, ply, Killer, NullHistory, NullHistory, CaptureHistory);
 
             Score bestEvaluation = staticEvaluation;
             for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -1300,6 +1321,20 @@ namespace StockDory
                                     [Color][Board[move.From()].Piece()][move.To()];
 
             continuation += bonus * (Increase ? 1 : -1) - continuation * bonus / HistoryLimit;
+        }
+
+        template<Color Color, bool Increase>
+        void UpdateCaptureHistory(const Move move, const int16_t depth)
+        {
+            const int16_t bonus = std::clamp<int32_t>(
+                CaptureHistoryMultiplier * depth - CaptureHistoryShiftDown, 0, HistoryLimit
+            );
+
+            const auto capturedPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
+
+            int16_t& history = CaptureHistory[Color][Board[move.From()].Piece()][move.To()][capturedPiece];
+
+            history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
         }
 
         template<Color Color>
