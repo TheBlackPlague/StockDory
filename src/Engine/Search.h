@@ -1096,32 +1096,34 @@ namespace StockDory
 
                 if (evaluation < beta) continue;
 
-                if (!Stopped() && quiet) {
-                    // Killer Updates:
-                    //
-                    // Update the Killer table if a quiet move caused a beta cut-off to ensure we search this move
-                    // earlier in the future
+                if (!Stopped()) {
+                    if (quiet) {
+                        // Killer Updates:
+                        //
+                        // Update the Killer table if a quiet move caused a beta cut-off to ensure we search this move
+                        // earlier in the future
 
-                    // If Killer Move 0 is different from the current move:
-                    //    Killer Move 0 -> Killer Move 1
-                    //   Current Move   -> Killer Move 0
-                    if (!Killer[0][ply].SameIdentity(move)) {
-                        Killer[1][ply] = Killer[0][ply];
-                        Killer[0][ply] = move;
+                        // If Killer Move 0 is different from the current move:
+                        //    Killer Move 0 -> Killer Move 1
+                        //   Current Move   -> Killer Move 0
+                        if (!Killer[0][ply].SameIdentity(move)) {
+                            Killer[1][ply] = Killer[0][ply];
+                            Killer[0][ply] = move;
+                        }
+
+                        // History Updates:
+                        //
+                        // We should update histories (raise the move that caused the beta cut-off and diminish the
+                        // moves that didn't) so that we search them earlier in the future and can use their values to
+                        // make better reduction & pruning decisions
+
+                        // Bonus for the quiet that caused a beta cut-off
+                        UpdateHistory<Color, true>(move, depth, ply);
                     }
 
-                    // History Updates:
-                    //
-                    // We should update histories (raise the move that caused the beta cut-off and diminish the moves
-                    // that didn't) so that we search them earlier in the future and can use their values to make
-                    // better reduction & pruning decisions
-
-                    // Bonus for the quiet that caused a beta cut-off
-                    UpdateHistory<Color, true>(move, depth, ply);
-
-                    // Malus for all other quiets as they didn't cause a beta cut-off
+                    // Malus for earlier searched quiets, regardless of which move caused the beta cut-off
                     uint8_t updated = 0;
-                    for (uint8_t j = 1; updated < searchedQuiets - 1; j++) {
+                    for (uint8_t j = 1; updated < searchedQuiets - quiet; j++) {
                         const Move m = moves.UnsortedAccess(i - j);
 
                         if (m.Tactical()) continue;
