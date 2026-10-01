@@ -1134,21 +1134,21 @@ namespace StockDory
                             updated++;
                         }
                     } else if (capture) {
-                        // Capture History Updates:
+                        // Capture History Updates (Asymmetric Approach):
                         //
-                        // We should update capture histories (raise the move that caused the beta cut-off and diminish
-                        // the moves that didn't) so that we search them earlier in the future and can use their values
-                        // to order similar moves earlier
-
-                        // Bonus for the capture that caused a beta cut-off
+                        // We should give a bonus for the capture that caused a beta cut-off
                         UpdateCaptureHistory<Color, true>(move, depth);
+                    }
 
-                        // Malus for all the other captures as they didn't cause a beta cut-off
-                        for (uint8_t j = 0; j < i; j++) {
-                            const Move m = moves.UnsortedAccess(j);
+                    // Capture History Updates (Asymmetric Approach):
+                    //
+                    // We should apply a malus for all captures that didn't cause a beta cut-off. We generally consider
+                    // captures to be good so if they aren't good (especially if they're worst than a quiet) then we
+                    // should apply a malus to them
+                    for (uint8_t j = 0; j < i; j++) {
+                        const Move m = moves.UnsortedAccess(j);
 
-                            if (m.Capture()) UpdateCaptureHistory<Color, false>(m, depth);
-                        }
+                        if (m.Capture()) UpdateCaptureHistory<Color, false>(m, depth);
                     }
                 }
 
