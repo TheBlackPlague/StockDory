@@ -93,9 +93,11 @@ namespace StockDory
         std::conditional_t<Engine, BitBoard, Square> EnPassantTarget {};
 
         NO_UNIQUE_ADDRESS
-        std::conditional_t<Engine, ZobristHash, EmptyBoardState> Hash     {};
+        std::conditional_t<Engine,       ZobristHash    , EmptyBoardState> Hash      {};
         NO_UNIQUE_ADDRESS
-        std::conditional_t<Engine, ZobristHash, EmptyBoardState> HashPawn {};
+        std::conditional_t<Engine,       ZobristHash    , EmptyBoardState> HashMinor {};
+        NO_UNIQUE_ADDRESS
+        std::conditional_t<Engine, Array<ZobristHash, 2>, EmptyBoardState> HashMajor {};
 
         public:
         BasicBoard() : BasicBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
@@ -186,8 +188,10 @@ namespace StockDory
             UpdateNACBB();
 
             if constexpr (Engine) {
-                Hash     = ComputeHash();
-                HashPawn = ComputeHashPawn();
+                Hash             = ComputeHash     (     );
+                HashMinor        = ComputeHashMinor(     );
+                HashMajor[White] = ComputeHashMajor(White);
+                HashMajor[Black] = ComputeHashMajor(Black);
             }
         }
 
@@ -226,7 +230,9 @@ namespace StockDory
                 if constexpr (Other == BoardType::Packed) Hash = ComputeHash();
                 else Hash = other.Zobrist();
 
-                HashPawn = ComputeHashPawn();
+                HashMinor        = ComputeHashMinor(     );
+                HashMajor[White] = ComputeHashMajor(White);
+                HashMajor[Black] = ComputeHashMajor(Black);
             }
         }
 
@@ -292,10 +298,17 @@ namespace StockDory
         }
 
         [[nodiscard]]
-        ZobristHash PawnZobrist() const
+        ZobristHash ZobristMinor() const
         {
-            if constexpr (Engine) return HashPawn;
-            else return ComputeHashPawn();
+            if constexpr (Engine) return HashMinor;
+            else return ComputeHashMinor();
+        }
+
+        [[nodiscard]]
+        ZobristHash ZobristMajor(const Color color) const
+        {
+            if constexpr (Engine) return HashMajor[color];
+            else return ComputeHashMajor(color);
         }
 
         [[nodiscard]]
@@ -516,28 +529,30 @@ namespace StockDory
             return ::Move(from, to, capture ? MoveFlag::Capture : MoveFlag::Base);
         }
 
-        PreviousStateNull Move()
+        PreviousStateNull Move() requires Engine
         {
-            const PreviousStateNull state (EnPassantSquare());
+            const PreviousStateNull state {
+                .EnPassant = EnPassantSquare()
+            };
 
             HashEnPassant<ZOBRIST>(state.EnPassant);
             SetEnPassant(NASQ);
 
             CastlingRightAndColorToMove ^= ColorFlipMask;
 
-            if constexpr (Engine) Hash = Zobrist::HashColorFlip<ZOBRIST>(Hash);
+            Hash = Zobrist::HashColorFlip<ZOBRIST>(Hash);
 
             return state;
         }
 
-        void UndoMove(const PreviousStateNull& state)
+        void UndoMove(const PreviousStateNull& state) requires Engine
         {
             SetEnPassant(state.EnPassant);
             HashEnPassant<ZOBRIST>(state.EnPassant);
 
             CastlingRightAndColorToMove ^= ColorFlipMask;
 
-            if constexpr (Engine) Hash = Zobrist::HashColorFlip<ZOBRIST>(Hash);
+            Hash = Zobrist::HashColorFlip<ZOBRIST>(Hash);
         }
 
         template<MoveType T>
@@ -552,26 +567,39 @@ namespace StockDory
             if (T & NNUE) Evaluation::PreMove(threadId);
 
             const Square from = move.From();
-            const Square to   = move.To();
+            const Square to   = move.  To();
+
             const PieceColor moved = PieceAndColor[from];
+
             const Piece piece = moved.Piece();
             const Color color = moved.Color();
+
             const Color opposite = Opposite(color);
 
             assert(piece != NAP && color == ColorToMove());
+
             assert(move == CreateMove(from, to, move.Promotion()));
 
             PreviousState state {
-                moved,
-                PieceAndColor[to],
-                EnPassantSquare(),
-                CastlingRightAndColorToMove,
-                0
+                .MovedPiece       = moved,
+                .CapturedPiece    = PieceAndColor[to],
+                .PromotedPiece    = move.Promotion(),
+                .EnPassantCapture = move.EnPassant(),
+                .EnPassant        = EnPassantSquare(),
+                .CastlingFrom     = NASQ,
+                .CastlingTo       = NASQ,
+
+                .CastlingRightAndColorToMove =  CastlingRightAndColorToMove,
+
+                .Hash      =   0,
+                .HashMinor =   0,
+                .HashMajor = { 0, 0 }
             };
 
             if constexpr (Engine && (T & ZOBRIST)) {
-                state.Hash = Hash;
-                state.PawnHash = HashPawn;
+                state.Hash      = Hash     ;
+                state.HashMinor = HashMinor;
+                state.HashMajor = HashMajor;
             }
 
             HashEnPassant<T>(state.EnPassant);
@@ -592,21 +620,17 @@ namespace StockDory
                 HashPiece<T>(capturedPiece, opposite, captured);
 
                 if (T & NNUE) Evaluation::Deactivate(capturedPiece, opposite, captured, threadId);
-
-                state.EnPassantCapture = move.EnPassant();
             }
 
             if (move.Promotion() != NAP) {
-                state.PromotedPiece = move.Promotion();
-
                 RemovePiece (Pawn            , color, from);
                 PlacePiece  (move.Promotion(), color,   to);
                 HashPiece<T>(Pawn            , color, from);
                 HashPiece<T>(move.Promotion(), color,   to);
 
                 if (T & NNUE) {
-                    Evaluation::Deactivate(Pawn, color, from, threadId);
-                    Evaluation::Activate(move.Promotion(), color, to, threadId);
+                    Evaluation::Deactivate(     Pawn       , color, from, threadId);
+                    Evaluation::  Activate(move.Promotion(), color,  to , threadId);
                 }
             } else {
                 TransitionPiece(piece, color, from, to);
@@ -654,8 +678,9 @@ namespace StockDory
             SetEnPassant(state.EnPassant);
 
             if constexpr (Engine && (T & ZOBRIST)) {
-                Hash = state.Hash;
-                HashPawn = state.PawnHash;
+                Hash      = state.Hash     ;
+                HashMinor = state.HashMinor;
+                HashMajor = state.HashMajor;
             }
 
             const Piece piece = state.MovedPiece.Piece();
@@ -761,7 +786,8 @@ namespace StockDory
             if constexpr (Engine && (T & ZOBRIST)) {
                 Hash = Zobrist::HashPiece<T>(Hash, piece, color, sq);
 
-                if (piece == Pawn) HashPawn = Zobrist::HashPiece<T>(HashPawn, piece, color, sq);
+                if (piece == Pawn) HashMinor        = Zobrist::HashPiece<T>(HashMinor       , piece, color, sq);
+                else               HashMajor[color] = Zobrist::HashPiece<T>(HashMajor[color], piece, color, sq);
             }
         }
 
@@ -777,7 +803,7 @@ namespace StockDory
             if constexpr (Engine && (T & ZOBRIST)) Hash = Zobrist::HashCastling<T>(Hash, CastlingRights());
         }
 
-        ZobristHash ComputeHashPawn() const
+        ZobristHash ComputeHashMinor() const
         {
             ZobristHash result = 0;
 
@@ -785,6 +811,18 @@ namespace StockDory
 
             for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value())
                 result = Zobrist::HashPiece<ZOBRIST>(result, Pawn, PieceAndColor[sq].Color(), sq);
+
+            return result;
+        }
+
+        ZobristHash ComputeHashMajor(const Color color) const
+        {
+            ZobristHash result = 0;
+
+            BitBoardIterator iterator(ColorBB[color] & ~PieceBoard(Pawn, color));
+
+            for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value())
+                result = Zobrist::HashPiece<ZOBRIST>(result, PieceAndColor[sq].Piece(), color, sq);
 
             return result;
         }
