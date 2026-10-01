@@ -934,8 +934,7 @@ namespace StockDory
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move = moves[i];
 
-                const bool tactical = move.Tactical();
-                const bool quiet    = !tactical;
+                const bool quiet = move.Quiet();
 
                 searchedQuiets += quiet;
 
