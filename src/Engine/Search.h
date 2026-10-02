@@ -483,9 +483,9 @@ namespace StockDory
 
             if (SingleMove) return;
 
-            BestMoveStability = 0;
             if (LastBestMove && LastBestMove == BestMove)
-                BestMoveStability = std::min<uint8_t>(BestMoveStability + 1, TimeBestMoveStabilityMax);
+                 BestMoveStability = std::min<uint8_t>(BestMoveStability + 1, TimeBestMoveStabilityMax);
+            else BestMoveStability = 0;
 
             LastBestMove = BestMove;
 
