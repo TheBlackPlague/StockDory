@@ -946,13 +946,13 @@ namespace StockDory
                 // FP is a pruning technique that prunes branches that are too bad for us to be worth searching further.
                 // It is the opposite of RFP, and while trying to achieve the same goal as Razoring, it does so with a
                 // very different approach - relying on the static evaluation and move policy. StockDory's Move Policy
-                // ensures that tactical moves always come before quiet moves, so if we are at a point where we are
-                // searching a quiet move, we can assume that all tactical moves have been searched already. Then, if
-                // the static evaluation of the current position is significantly worse than our lower bound (alpha),
+                // ensures that good tactical moves always come before quiet moves, so if we are at a point where we are
+                // searching a quiet move, we can assume that all good tactical moves have been searched already. Then,
+                // if the static evaluation of the current position is significantly worse than our lower bound (alpha),
                 // it is very unlikely that a non-tactical move will improve our position enough to exceed our lower
                 // bound (alpha). Searching further in this branch is not going to change the outcome of this branch,
                 // so we can stop early
-                if (i > 0 && quiet) {
+                if (!checked && i >= 1 && quiet) {
                     const Score margin = depth * FutilityDepthFactor;
 
                     if (staticEvaluation + margin <= alpha) break;
