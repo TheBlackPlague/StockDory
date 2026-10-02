@@ -1015,7 +1015,7 @@ namespace StockDory
                     // is alpha), we then research them at a full depth. The researches are relatively inexpensive due
                     // to the transposition table, and the time we save by not searching moves that are unlikely to
                     // improve our position is worth it
-                    if (doLMR && i > LMRMinimumMoves) {
+                    if (doLMR && i >= LMRMinimumMoves) {
                         // Reduction values are determined by a formula that takes into account the current depth and
                         // move number. Current formula:
                         //
@@ -1040,7 +1040,7 @@ namespace StockDory
                             // Increase reduction for bad history moves and reduce for good history moves (possibly
                             // extending the search depth)
                             const int16_t history = History[Color][movingPiece][move.To()];
-                            r -= history / ((HistoryLimit / LMRHistoryPartition) / LMRHistoryWeight);
+                            r -= history * LMRHistoryPartition * LMRHistoryWeight / HistoryLimit;
                         }
 
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly

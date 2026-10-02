@@ -121,7 +121,7 @@ namespace StockDory
     PARAMETER(uint8_t, LMPLastQuietBase, 3, 1, 16);
 
     PARAMETER(uint8_t , LMRMinimumDepth     ,    3,   2,    8);
-    PARAMETER(uint8_t , LMRMinimumMoves     ,    3,   2,    8);
+    PARAMETER(uint8_t , LMRMinimumMoves     ,    4,   2,    8);
     PARAMETER(uint16_t, LMRNotPVBonus       , 1024,   0, 2048);
     PARAMETER(uint16_t, LMRTTMoveBonus      , 1024,   0, 2048);
     PARAMETER(uint16_t, LMRNotImprovingBonus, 1024,   0, 2048);
