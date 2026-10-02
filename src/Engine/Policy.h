@@ -51,6 +51,8 @@ namespace StockDory
 
         const HTable& Continuation;
 
+        const CaptureHTable& CaptureHistory;
+
         const Move TTMove;
 
         public:
@@ -60,9 +62,11 @@ namespace StockDory
             const Move kTwo,
             const HTable&      history,
             const HTable& continuation,
+            const CaptureHTable& captureHistory,
             const Move tt
         )
-        : Board(board), KillerOne(kOne), KillerTwo(kTwo), History(history), Continuation(continuation), TTMove(tt) {}
+        : Board(board), KillerOne(kOne), KillerTwo(kTwo), History(history), Continuation(continuation),
+          CaptureHistory(captureHistory), TTMove(tt) {}
 
         template<Piece Piece, enum Piece PromotionPiece = NAP>
         int32_t Score(const Move move) const
@@ -91,7 +95,10 @@ namespace StockDory
 
             if (CaptureOnly || move.Capture()) {
                 const bool goodCapture = SEE::Accurate(Board, move, 0);
-                score += MvvLva[move.EnPassant() ? Pawn : Board[move.To()].Piece()][Piece] * (goodCapture ? 20 : 1);
+                const auto capturedPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
+
+                score += MvvLva[capturedPiece][Piece] * (goodCapture ? 20 : 1);
+                score += CaptureHistory[Color][Piece][move.To()][capturedPiece];
 
                 return score;
             }

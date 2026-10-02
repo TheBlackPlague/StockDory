@@ -46,13 +46,14 @@ namespace StockDory
         explicit OrderedMoveList(
             const Board & board , const uint8_t ply   ,
             const KTable& kTable, const HTable& hTable,
-            const HTable& cTable, const Move    ttMove = {}
+            const HTable& cTable, const CaptureHTable& captureHistory,
+            const Move ttMove = {}
         ) requires UsePolicy
         {
             const Move kOne = kTable[0][ply];
             const Move kTwo = kTable[1][ply];
 
-            const Policy<Color, CaptureOnly> policy (board, kOne, kTwo, hTable, cTable, ttMove);
+            const Policy<Color, CaptureOnly> policy (board, kOne, kTwo, hTable, cTable, captureHistory, ttMove);
 
             const PinBitBoard pin = board.Pin<Color, Opposite(Color)>();
 
