@@ -95,10 +95,10 @@ namespace StockDory
 
             if (CaptureOnly || move.Capture()) {
                 const bool goodCapture = SEE::Accurate(Board, move, 0);
-                const auto capturedPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
+                const auto targetPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
 
-                score += MvvLva[capturedPiece][Piece] * (goodCapture ? 20 : 1);
-                score += CaptureHistory[Color][Piece][move.To()][capturedPiece];
+                score += MvvLva[targetPiece][Piece] * (goodCapture ? 20 : 1);
+                score += CaptureHistory[Color][Piece][move.To()][targetPiece];
 
                 return score;
             }

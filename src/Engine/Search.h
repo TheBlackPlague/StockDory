@@ -1330,9 +1330,9 @@ namespace StockDory
                 CaptureHistoryMultiplier * depth - CaptureHistoryShiftDown, 0, HistoryLimit
             );
 
-            const auto capturedPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
+            const auto targetPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
 
-            int16_t& history = CaptureHistory[Color][Board[move.From()].Piece()][move.To()][capturedPiece];
+            int16_t& history = CaptureHistory[Color][Board[move.From()].Piece()][move.To()][targetPiece];
 
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
         }
