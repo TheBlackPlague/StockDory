@@ -132,7 +132,7 @@ namespace StockDory
             UCIOptionSwitch.emplace(threads->GetName(), threads);
             UCIOptionSwitch.emplace(    wdl->GetName(), wdl    );
 
-#ifdef BUILD_TUNING
+            #ifdef BUILD_TUNING
 
             for (const auto& parameter : TunableParameter::All()) {
                 auto option =
@@ -159,7 +159,7 @@ namespace StockDory
                 UCIOptionSwitch.emplace(option->GetName(), option);
             }
 
-#endif
+            #endif
 
         }
 
