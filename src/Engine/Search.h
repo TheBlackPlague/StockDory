@@ -991,7 +991,8 @@ namespace StockDory
                     if (doLMP && searchedQuiets > lmpLastQuiet && bestEvaluation > -Infinity) break;
                 }
 
-                const Piece movingPiece = Board[move.From()].Piece();
+                const Piece movingPiece =                           Board[move.From()].Piece();
+                const Piece targetPiece = move.EnPassant() ? Pawn : Board[move.  To()].Piece();
 
                 uint64_t nodesBeforeMove = 0;
 
@@ -1050,10 +1051,15 @@ namespace StockDory
                         if (Board.Checked<OColor>()) r -= LMRGaveCheckPenalty;
 
                         if (quiet) {
-                            // Increase reduction for bad history moves and reduce for good history moves (possibly
+                            // Increase reduction for bad quiet moves and reduce for good quiet moves (possibly
                             // extending the search depth)
                             const int16_t history = History[Color][movingPiece][move.To()];
-                            r -= history * LMRHistoryPartition * LMRHistoryWeight / HistoryLimit;
+                            r -= history * LMRQuietHistoryPartition * LMRQuietHistoryWeight / HistoryLimit;
+                        } else if (capture) {
+                            // Increase reduction for bad capture moves and reduce for good capture moves (possibly
+                            // extending the search depth)
+                            const int16_t history = CaptureHistory[Color][movingPiece][move.To()][targetPiece];
+                            r -= history * LMRCaptureHistoryWeight / HistoryLimit;
                         }
 
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
