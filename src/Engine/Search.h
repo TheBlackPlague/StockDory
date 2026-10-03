@@ -959,13 +959,13 @@ namespace StockDory
                 // FP is a pruning technique that prunes branches that are too bad for us to be worth searching further.
                 // It is the opposite of RFP, and while trying to achieve the same goal as Razoring, it does so with a
                 // very different approach - relying on the static evaluation and move policy. StockDory's Move Policy
-                // ensures that tactical moves always come before quiet moves, so if we are at a point where we are
-                // searching a quiet move, we can assume that all tactical moves have been searched already. Then, if
-                // the static evaluation of the current position is significantly worse than our lower bound (alpha),
+                // ensures that good tactical moves always come before quiet moves, so if we are at a point where we are
+                // searching a quiet move, we can assume that all good tactical moves have been searched already. Then,
+                // if the static evaluation of the current position is significantly worse than our lower bound (alpha),
                 // it is very unlikely that a non-tactical move will improve our position enough to exceed our lower
                 // bound (alpha). Searching further in this branch is not going to change the outcome of this branch,
                 // so we can stop early
-                if (i > 0 && quiet) {
+                if (!checked && i >= 1 && quiet) {
                     const Score margin = depth * FutilityDepthFactor;
 
                     if (staticEvaluation + margin <= alpha) break;
@@ -1028,7 +1028,7 @@ namespace StockDory
                     // is alpha), we then research them at a full depth. The researches are relatively inexpensive due
                     // to the transposition table, and the time we save by not searching moves that are unlikely to
                     // improve our position is worth it
-                    if (doLMR && i > LMRMinimumMoves) {
+                    if (doLMR && i >= LMRMinimumMoves) {
                         // Reduction values are determined by a formula that takes into account the current depth and
                         // move number. Current formula:
                         //
@@ -1053,7 +1053,7 @@ namespace StockDory
                             // Increase reduction for bad history moves and reduce for good history moves (possibly
                             // extending the search depth)
                             const int16_t history = History[Color][movingPiece][move.To()];
-                            r -= history / ((HistoryLimit / LMRHistoryPartition) / LMRHistoryWeight);
+                            r -= history * LMRHistoryPartition * LMRHistoryWeight / HistoryLimit;
                         }
 
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
@@ -1343,9 +1343,9 @@ namespace StockDory
                 CaptureHistoryMultiplier * depth - CaptureHistoryShiftDown, 0, HistoryLimit
             );
 
-            const auto capturedPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
+            const auto targetPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
 
-            int16_t& history = CaptureHistory[Color][Board[move.From()].Piece()][move.To()][capturedPiece];
+            int16_t& history = CaptureHistory[Color][Board[move.From()].Piece()][move.To()][targetPiece];
 
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
         }
