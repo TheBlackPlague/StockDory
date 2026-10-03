@@ -32,6 +32,8 @@ namespace StockDory
         // Reserving the 8 upper bits for the index to be used for fast sorting
         constexpr static int32_t MaximumScore = std::numeric_limits<int32_t>::max() >> 8;
 
+        constexpr static int32_t GoodTacticalBonus = HistoryLimit * 3;
+
         constexpr static int32_t PromotionMultiplier = 100000;
 
         constexpr static Array<uint8_t, 5> PromotionFactor = {
@@ -71,27 +73,37 @@ namespace StockDory
         template<Piece Piece, enum Piece PromotionPiece = NAP>
         int32_t Score(const Move move) const
         {
+
             // Policy:
             //
-            // The categories below give a rough idea of how the score is calculated for move ordering, but in practical
-            // terms, the score isn't as categorical and there are overlaps between the categories (e.g. a good capture
-            // can appear before a promotion):
+            // The transposition table move always comes first, followed by promotions and good captures. Following them
+            // are good quiets, which are then followed by bad captures interleaved with moderately-favoured quiets. At
+            // last, there are strongly disfavoured quiets.
             //
-            // - Transposition Table Move
-            // - Promotions
-            // - Good Captures (SEE >= 0)
-            // - Good Quiet Moves
-            //   - Killer Moves
-            //   - Good History Moves
-            // - Bad Captures (SEE < 0)
-            // - Bad Quiet Moves
-            //   - Bad History Moves
+            // Score Range(s)      | Move Types
+            // 8388607             | Transposition Table Move
+            // 449152 ... 585636   | Queen Promotions / Capturing Knight Underpromotions
+            // 349152 ... 449151   | Queen/Knight Promotions / Capturing Rook Underpromotions
+            // 249152 ... 349151   | Knight/Rook Underpromotions / Capturing Bishop Underpromotions
+            // 149152 ... 249151   | Rook/Bishop Underpromotions / Higher-Scoring Good Captures
+            //  72768 ... 149151   | Quiet Bishop Underpromotions / Remaining Good Captures
+            //  21386 ...  49152   | Strongly Favoured Quiet Moves
+            // -14383 ...  21385   | Bad Captures / Similarly Scored Quiets
+            // -32768 ... -14384   | Strongly Disfavoured Quiet Moves
+            //
+            // Capturing underpromotions refer to moves that capture a piece while promoting to piece of lesser value
+            // than the one they're capturing; MvvLva (Most Valuable Victim Least Valuable Attacker) combined with SEE
+            // (static exchange evaluation) typically scores these well since they are usually good captures.
+            //
+            // Good & bad captures refer to captures accepted or rejected by SEE and not their capture-history scores,
+            // however within a category of captures, they are prioritized by their capture-history scores
 
             if (move == TTMove) return MaximumScore;
 
             int32_t score = 0;
 
-            if (PromotionPiece != NAP) score += PromotionFactor[PromotionPiece] * PromotionMultiplier;
+            if (PromotionPiece != NAP)
+                score += GoodTacticalBonus + PromotionFactor[PromotionPiece] * PromotionMultiplier;
 
             if (CaptureOnly || move.Capture()) {
                 const bool goodCapture = SEE::Accurate(Board, move, 0);
@@ -99,6 +111,8 @@ namespace StockDory
 
                 score += MvvLva[capturedPiece][Piece] * (goodCapture ? 20 : 1);
                 score += CaptureHistory[Color][Piece][move.To()][capturedPiece];
+
+                if (PromotionPiece == NAP && goodCapture) score += GoodTacticalBonus;
 
                 return score;
             }
