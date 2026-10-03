@@ -95,6 +95,9 @@ namespace StockDory
     PARAMETER(double , TimeNodeBase              ,  2.025, 1.500,  3.000);
     PARAMETER(double , TimeNodeEffortWeight      ,  1.350, 0.500,  1.500);
 
+    PARAMETER(double , TimeBestMoveStabilityWeight,  0.500, 0.000,  1.000);
+    PARAMETER(uint8_t, TimeBestMoveStabilityMax   , 10    , 4    , 20    );
+
     PARAMETER(uint16_t, AspirationWindowFallbackBound, 3500, 2000, 6000);
     PARAMETER(uint8_t , AspirationWindowMargin       ,   16,    8,   64);
     PARAMETER(uint8_t , AspirationWindowMarginDelta  ,   23,    8,   64);
