@@ -341,6 +341,8 @@ namespace StockDory
 
         uint8_t BestMoveStability = 0;
 
+        Array<Score, 4> PreviousEvaluations { None, None, None, None };
+
         bool SingleMove = false;
 
         size_t ThreadId = 0;
@@ -489,6 +491,17 @@ namespace StockDory
 
             LastBestMove = BestMove;
 
+            Score evaluationDrop = 0;
+
+            if (IsMate(Evaluation)) PreviousEvaluations.fill(None);
+            else {
+                Score& previousEvaluation = PreviousEvaluations[IDepth % PreviousEvaluations.size()];
+
+                if (previousEvaluation != None) evaluationDrop = std::max(previousEvaluation - Evaluation, 0);
+
+                previousEvaluation = Evaluation;
+            }
+
             if (IDepth < TimeManagementMinimumDepth) return;
 
             double factor = 1.0;
@@ -500,6 +513,9 @@ namespace StockDory
 
             factor *= 1.0 + (1.0 - static_cast<double>(BestMoveStability) / TimeBestMoveStabilityMax   ) *
                                                                             TimeBestMoveStabilityWeight  ;
+
+            factor *= 1.0 + std::min(static_cast<double>(evaluationDrop) / TimeEvaluationDropScale , 1.0) *
+                                                                           TimeEvaluationDropWeight       ;
 
             const double scaledTime = static_cast<double>(Limit.BaseTime.count()) * factor;
 
