@@ -271,13 +271,16 @@ namespace StockDory
     struct IterativeDeepeningIterationCompletionEvent
     {
 
-        int16_t           Depth {};
-        uint8_t  SelectiveDepth {};
-        Score        Evaluation {};
-        WDL                 WDL {};
-        uint64_t          Nodes {};
-        MS                 Time {};
-        PVEntry         PVEntry {};
+        uint8_t          Depth {};
+        uint8_t SelectiveDepth {};
+
+        Score Evaluation {};
+        WDL          WDL {};
+
+        uint64_t Nodes {};
+        MS        Time {};
+
+        PVEntry PVEntry {};
 
     };
 
@@ -324,9 +327,8 @@ namespace StockDory
 
         Limit Limit {};
 
+        uint8_t          Depth = 0;
         uint8_t SelectiveDepth = 0;
-
-        int16_t IDepth = 0;
 
         Score Evaluation = -Infinity;
 
@@ -382,11 +384,11 @@ namespace StockDory
             // thread IDs as each thread has its own evaluation state)
             Board.LoadForEvaluation(ThreadId);
 
-            IDepth = 1;
-            while (IDepth < MaxDepth && IDepth <= Limit.Depth && !OutOfTime<Limit::Optimal>()) {
+            Depth = 1;
+            while (Depth < MaxDepth && Depth <= Limit.Depth && !OutOfTime<Limit::Optimal>()) {
                 if (Board.ColorToMove() ==   White)
-                     Evaluation = Aspiration<White>(IDepth);
-                else Evaluation = Aspiration<Black>(IDepth);
+                     Evaluation = Aspiration<White>(Depth);
+                else Evaluation = Aspiration<Black>(Depth);
 
                 // In the case that the search was stopped, we should just proceed to fire the completion event
                 if (Stopped()) break;
@@ -401,17 +403,20 @@ namespace StockDory
                     SearchTimeManagement();
 
                     EventHandler::HandleIterativeDeepeningIterationCompletion({
-                        .Depth          = IDepth,
+                        .         Depth =          Depth,
                         .SelectiveDepth = SelectiveDepth,
-                        .Evaluation     = WDLCalculator::S(Board, Evaluation),
-                        .WDL            = WDL(Board, Evaluation),
-                        .Nodes          = GetNodes(),
-                        .Time           = time,
-                        .PVEntry        = PVTable[0]
+
+                        .Evaluation = WDLCalculator::S(Board, Evaluation),
+                        .WDL        = WDL             (Board, Evaluation),
+
+                        .Nodes = GetNodes(),
+                        .Time  = time,
+
+                        .PVEntry = PVTable[0]
                     });
                 }
 
-                IDepth++;
+                Depth++;
             }
 
             Stop();
@@ -489,7 +494,7 @@ namespace StockDory
 
             LastBestMove = BestMove;
 
-            if (IDepth < TimeManagementMinimumDepth) return;
+            if (Depth < TimeManagementMinimumDepth) return;
 
             double factor = 1.0;
 
@@ -644,7 +649,16 @@ namespace StockDory
                 // The 50-move rule states that if there have been 50 full moves without a pawn move or a capture, then
                 // the game is drawn. The half-move counter tracks the number of half-moves since the last pawn move or
                 // capture, so if it reaches 100, the game is drawn
-                if (Stack[ply].HalfMoveCounter >= 100) return Draw;
+                if (Stack[ply].HalfMoveCounter >= 100) {
+                    if (!checked) return Draw;
+
+                    const OrderedMoveList<Color, false, false> moves (Board);
+
+                    // Out of Moves:
+                    //
+                    // Checkmate takes precedence over the 50-move rule
+                    return moves.Count() == 0 ? LossIn(ply) : Draw;
+                }
 
                 // Repetition:
                 //
@@ -898,10 +912,12 @@ namespace StockDory
                           +  ScalingEvaluationReduction
                           );
 
-                    const PreviousStateNull state = Board.Move();
-
                     Stack[ply].PieceToMove = NAP;
                     Stack[ply].       Move = { };
+
+                    Stack[ply + 1].HalfMoveCounter = Stack[ply].HalfMoveCounter;
+
+                    const PreviousStateNull state = Board.Move();
 
                     const auto evaluation = -PVS<OColor, false, false, false>(
                         ply + 1,
