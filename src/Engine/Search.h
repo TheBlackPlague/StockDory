@@ -1292,7 +1292,7 @@ namespace StockDory
 
             const bool resetHalfMoveCounter = move.Capture() || Board[move.From()].Piece() == Pawn;
 
-            Stack[ply + 1].HalfMoveCounter = resetHalfMoveCounter ? 1 : Stack[ply].HalfMoveCounter + 1;
+            Stack[ply + 1].HalfMoveCounter = resetHalfMoveCounter ? 0 : Stack[ply].HalfMoveCounter + 1;
 
             Stack[ply].       Move = move;
             Stack[ply].PieceToMove = Board[move.From()].Piece();

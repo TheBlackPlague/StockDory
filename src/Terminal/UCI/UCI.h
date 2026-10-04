@@ -57,7 +57,7 @@ namespace StockDory
         static void Launch()
         {
             Repetition.Push(Board.Zobrist());
-            HalfMoveCounter = 1;
+            HalfMoveCounter = 0;
 
             RegisterOptions();
             RegisterCommands();
@@ -214,9 +214,9 @@ namespace StockDory
             if (UCISearch::Searching.Load(MemoryOrder::acquire)) UCISearch::MainTask.Stop();
             UCISearch::Searching.Wait(true, MemoryOrder::acquire);
 
-            Board           = {};
-            Repetition      = {};
-            HalfMoveCounter =  1;
+            Board           = {   };
+            Repetition      = {   };
+            HalfMoveCounter =   0  ;
 
             Repetition.Push(Board.Zobrist());
 
@@ -324,7 +324,7 @@ namespace StockDory
                 Repetition = {};
 
                 Repetition.Push(Board.Zobrist());
-                HalfMoveCounter = 1;
+                HalfMoveCounter = 0;
             } else return;
 
             if (args.size() >= moveStrIndex &&
@@ -338,7 +338,7 @@ namespace StockDory
                         ? ValidateMove<White>(parsed) : ValidateMove<Black>(parsed);
                     if (!move) return;
 
-                    HalfMoveCounter = move.Capture() || Board[move.From()].Piece() == Pawn ? 1 : HalfMoveCounter + 1;
+                    HalfMoveCounter = move.Capture() || Board[move.From()].Piece() == Pawn ? 0 : HalfMoveCounter + 1;
 
                     Board.Move<ZOBRIST>(move);
 
