@@ -630,12 +630,6 @@ namespace StockDory
 
             depth = std::min<int16_t>(depth, MaxDepth - 1);
 
-            // If we've exhausted our search depth and aren't in check, we should check if there are any tactical
-            // sequences just over the horizon. If there are, we should get a more accurate evaluation through a
-            // Quiescence search. If we are in check, we should go down the normal search path, extending as needed to
-            // ensure we find a suitable evasion
-            if (depth <= 0 && !checked) return Quiescence<Color, PV>(ply, alpha, beta);
-
             const ZobristHash hash = Board.Zobrist();
 
             if (!Root) {
@@ -696,6 +690,12 @@ namespace StockDory
                 beta  = std::min<Score>(beta ,  WinIn(ply + 1));
                 if (alpha >= beta) return alpha;
             }
+
+            // If we've exhausted our search depth and aren't in check, we should check if there are any tactical
+            // sequences just over the horizon. If there are, we should get a more accurate evaluation through a
+            // Quiescence search. If we are in check, we should go down the normal search path, extending as needed to
+            // ensure we find a suitable evasion
+            if (depth <= 0 && !checked) return Quiescence<Color, PV>(ply, alpha, beta);
 
             // Transposition Table Reading:
             //
