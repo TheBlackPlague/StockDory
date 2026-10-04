@@ -117,22 +117,41 @@ namespace StockDory
         Array<ZobristHash, 4096> Internal {};
 
         size_t CurrentIndex = 0;
+        size_t NullBoundary = 0;
 
         public:
         void Push(const ZobristHash hash) { Internal[CurrentIndex++] = hash; }
 
         void Pop() { CurrentIndex--; }
 
-        bool Found(const ZobristHash hash, const uint8_t halfMoveCounter) const
+        size_t PushNull(const ZobristHash hash)
         {
-            uint8_t checked = 0, found = 0;
-            for (uint16_t i = CurrentIndex - 1; i != 0xFFFF; i--) {
-                if (checked > halfMoveCounter) break;
+            const size_t previous = NullBoundary;
 
-                if (found == 2 && Internal[i] == hash) return true;
+            NullBoundary = CurrentIndex;
 
-                found += Internal[i] == hash;
-                checked++;
+            Push(hash);
+
+            return previous;
+        }
+
+        void PopNull(const size_t previous) { Pop(); NullBoundary = previous; }
+
+        bool Found(const uint8_t halfMoveCounter) const
+        {
+            if (CurrentIndex <= NullBoundary) return false;
+
+            const size_t current = CurrentIndex - 1;
+            const size_t limit   = std::min<size_t>(halfMoveCounter, current - NullBoundary);
+
+            const ZobristHash hash = Internal[current];
+
+            uint8_t found = 1;
+
+            for (size_t distance = 4; distance <= limit; distance += 2) {
+                if (Internal[current - distance] != hash) continue;
+
+                if (++found == RepetitionLimit) return true;
             }
 
             return false;
@@ -660,7 +679,7 @@ namespace StockDory
                 // check this by storing the Zobrist Hashes of all positions we've seen in the current branch of the
                 // search. We check if the current position's hash has been seen before N times, where N is equal to
                 // the repetition limit (3 by default)
-                if (Repetition.Found(hash, Stack[ply].HalfMoveCounter)) return Draw;
+                if (Repetition.Found(Stack[ply].HalfMoveCounter)) return Draw;
 
                 // Insufficient material:
                 //
@@ -919,12 +938,16 @@ namespace StockDory
 
                     const PreviousStateNull state = Board.Move();
 
+                    const size_t previous = Repetition.PushNull(Board.Zobrist());
+
                     const auto evaluation = -PVS<OColor, false, false, false>(
                         ply + 1,
                         reducedDepth,
                         -beta,
                         -beta + 1
                     );
+
+                    Repetition.PopNull(previous);
 
                     Board.UndoMove(state);
 
