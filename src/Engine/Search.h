@@ -647,8 +647,6 @@ namespace StockDory
             if (ply >= MaxDepth) [[unlikely]]
                 return checked ? Draw : CorrectEvaluation<Color>(ScaleEvaluation<Color>(), ply);
 
-            depth = std::min<int16_t>(depth, MaxDepth - 1);
-
             const ZobristHash hash = Board.Zobrist();
 
             if (!Root) {
@@ -709,6 +707,8 @@ namespace StockDory
                 beta  = std::min<Score>(beta ,  WinIn(ply + 1));
                 if (alpha >= beta) return alpha;
             }
+
+            depth = std::min<int16_t>(depth, MaxDepth - 1);
 
             // If we've exhausted our search depth and aren't in check, we should check if there are any tactical
             // sequences just over the horizon. If there are, we should get a more accurate evaluation through a
