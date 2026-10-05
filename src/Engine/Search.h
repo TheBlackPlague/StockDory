@@ -234,13 +234,17 @@ namespace StockDory
             const BitBoard rook   = board.PieceBoard(Rook  , White) | board.PieceBoard(Rook  , Black);
             const BitBoard queen  = board.PieceBoard(Queen , White) | board.PieceBoard(Queen , Black);
 
-            const Score mat = Count(pawn  ) * 1 +
-                              Count(knight) * 3 +
-                              Count(bishop) * 3 +
-                              Count(rook  ) * 5 +
-                              Count(queen ) * 9 ;
+            const Score material = std::clamp<Score>(
+                Count(pawn  ) * 1 +
+                Count(knight) * 3 +
+                Count(bishop) * 3 +
+                Count(rook  ) * 5 +
+                Count(queen ) * 9 ,
+                17,
+                78
+            );
 
-            return { .A = Formula<A>(mat), .B = Formula<B>(mat) };
+            return { .A = Formula<A>(material), .B = Formula<B>(material) };
         }
 
         public:
