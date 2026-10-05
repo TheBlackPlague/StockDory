@@ -1,0 +1,20 @@
+Converting evals with NormalizeToPawnValue = 100.
+Reading eval stats from stockdory-wdl.json.
+Retained (W,D,L) = (2313894, 6332810, 2324309) positions.
+Saved distribution plot to stockdory-distribution-pr.png.
+Fit WDL model based on material.
+Initial objective function:  0.5170037909120253
+Final objective function:    0.5169992258714596
+Optimization terminated successfully.
+const int NormalizeToPawnValue = 249;
+Corresponding spread = 95;
+Corresponding normalized spread = 0.3814469634177129;
+Draw rate at 0.0 eval at material 58 = 0.8644772451357553;
+Parameters in internal value units: 
+p_a = ((-39.305 * x / 58 + 262.989) * x / 58 + -419.983) * x / 58 + 445.645
+p_b = ((-19.925 * x / 58 + 135.604) * x / 58 + -123.933) * x / 58 + 103.367
+    constexpr double as[] = {-39.30487954, 262.98923259, -419.98251081, 445.64485738};
+    constexpr double bs[] = {-19.92536318, 135.60358857, -123.93301877, 103.36733479};
+Preparing plots.
+Saved graphics to stockdory-wdl-pr.png.
+Total elapsed time = 72.90s.
