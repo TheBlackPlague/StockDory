@@ -214,8 +214,8 @@ namespace StockDory
         enum Weight : uint8_t { A, B };
 
         constexpr static Array<double, 2, 4> WValue = {{
-            {  60.09285654, -67.89307926, -74.69971460, 320.80620991 },
-            {  49.46329816, -80.84815967,  90.55170639,  38.37540637 }
+            { -39.30487954, 262.98923259, -419.98251081, 445.64485738 },
+            { -19.92536318, 135.60358857, -123.93301877, 103.36733479 }
         }};
 
         template<Weight W>
@@ -234,13 +234,17 @@ namespace StockDory
             const BitBoard rook   = board.PieceBoard(Rook  , White) | board.PieceBoard(Rook  , Black);
             const BitBoard queen  = board.PieceBoard(Queen , White) | board.PieceBoard(Queen , Black);
 
-            const Score mat = Count(pawn  ) * 1 +
-                              Count(knight) * 3 +
-                              Count(bishop) * 3 +
-                              Count(rook  ) * 5 +
-                              Count(queen ) * 9 ;
+            const Score material = std::clamp<Score>(
+                Count(pawn  ) * 1 +
+                Count(knight) * 3 +
+                Count(bishop) * 3 +
+                Count(rook  ) * 5 +
+                Count(queen ) * 9 ,
+                17,
+                78
+            );
 
-            return { .A = Formula<A>(mat), .B = Formula<B>(mat) };
+            return { .A = Formula<A>(material), .B = Formula<B>(material) };
         }
 
         public:
