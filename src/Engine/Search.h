@@ -1093,10 +1093,20 @@ namespace StockDory
                         if (Board.Checked<OColor>()) r -= LMRGaveCheckPenalty;
 
                         if (quiet) {
-                            // Increase reduction for bad history moves and reduce for good history moves (possibly
-                            // extending the search depth)
-                            const int16_t history = History[Color][movingPiece][move.To()];
-                            r -= history * LMRHistoryPartition * LMRHistoryWeight / HistoryLimit;
+                            // Quiet History LMR:
+                            //
+                            // Increase the reduction for bad quiet moves and reduce the reduction (maybe even extend)
+                            // for good quiet moves
+
+                            const int32_t         baseHistory =      History[Color][movingPiece][move.To()] ;
+                            const int32_t continuationHistory = Stack[ply - 1].Move ?
+                                                                continuation[Color][movingPiece][move.To()] :
+                                                                baseHistory                                 ;
+
+                            r -= (
+                                        baseHistory * LMRBaseHistoryWeight +
+                                continuationHistory * LMRContinuationHistoryWeight
+                            ) * LMRHistoryPartition / HistoryLimit;
                         }
 
                         // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
