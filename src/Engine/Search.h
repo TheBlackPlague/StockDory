@@ -979,10 +979,6 @@ namespace StockDory
                 .Type       = Alpha
             };
 
-            const uint8_t lmpLastQuiet = LMPLastQuietBase +   depth * depth;
-            const bool    doLMP        = !Root && majorMaterial && !checked && depth <= LMPMaximumDepth;
-            const bool    doLMR        =                           !checked && depth >= LMRMinimumDepth;
-
             uint8_t searchedQuiets = 0;
 
             Score bestEvaluation = -Infinity;
@@ -994,41 +990,35 @@ namespace StockDory
 
                 searchedQuiets += quiet;
 
-                // Futility Pruning (FP):
-                //
-                // FP is a pruning technique that prunes branches that are too bad for us to be worth searching further.
-                // It is the opposite of RFP, and while trying to achieve the same goal as Razoring, it does so with a
-                // very different approach - relying on the static evaluation and move policy. StockDory's Move Policy
-                // ensures that good tactical moves always come before quiet moves, so if we are at a point where we are
-                // searching a quiet move, we can assume that all good tactical moves have been searched already. Then,
-                // if the static evaluation of the current position is significantly worse than our lower bound (alpha),
-                // it is very unlikely that a non-tactical move will improve our position enough to exceed our lower
-                // bound (alpha). Searching further in this branch is not going to change the outcome of this branch,
-                // so we can stop early
-                if (!checked && i >= 1 && quiet) {
-                    const Score margin = depth * FutilityDepthFactor;
-
-                    if (staticEvaluation + margin <= alpha) break;
-                }
-
-                if (!PV) {
-                    // Risky Pruning:
+                if (!Root && !PV && !checked) {
+                    // Forward Futility Pruning (FFP):
                     //
-                    // The techniques below are risky pruning techniques that can cause us to miss some good moves.
-                    // Doing this in PV branches can be disastrous, however, in non-PV branches, this is relatively safe
-                    // to do. We can afford to miss some good moves in non-PV branches, as we are not that likely going
-                    // to find the best move in these branches, mainly using the results of these branches to optimize
-                    // search tree exploration
+                    // FFP is the opposite of RFP, in that it is meant to prune branches that are too bad for us to be
+                    // worth searching further. It attempts to achieve the same goal as razoring but with a very
+                    // different approach: relying on the static evaluation and move policy. StockDory's Move Policy
+                    // ensures that good tactical moves are presented earlier in the search, so if we're at a point
+                    // where we are searching quiet moves, we can assume that all the good tactical moves have been
+                    // searched already. In that case, if the static evaluation of our current position is significantly
+                    // worse than our lower bound (alpha), it is futile to think moves further in this branch will be
+                    // worth searching; searching further is not going to change the outcome of this branch and thus
+                    // we can stop early
+                    if (!checked && i >= 1 && quiet) {
+                        const Score margin = depth * FutilityDepthFactor;
+
+                        if (staticEvaluation + margin <= alpha) break;
+                    }
 
                     // Late Move Pruning (LMP):
                     //
-                    // LMP is a pruning technique that allows us to prune branches that are too bad for us to be worth
-                    // searching further. It is similar to FP and heavily relies on the move policy, working on the
-                    // assumption that the move policy ensures that all the good moves are ordered before the bad ones
-                    // and will be searched earlier. If we are at a point where we've even searched a few quiet moves,
-                    // then it is very likely we've already searched the good moves and searching further is not going
-                    // to change the outcome of this branch - so we can stop early
-                    if (doLMP && searchedQuiets > lmpLastQuiet && bestEvaluation > -Infinity) break;
+                    // Very similar to FFP in that it heavily relies on move policy, LMP assumes that moves ordered
+                    // later in the search are less likely to be good moves. If we're at the point where we've searched
+                    // quite a few quite moves, it is very likely that we've gone through all the good moves in this
+                    // branch and all future moves are likely to be worst and won't change the outcome of this branch,
+                    // and thus we can stop early
+                    if (majorMaterial                                      &&
+                        depth          <= LMPMaximumDepth                  &&
+                        searchedQuiets >  LMPLastQuietBase + depth * depth &&
+                        bestEvaluation >  -Infinity                         ) break;
                 }
 
                 const Piece movingPiece = Board[move.From()].Piece();
@@ -1068,7 +1058,7 @@ namespace StockDory
                     // is alpha), we then research them at a full depth. The researches are relatively inexpensive due
                     // to the transposition table, and the time we save by not searching moves that are unlikely to
                     // improve our position is worth it
-                    if (doLMR && i >= LMRMinimumMoves) {
+                    if (!checked && depth >= LMRMinimumDepth && i >= LMRMinimumMoves) {
                         // Reduction values are determined by a formula that takes into account the current depth and
                         // move number. Current formula:
                         //
