@@ -24,15 +24,23 @@ namespace StockDory
         public:
         static bool Accurate(const Board& board, const Move move, const int32_t threshold)
         {
-            if (move.Promotion() != NAP || move.EnPassant() || move.Castling()) return true;
+            if (move.Castling()) return threshold <= 0;
 
             const Square from = move.From();
             const Square to   = move.  To();
 
-            int32_t value = Internal[board[to].Piece()] - threshold;
+            const Piece promotion = move.Promotion();
+
+            const Piece target    = move.EnPassant() ?   Pawn    : board[ to ].Piece();
+            const Piece moving    = promotion != NAP ? promotion : board[from].Piece();
+
+            int32_t value = Internal[target] - threshold;
+
+            if (promotion != NAP) value += Internal[promotion] - Internal[Pawn];
+
             if (value < 0) return false;
 
-            value -= Internal[board[from].Piece()];
+            value -= Internal[moving];
             if (value >= 0) return true;
 
             const BitBoard diagonal = board.PieceBoard<White>(Bishop) | board.PieceBoard<Black>(Bishop) |
@@ -41,6 +49,9 @@ namespace StockDory
                                       board.PieceBoard<White>(Queen ) | board.PieceBoard<Black>(Queen ) ;
 
             BitBoard occ = ~board[NAC] ^ FromSquare(from);
+
+            if (move.EnPassant()) Set<false>(occ, static_cast<Square>(to ^ 8));
+
             BitBoard att = board.SquareAttackers(to, occ);
 
             Color ctm = Opposite(board.ColorToMove());
