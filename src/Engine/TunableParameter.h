@@ -129,8 +129,8 @@ namespace StockDory
     PARAMETER(uint16_t, LMRTTMoveBonus              , 1024,   0, 2048);
     PARAMETER(uint16_t, LMRNotImprovingBonus        , 1024,   0, 2048);
     PARAMETER(uint16_t, LMRGaveCheckPenalty         , 1024,   0, 2048);
-    PARAMETER(uint16_t, LMRBaseHistoryWeight        ,  512,   0, 1024);
-    PARAMETER(uint16_t, LMRContinuationHistoryWeight,  512,   0, 1024);
+    PARAMETER(uint16_t, LMRBaseHistoryWeight        ,  768,   0, 1024);
+    PARAMETER(uint16_t, LMRContinuationHistoryWeight,  256,   0, 1024);
     PARAMETER(uint16_t, LMRHistoryPartition         ,    2,   1,    4);
 
     PARAMETER(uint8_t, FutilityDepthFactor, 150, 75, 255);
