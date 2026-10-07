@@ -983,7 +983,8 @@ namespace StockDory
             const bool    doLMP        = !Root && majorMaterial && !checked && depth <= LMPMaximumDepth;
             const bool    doLMR        =                           !checked && depth >= LMRMinimumDepth;
 
-            uint8_t searchedQuiets = 0;
+            uint8_t encounteredQuiets =     0;
+            bool           skipQuiets = false;
 
             Score bestEvaluation = -Infinity;
             for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -992,7 +993,7 @@ namespace StockDory
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
 
-                searchedQuiets += quiet;
+                encounteredQuiets += quiet;
 
                 // Futility Pruning (FP):
                 //
@@ -1008,7 +1009,7 @@ namespace StockDory
                 if (!checked && i >= 1 && quiet) {
                     const Score margin = depth * FutilityDepthFactor;
 
-                    if (staticEvaluation + margin <= alpha) break;
+                    if (staticEvaluation + margin <= alpha) skipQuiets = true;
                 }
 
                 if (!PV) {
@@ -1028,8 +1029,10 @@ namespace StockDory
                     // and will be searched earlier. If we are at a point where we've even searched a few quiet moves,
                     // then it is very likely we've already searched the good moves and searching further is not going
                     // to change the outcome of this branch - so we can stop early
-                    if (doLMP && searchedQuiets > lmpLastQuiet && bestEvaluation > -Infinity) break;
+                    if (doLMP && encounteredQuiets > lmpLastQuiet && bestEvaluation > -Infinity) skipQuiets = true;
                 }
+
+                if (skipQuiets && quiet) continue;
 
                 const Piece movingPiece = Board[move.From()].Piece();
 
@@ -1178,7 +1181,7 @@ namespace StockDory
 
                         // Malus for all other quiets as they didn't cause a beta cut-off
                         uint8_t updated = 0;
-                        for (uint8_t j = 1; updated < searchedQuiets - 1; j++) {
+                        for (uint8_t j = 1; updated < encounteredQuiets - 1; j++) {
                             const Move m = moves.UnsortedAccess(i - j);
 
                             if (m.Tactical()) continue;
