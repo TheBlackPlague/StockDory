@@ -979,10 +979,6 @@ namespace StockDory
                 .Type       = Alpha
             };
 
-            const uint8_t lmpLastQuiet = LMPLastQuietBase +   depth * depth;
-            const bool    doLMP        = !Root && majorMaterial && !checked && depth <= LMPMaximumDepth;
-            const bool    doLMR        =                           !checked && depth >= LMRMinimumDepth;
-
             uint8_t encounteredQuiets =     0;
             bool           skipQuiets = false;
 
@@ -992,6 +988,8 @@ namespace StockDory
 
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
+
+                if (skipQuiets && quiet) continue;
 
                 encounteredQuiets += quiet;
 
@@ -1009,7 +1007,7 @@ namespace StockDory
                 if (!checked && i >= 1 && quiet) {
                     const Score margin = depth * FutilityDepthFactor;
 
-                    if (staticEvaluation + margin <= alpha) skipQuiets = true;
+                    if (staticEvaluation + margin <= alpha) continue;
                 }
 
                 if (!PV) {
@@ -1029,10 +1027,10 @@ namespace StockDory
                     // and will be searched earlier. If we are at a point where we've even searched a few quiet moves,
                     // then it is very likely we've already searched the good moves and searching further is not going
                     // to change the outcome of this branch - so we can stop early
-                    if (doLMP && encounteredQuiets > lmpLastQuiet && bestEvaluation > -Infinity) skipQuiets = true;
+                    if (!Root && majorMaterial && !checked && depth <= LMPMaximumDepth &&
+                        encounteredQuiets >= LMPLastQuietBase + depth * depth && bestEvaluation > -Infinity)
+                        skipQuiets = true;
                 }
-
-                if (skipQuiets && quiet) continue;
 
                 const Piece movingPiece = Board[move.From()].Piece();
 
@@ -1071,7 +1069,7 @@ namespace StockDory
                     // is alpha), we then research them at a full depth. The researches are relatively inexpensive due
                     // to the transposition table, and the time we save by not searching moves that are unlikely to
                     // improve our position is worth it
-                    if (doLMR && i >= LMRMinimumMoves) {
+                    if (!checked && depth >= LMRMinimumDepth && i >= LMRMinimumMoves) {
                         // Reduction values are determined by a formula that takes into account the current depth and
                         // move number. Current formula:
                         //
