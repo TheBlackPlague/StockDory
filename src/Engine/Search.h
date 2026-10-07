@@ -7,6 +7,7 @@
 #define STOCKDORY_SEARCH_H
 
 #include <algorithm>
+#include <bitset>
 #include <cmath>
 #include <memory>
 #include <ranges>
@@ -986,7 +987,10 @@ namespace StockDory
             const bool    doLMP        = !Root && !checked && depth <= LMPMaximumDepth;
             const bool    doLMR        =          !checked && depth >= LMRMinimumDepth;
 
-            uint8_t searchedQuiets = 0;
+            std::bitset<MaxMove> quietsFound;
+
+            std::bitset<MaxMove> futilityPruned;
+            std::bitset<MaxMove> lateMovePruned;
 
             Score bestEvaluation = -Infinity;
             for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -995,7 +999,7 @@ namespace StockDory
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
 
-                searchedQuiets += quiet;
+                quietsFound.set(i, quiet);
 
                 // Futility Pruning (FP):
                 //
@@ -1011,7 +1015,7 @@ namespace StockDory
                 if (!checked && i >= 1 && quiet) {
                     const Score margin = depth * FutilityDepthFactor;
 
-                    if (staticEvaluation + margin <= alpha) break;
+                    futilityPruned.set(i, staticEvaluation + margin <= alpha);
                 }
 
                 if (!PV) {
@@ -1031,8 +1035,14 @@ namespace StockDory
                     // and will be searched earlier. If we are at a point where we've even searched a few quiet moves,
                     // then it is very likely we've already searched the good moves and searching further is not going
                     // to change the outcome of this branch - so we can stop early
-                    if (doLMP && searchedQuiets > lmpLastQuiet && bestEvaluation > -Infinity) break;
+                    lateMovePruned.set(
+                        i,
+                        quiet && doLMP && quietsFound.count() > lmpLastQuiet && bestEvaluation > -Infinity
+                    );
                 }
+
+                if (futilityPruned.test(i) ||
+                    lateMovePruned.test(i)  ) continue;
 
                 const Piece movingPiece = Board[move.From()].Piece();
 
@@ -1180,14 +1190,16 @@ namespace StockDory
                         UpdateHistory<Color, true>(move, depth, ply);
 
                         // Malus for all other quiets as they didn't cause a beta cut-off
-                        uint8_t updated = 0;
-                        for (uint8_t j = 1; updated < searchedQuiets - 1; j++) {
-                            const Move m = moves.UnsortedAccess(i - j);
+                        for (uint8_t j = i; j > 0;) {
+                            const uint8_t idx = --j;
 
-                            if (m.Tactical()) continue;
+                            if (!quietsFound   .test(idx) ||
+                                 futilityPruned.test(idx) ||
+                                 lateMovePruned.test(idx)) continue;
+
+                            const Move m = moves.UnsortedAccess(idx);
 
                             UpdateHistory<Color, false>(m, depth, ply);
-                            updated++;
                         }
                     } else if (capture) {
                         // Capture History Updates (Asymmetric Approach):
