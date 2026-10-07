@@ -335,6 +335,20 @@ namespace StockDory
             else return BB[0][piece] & ColorBB[color];
         }
 
+        template<Color Color>
+        [[nodiscard]]
+        bool HasMinorMaterial() const { return PieceBoard(Pawn, Color); }
+
+        template<Color Color>
+        [[nodiscard]]
+        bool HasMajorMaterial() const
+        {
+            return PieceBoard(Knight, Color) ||
+                   PieceBoard(Bishop, Color) ||
+                   PieceBoard(Rook  , Color) ||
+                   PieceBoard(Queen , Color)  ;
+        }
+
         [[nodiscard]]
         Color ColorToMove() const { return static_cast<Color>(CastlingRightAndColorToMove >> 4); }
 
