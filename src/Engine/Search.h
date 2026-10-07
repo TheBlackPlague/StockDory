@@ -1053,7 +1053,8 @@ namespace StockDory
                 // researches are relatively inexpensive, and the time we save ignoring moves that don't have potential
                 // to improve our position more than the previous moves is worth it.
 
-                Score evaluation = 0;
+                int16_t reducedDepth = depth - 1;
+                Score   evaluation   =         0;
 
                 if (i == 0) evaluation = -PVS<OColor, PV, false>(ply + 1, depth - 1, -beta, -alpha);
                 else {
@@ -1113,12 +1114,8 @@ namespace StockDory
                         // mapped to discrete reduction
                         r /= LMRQuantization;
 
-                        evaluation = -PVS<OColor, false, false>(
-                            ply + 1,
-                            std::clamp<int16_t>(depth - r, 1, depth),
-                            -alpha - 1,
-                            -alpha
-                        );
+                        reducedDepth = std::clamp<int16_t>(depth - r, 1, depth);
+                        evaluation = -PVS<OColor, false, false>(ply + 1, reducedDepth, -alpha - 1, -alpha);
                     } else evaluation = alpha + 1;
 
                     if (evaluation > alpha) {
@@ -1188,6 +1185,9 @@ namespace StockDory
 
                         // Bonus for the quiet that caused a beta cut-off
                         UpdateHistory<Color, true>(move, depth, ply);
+
+                        // Bonus once again if it was reduced but then researching caused a cut-off
+                        if (reducedDepth < depth - 1) UpdateContinuationHistory<Color, true>(move, depth, ply);
 
                         // Malus for all other quiets as they didn't cause a beta cut-off
                         uint8_t updated = 0;
@@ -1381,7 +1381,15 @@ namespace StockDory
 
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
 
+            UpdateContinuationHistory<Color, Increase>(move, depth, ply);
+        }
+
+        template<Color Color, bool Increase>
+        void UpdateContinuationHistory(const Move move, const int16_t depth, const uint8_t ply)
+        {
             if (!Stack[ply - 1].Move) return;
+
+            const int16_t bonus = std::clamp<int32_t>(HistoryMultiplier * depth - HistoryShiftDown, 0, HistoryLimit);
 
             int16_t& continuation = ContinuationHistory[Stack[ply - 1].PieceToMove][Stack[ply - 1].Move.To()]
                                     [Color][Board[move.From()].Piece()][move.To()];
