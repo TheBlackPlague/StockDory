@@ -1044,7 +1044,7 @@ namespace StockDory
                     // and will be searched earlier. If we are at a point where we've even searched a few quiet moves,
                     // then it is very likely we've already searched the good moves and searching further is not going
                     // to change the outcome of this branch - so we can stop early
-                    if (doLMP && searchedQuiets.Size() >= lmpLastQuiet && bestEvaluation > -Infinity) break;
+                    if (doLMP && quiet && searchedQuiets.Size() >= lmpLastQuiet && bestEvaluation > -Infinity) break;
                 }
 
                 const Piece movingPiece = Board[move.From()].Piece();
