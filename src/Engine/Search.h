@@ -758,6 +758,8 @@ namespace StockDory
                 }
             }
 
+            const bool majorMaterial = Board.HasMajorMaterial<Color>();
+
             // Internal Iterative Reduction (IIR):
             //
             // If we are at a high enough depth but there is no valid transposition table move, we can reduce the search
@@ -901,13 +903,8 @@ namespace StockDory
                 // binary search window, centered around our upper bound (beta) as their lower bound (alpha). If the
                 // branch is bad for the opponent, they'll be unable to improve upon their lower bound and fail-low. In
                 // turn, this can allow us to produce a beta cut-off and prune this branch
-                const BitBoard nonPawnMaterial = Board.PieceBoard<Color>(Knight) |
-                                                 Board.PieceBoard<Color>(Bishop) |
-                                                 Board.PieceBoard<Color>(Rook  ) |
-                                                 Board.PieceBoard<Color>(Queen ) ;
-
                 if (!Root && NMPAllowed && depth >= NullMoveMinimumDepth && staticEvaluation >= beta &&
-                    nonPawnMaterial && !IsMate(beta) && !IsMate(staticEvaluation)) {
+                    majorMaterial && !IsMate(beta) && !IsMate(staticEvaluation)) {
                     // The reduced depth is determined by the below formula:
                     //
                     // d = current depth
@@ -983,8 +980,8 @@ namespace StockDory
             };
 
             const uint8_t lmpLastQuiet = LMPLastQuietBase +   depth * depth;
-            const bool    doLMP        = !Root && !checked && depth <= LMPMaximumDepth;
-            const bool    doLMR        =          !checked && depth >= LMRMinimumDepth;
+            const bool    doLMP        = !Root && majorMaterial && !checked && depth <= LMPMaximumDepth;
+            const bool    doLMR        =                           !checked && depth >= LMRMinimumDepth;
 
             uint8_t searchedQuiets = 0;
 
