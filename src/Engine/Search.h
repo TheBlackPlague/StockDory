@@ -65,6 +65,25 @@ namespace StockDory
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
 
+    class SearchedMovesStack
+    {
+
+        Array<Move, MaxMove / 5> Internal;
+
+        uint8_t Count = 0;
+
+        public:
+        void Push(const Move move) { if (Count < MaxMove / 5) Internal[Count++] = move; }
+
+        void Pop() { Count = std::clamp<uint8_t>(Count - 1, 0, MaxMove / 5); }
+
+        uint8_t Size() const { return Count; }
+
+        auto begin() const { return Internal.begin()        ; }
+        auto   end() const { return Internal.begin() + Count; }
+
+    };
+
     inline auto LMRTable =
     [] -> Array<int32_t, MaxDepth, MaxMove>
     {
@@ -983,7 +1002,8 @@ namespace StockDory
             const bool    doLMP        = !Root && majorMaterial && !checked && depth <= LMPMaximumDepth;
             const bool    doLMR        =                           !checked && depth >= LMRMinimumDepth;
 
-            uint8_t searchedQuiets = 0;
+            SearchedMovesStack searchedCaptures;
+            SearchedMovesStack searchedQuiets  ;
 
             Score bestEvaluation = -Infinity;
             for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -991,8 +1011,6 @@ namespace StockDory
 
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
-
-                searchedQuiets += quiet;
 
                 // Futility Pruning (FP):
                 //
@@ -1028,7 +1046,7 @@ namespace StockDory
                     // and will be searched earlier. If we are at a point where we've even searched a few quiet moves,
                     // then it is very likely we've already searched the good moves and searching further is not going
                     // to change the outcome of this branch - so we can stop early
-                    if (doLMP && searchedQuiets > lmpLastQuiet && bestEvaluation > -Infinity) break;
+                    if (doLMP && searchedQuiets.Size() >= lmpLastQuiet && bestEvaluation > -Infinity) break;
                 }
 
                 const Piece movingPiece = Board[move.From()].Piece();
@@ -1049,6 +1067,9 @@ namespace StockDory
                 // with a full window (alpha, beta) to properly evaluate the move. Due to the transposition table, all
                 // researches are relatively inexpensive, and the time we save ignoring moves that don't have potential
                 // to improve our position more than the previous moves is worth it.
+
+                if ( quiet ) searchedQuiets  .Push(move);
+                if (capture) searchedCaptures.Push(move);
 
                 Score evaluation = 0;
 
@@ -1154,6 +1175,8 @@ namespace StockDory
 
                 if (!Stopped()) {
                     if (quiet) {
+                        searchedQuiets.Pop();
+
                         // Killer Updates:
                         //
                         // Update the Killer table if a quiet move caused a beta cut-off to ensure we search this move
@@ -1177,16 +1200,10 @@ namespace StockDory
                         UpdateHistory<Color, true>(move, depth, ply);
 
                         // Malus for all other quiets as they didn't cause a beta cut-off
-                        uint8_t updated = 0;
-                        for (uint8_t j = 1; updated < searchedQuiets - 1; j++) {
-                            const Move m = moves.UnsortedAccess(i - j);
-
-                            if (m.Tactical()) continue;
-
-                            UpdateHistory<Color, false>(m, depth, ply);
-                            updated++;
-                        }
+                        for (const auto m : searchedQuiets) UpdateHistory<Color, false>(m, depth, ply);
                     } else if (capture) {
+                        searchedCaptures.Pop();
+
                         // Capture History Updates (Asymmetric Approach):
                         //
                         // We should give a bonus for the capture that caused a beta cut-off
@@ -1198,11 +1215,7 @@ namespace StockDory
                     // We should apply a malus for all captures that didn't cause a beta cut-off. We generally consider
                     // captures to be good so if they aren't good (especially if they're worst than a quiet) then we
                     // should apply a malus to them
-                    for (uint8_t j = 0; j < i; j++) {
-                        const Move m = moves.UnsortedAccess(j);
-
-                        if (m.Capture()) UpdateCaptureHistory<Color, false>(m, depth);
-                    }
+                    for (const auto m : searchedCaptures) UpdateCaptureHistory<Color, false>(m, depth);
                 }
 
                 ttEntryNew.Type = Beta;
