@@ -990,7 +990,7 @@ namespace StockDory
 
                 searchedQuiets += quiet;
 
-                if (!Root && !PV && !checked) {
+                if (!Root && !PV && !checked && majorMaterial) {
                     // Forward Futility Pruning (FFP):
                     //
                     // FFP is the opposite of RFP, in that it is meant to prune branches that are too bad for us to be
@@ -1002,7 +1002,7 @@ namespace StockDory
                     // worse than our lower bound (alpha), it is futile to think moves further in this branch will be
                     // worth searching; searching further is not going to change the outcome of this branch and thus
                     // we can stop early
-                    if (!checked && i >= 1 && quiet) {
+                    if (i >= 1 && quiet) {
                         const Score margin = depth * FutilityDepthFactor;
 
                         if (staticEvaluation + margin <= alpha) break;
@@ -1015,8 +1015,7 @@ namespace StockDory
                     // quite a few quite moves, it is very likely that we've gone through all the good moves in this
                     // branch and all future moves are likely to be worst and won't change the outcome of this branch,
                     // and thus we can stop early
-                    if (majorMaterial                                      &&
-                        depth          <= LMPMaximumDepth                  &&
+                    if (depth          <= LMPMaximumDepth                  &&
                         searchedQuiets >  LMPLastQuietBase + depth * depth &&
                         bestEvaluation >  -Infinity                         ) break;
                 }
