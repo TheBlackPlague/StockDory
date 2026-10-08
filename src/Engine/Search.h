@@ -1028,6 +1028,8 @@ namespace StockDory
                     }
                 }
 
+                if (skipQuiets && !SEE::Accurate(Board, move, 0)) continue;
+
                 if (!Root && !checked && depth <= SEEMaximumDepth && !IsLoss(bestEvaluation)) {
                     const Score margin = quiet ? SEEQuietDepthFactor * depth : SEECaptureDepthFactor * depth * depth;
 
