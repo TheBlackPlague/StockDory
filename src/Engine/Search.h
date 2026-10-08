@@ -86,25 +86,6 @@ namespace StockDory
     class SearchStack
     {
 
-        class SearchedMovesStack
-        {
-
-            Array<Move, MaxMove> Internal;
-
-            uint8_t Count = 0;
-
-            public:
-            void Push(const Move move) { Internal[Count++] = move; }
-
-            void Clear() { Count = 0; }
-
-            uint8_t Size() const { return Count; }
-
-            auto begin() const { return Internal.begin()        ; }
-            auto   end() const { return Internal.begin() + Count; }
-
-        };
-
         public:
         struct Frame
         {
@@ -117,33 +98,31 @@ namespace StockDory
 
         };
 
-        struct SearchedMovesFrame
-        {
-
-            SearchedMovesStack SearchedCaptures;
-            SearchedMovesStack SearchedQuiets  ;
-
-        };
-
         private:
         constexpr static size_t Padding = 8;
 
-        Array<             Frame, Padding + MaxDepth + 1> Internal0 {};
-        Array<SearchedMovesFrame, Padding + MaxDepth + 1> Internal1   ;
+        Array<Frame, Padding + MaxDepth + 1> Internal {};
 
         public:
-              Frame& operator [](const size_t index)       { return Internal0[index + Padding]; }
-        const Frame& operator [](const size_t index) const { return Internal0[index + Padding]; }
+              Frame& operator [](const size_t index)       { return Internal[index + Padding]; }
+        const Frame& operator [](const size_t index) const { return Internal[index + Padding]; }
 
-              SearchedMovesStack& SearchedCaptures(const size_t index)
-        { return Internal1[index + Padding].SearchedCaptures; }
-        const SearchedMovesStack& SearchedCaptures(const size_t index) const
-        { return Internal1[index + Padding].SearchedCaptures; }
+    };
 
-              SearchedMovesStack& SearchedQuiets(const size_t index)
-        { return Internal1[index + Padding].SearchedQuiets; }
-        const SearchedMovesStack& SearchedQuiets(const size_t index) const
-        { return Internal1[index + Padding].SearchedQuiets; }
+    class SearchedMovesStack
+    {
+
+        Array<Move, MaxMove> Internal;
+
+        uint8_t Count = 0;
+
+        public:
+        void Push(const Move move) { Internal[Count++] = move; }
+
+        uint8_t Size() const { return Count; }
+
+        auto begin() const { return Internal.begin()        ; }
+        auto   end() const { return Internal.begin() + Count; }
 
     };
 
@@ -1021,9 +1000,8 @@ namespace StockDory
             const bool    doLMP        = !Root && majorMaterial && !checked && depth <= LMPMaximumDepth;
             const bool    doLMR        =                           !checked && depth >= LMRMinimumDepth;
 
-            // Clear the searched moves prior to searching
-            Stack.SearchedCaptures(ply).Clear();
-            Stack.SearchedQuiets  (ply).Clear();
+            SearchedMovesStack searchedCaptures;
+            SearchedMovesStack searchedQuiets  ;
 
             Score bestEvaluation = -Infinity;
             for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -1058,7 +1036,7 @@ namespace StockDory
                     // and will be searched earlier. If we are at a point where we've even searched a few quiet moves,
                     // then it is very likely we've already searched the good moves and searching further is not going
                     // to change the outcome of this branch - so we can stop early
-                    if (!PV && doLMP && Stack.SearchedQuiets(ply).Size() >= lmpLastQuiet && bestEvaluation > -Infinity)
+                    if (!PV && doLMP && searchedQuiets.Size() >= lmpLastQuiet && bestEvaluation > -Infinity)
                         break;
                 }
 
@@ -1150,8 +1128,8 @@ namespace StockDory
                 UndoMove<true>(state, move);
 
                 if (evaluation < beta) {
-                    if      (capture) Stack.SearchedCaptures(ply).Push(move);
-                    else if ( quiet ) Stack.SearchedQuiets  (ply).Push(move);
+                    if      (capture) searchedCaptures.Push(move);
+                    else if ( quiet ) searchedQuiets  .Push(move);
                 }
 
                 uint64_t moveNodes = 0;
@@ -1218,7 +1196,7 @@ namespace StockDory
                         UpdateHistory<Color, true>(move, depth, ply);
 
                         // Malus for all other quiets as they didn't cause a beta cut-off
-                        for (const auto m : Stack.SearchedQuiets(ply)) UpdateHistory<Color, false>(m, depth, ply);
+                        for (const auto m : searchedQuiets) UpdateHistory<Color, false>(m, depth, ply);
                     }
 
                     // Capture History Updates (Asymmetric Approach):
@@ -1226,7 +1204,7 @@ namespace StockDory
                     // We should apply a malus for all captures that didn't cause a beta cut-off. We generally consider
                     // captures to be good so if they aren't good (especially if they're worst than a quiet) then we
                     // should apply a malus to them
-                    for (const auto m : Stack.SearchedCaptures(ply)) UpdateCaptureHistory<Color, false>(m, depth);
+                    for (const auto m : searchedCaptures) UpdateCaptureHistory<Color, false>(m, depth);
                 }
 
                 ttEntryNew.Type = Beta;
