@@ -999,8 +999,6 @@ namespace StockDory
             SearchedMovesStack searchedCaptures;
             SearchedMovesStack searchedQuiets  ;
 
-            bool skipQuiets = false;
-
             Score bestEvaluation = -Infinity;
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move = moves[i];
@@ -1009,23 +1007,16 @@ namespace StockDory
                 const bool quiet   = move.Quiet  ();
 
                 if (!checked && quiet) {
-                    if (skipQuiets) continue;
-
                     if (i >= 1) {
                         const Score margin = depth * FutilityDepthFactor;
 
-                        if (staticEvaluation + margin <= alpha) {
-                            skipQuiets = true;
-                            continue;
-                        }
+                        if (staticEvaluation + margin <= alpha) break;
                     }
 
                     if (!Root && !PV && majorMaterial && depth <= LMPMaximumDepth &&
                         searchedQuiets.Size() >= LMPLastQuietBase + depth * depth &&
-                        bestEvaluation > -Infinity) {
-                        skipQuiets = true;
-                        continue;
-                    }
+                        bestEvaluation > -Infinity)
+                        break;
                 }
 
                 if (!Root && !checked && depth <= SEEMaximumDepth && !IsLoss(bestEvaluation)) {
