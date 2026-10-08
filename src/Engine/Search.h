@@ -996,12 +996,10 @@ namespace StockDory
                 .Type       = Alpha
             };
 
-            const uint8_t lmpLastQuiet = LMPLastQuietBase +   depth * depth;
-            const bool    doLMP        = !Root && majorMaterial && !checked && depth <= LMPMaximumDepth;
-            const bool    doLMR        =                           !checked && depth >= LMRMinimumDepth;
-
             SearchedMovesStack searchedCaptures;
             SearchedMovesStack searchedQuiets  ;
+
+            bool skipQuiets = false;
 
             Score bestEvaluation = -Infinity;
             for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -1010,34 +1008,25 @@ namespace StockDory
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
 
-                if (quiet) {
-                    // Futility Pruning (FP):
-                    //
-                    // FP is a pruning technique that prunes branches that are too bad for us to be worth searching further.
-                    // It is the opposite of RFP, and while trying to achieve the same goal as Razoring, it does so with a
-                    // very different approach - relying on the static evaluation and move policy. StockDory's Move Policy
-                    // ensures that good tactical moves always come before quiet moves, so if we are at a point where we are
-                    // searching a quiet move, we can assume that all good tactical moves have been searched already. Then,
-                    // if the static evaluation of the current position is significantly worse than our lower bound (alpha),
-                    // it is very unlikely that a non-tactical move will improve our position enough to exceed our lower
-                    // bound (alpha). Searching further in this branch is not going to change the outcome of this branch,
-                    // so we can stop early
-                    if (!checked && i >= 1) {
+                if (!checked && quiet) {
+                    if (i >= 1) {
                         const Score margin = depth * FutilityDepthFactor;
 
-                        if (staticEvaluation + margin <= alpha) break;
+                        if (staticEvaluation + margin <= alpha) skipQuiets = true;
                     }
 
-                    // Late Move Pruning (LMP):
-                    //
-                    // LMP is a pruning technique that allows us to prune branches that are too bad for us to be worth
-                    // searching further. It is similar to FP and heavily relies on the move policy, working on the
-                    // assumption that the move policy ensures that all the good moves are ordered before the bad ones
-                    // and will be searched earlier. If we are at a point where we've even searched a few quiet moves,
-                    // then it is very likely we've already searched the good moves and searching further is not going
-                    // to change the outcome of this branch - so we can stop early
-                    if (!PV && doLMP && searchedQuiets.Size() >= lmpLastQuiet && bestEvaluation > -Infinity)
-                        break;
+                    if (!Root && !PV && majorMaterial && depth <= LMPMaximumDepth &&
+                        searchedQuiets.Size() >= LMPLastQuietBase + depth * depth &&
+                        bestEvaluation > -Infinity)
+                        skipQuiets = true;
+
+                    if (skipQuiets) continue;
+                }
+
+                if (!Root && !checked && depth <= SEEMaximumDepth && !IsLoss(bestEvaluation)) {
+                    const Score margin = quiet ? SEEQuietDepthFactor * depth : SEECaptureDepthFactor * depth * depth;
+
+                    if (!SEE::Accurate(Board, move, -margin)) continue;
                 }
 
                 const Piece movingPiece = Board[move.From()].Piece();
@@ -1077,7 +1066,7 @@ namespace StockDory
                     // is alpha), we then research them at a full depth. The researches are relatively inexpensive due
                     // to the transposition table, and the time we save by not searching moves that are unlikely to
                     // improve our position is worth it
-                    if (doLMR && i >= LMRMinimumMoves) {
+                    if (!checked && depth >= LMRMinimumDepth && i >= LMRMinimumMoves) {
                         // Reduction values are determined by a formula that takes into account the current depth and
                         // move number. Current formula:
                         //
