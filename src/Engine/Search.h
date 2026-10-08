@@ -999,12 +999,16 @@ namespace StockDory
             SearchedMovesStack searchedCaptures;
             SearchedMovesStack searchedQuiets  ;
 
+            uint8_t encounteredQuiets = 0;
+
             Score bestEvaluation = -Infinity;
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move = moves[i];
 
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
+
+                encounteredQuiets += quiet;
 
                 if (!checked && quiet) {
                     if (i >= 1) {
@@ -1014,7 +1018,7 @@ namespace StockDory
                     }
 
                     if (!Root && !PV && majorMaterial && depth <= LMPMaximumDepth &&
-                        searchedQuiets.Size() >= LMPLastQuietBase + depth * depth &&
+                        encounteredQuiets > LMPLastQuietBase + depth * depth &&
                         bestEvaluation > -Infinity)
                         break;
                 }
