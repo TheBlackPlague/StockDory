@@ -119,6 +119,8 @@ namespace StockDory
         public:
         void Push(const Move move) { Internal[Count++] = move; }
 
+        void Pop() { Count--; }
+
         uint8_t Size() const { return Count; }
 
         auto begin() const { return Internal.begin()        ; }
@@ -1010,7 +1012,9 @@ namespace StockDory
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
 
-                if (quiet) {
+                if        (capture) {
+                    searchedCaptures.Push(move);
+                } else if ( quiet ) {
                     // Futility Pruning (FP):
                     //
                     // FP is a pruning technique that prunes branches that are too bad for us to be worth searching further.
@@ -1038,6 +1042,8 @@ namespace StockDory
                     // to change the outcome of this branch - so we can stop early
                     if (!PV && doLMP && searchedQuiets.Size() >= lmpLastQuiet && bestEvaluation > -Infinity)
                         break;
+
+                    searchedQuiets.Push(move);
                 }
 
                 const Piece movingPiece = Board[move.From()].Piece();
@@ -1127,11 +1133,6 @@ namespace StockDory
 
                 UndoMove<true>(state, move);
 
-                if (evaluation < beta) {
-                    if      (capture) searchedCaptures.Push(move);
-                    else if ( quiet ) searchedQuiets  .Push(move);
-                }
-
                 uint64_t moveNodes = 0;
 
                 if (Root && ThreadType == Main) {
@@ -1168,11 +1169,15 @@ namespace StockDory
 
                 if (!Stopped()) {
                     if        (capture) {
+                        searchedCaptures.Pop();
+
                         // Capture History Updates (Asymmetric Approach):
                         //
                         // We should give a bonus for the capture that caused a beta cut-off
                         UpdateCaptureHistory<Color, true>(move, depth);
                     } else if ( quiet ) {
+                        searchedQuiets.Pop();
+
                         // Killer Updates:
                         //
                         // Update the Killer table if a quiet move caused a beta cut-off to ensure we search this move
