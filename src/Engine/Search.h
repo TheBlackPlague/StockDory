@@ -979,11 +979,7 @@ namespace StockDory
                 .Type       = Alpha
             };
 
-            const uint8_t lmpLastQuiet = LMPLastQuietBase +   depth * depth;
-            const bool    doLMP        = !Root && majorMaterial && !checked && depth <= LMPMaximumDepth;
-            const bool    doLMR        =                           !checked && depth >= LMRMinimumDepth;
-
-            uint8_t searchedQuiets = 0;
+            uint8_t seenQuiets = 0;
 
             Score bestEvaluation = -Infinity;
             for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -992,43 +988,25 @@ namespace StockDory
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
 
-                searchedQuiets += quiet;
+                seenQuiets += quiet;
 
-                // Futility Pruning (FP):
-                //
-                // FP is a pruning technique that prunes branches that are too bad for us to be worth searching further.
-                // It is the opposite of RFP, and while trying to achieve the same goal as Razoring, it does so with a
-                // very different approach - relying on the static evaluation and move policy. StockDory's Move Policy
-                // ensures that good tactical moves always come before quiet moves, so if we are at a point where we are
-                // searching a quiet move, we can assume that all good tactical moves have been searched already. Then,
-                // if the static evaluation of the current position is significantly worse than our lower bound (alpha),
-                // it is very unlikely that a non-tactical move will improve our position enough to exceed our lower
-                // bound (alpha). Searching further in this branch is not going to change the outcome of this branch,
-                // so we can stop early
-                if (!checked && i >= 1 && quiet) {
-                    const Score margin = depth * FutilityDepthFactor;
-
-                    if (staticEvaluation + margin <= alpha) break;
-                }
-
-                if (!PV) {
-                    // Risky Pruning:
+                if (!checked && i >= 1) {
+                    // Forward Futility Pruning (FFP):
                     //
-                    // The techniques below are risky pruning techniques that can cause us to miss some good moves.
-                    // Doing this in PV branches can be disastrous, however, in non-PV branches, this is relatively safe
-                    // to do. We can afford to miss some good moves in non-PV branches, as we are not that likely going
-                    // to find the best move in these branches, mainly using the results of these branches to optimize
-                    // search tree exploration
+                    // FFP works in the opposite way of RFP, pruning branches that are considered too bad for us to
+                    // to consider them worth searching any further. We estimate this by checking whether our static
+                    // evaluation is far too pessimistic that even given a deeper search, it's unlikely that it'll be
+                    // able to recover and thus there is little point in searching any further
+                    if (quiet && staticEvaluation + depth * FutilityDepthFactor <= alpha) break;
 
                     // Late Move Pruning (LMP):
                     //
-                    // LMP is a pruning technique that allows us to prune branches that are too bad for us to be worth
-                    // searching further. It is similar to FP and heavily relies on the move policy, working on the
-                    // assumption that the move policy ensures that all the good moves are ordered before the bad ones
-                    // and will be searched earlier. If we are at a point where we've even searched a few quiet moves,
-                    // then it is very likely we've already searched the good moves and searching further is not going
-                    // to change the outcome of this branch - so we can stop early
-                    if (doLMP && searchedQuiets > lmpLastQuiet && bestEvaluation > -Infinity) break;
+                    // The accuracy of LMP is directly correlated with the accuracy of the move policy, in that it
+                    // assumes that past a certain point of iterating over the move list, all the "good" moves have
+                    // already been searched. Upon that heuristic, what likely remains are moves that will not change
+                    // our evaluation of this branch and it's wasteful to continue searching them
+                    if (!Root && !PV && majorMaterial && depth <= LMPMaximumDepth &&
+                        seenQuiets > LMPLastQuietBase +  depth * depth && bestEvaluation > -Infinity) break;
                 }
 
                 const Piece movingPiece = Board[move.From()].Piece();
@@ -1068,7 +1046,7 @@ namespace StockDory
                     // is alpha), we then research them at a full depth. The researches are relatively inexpensive due
                     // to the transposition table, and the time we save by not searching moves that are unlikely to
                     // improve our position is worth it
-                    if (doLMR && i >= LMRMinimumMoves) {
+                    if (!checked && depth >= LMRMinimumDepth && i >= LMRMinimumMoves) {
                         // Reduction values are determined by a formula that takes into account the current depth and
                         // move number. Current formula:
                         //
@@ -1178,7 +1156,7 @@ namespace StockDory
 
                         // Malus for all other quiets as they didn't cause a beta cut-off
                         uint8_t updated = 0;
-                        for (uint8_t j = 1; updated < searchedQuiets - 1; j++) {
+                        for (uint8_t j = 1; updated < seenQuiets - 1; j++) {
                             const Move m = moves.UnsortedAccess(i - j);
 
                             if (m.Tactical()) continue;
