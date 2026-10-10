@@ -112,17 +112,19 @@ namespace StockDory
     class SearchedMovesStack
     {
 
-        Array<Move, MaxMove / 2> Internal;
+        constexpr static uint8_t Size = MaxMove / 4;
 
-        uint8_t Count = 0;
+        Array<Move, Size> Internal;
+
+        uint8_t CurrentIndex = 0;
 
         public:
-        void Push(const Move move) { if (Count < MaxMove) Internal[Count++] = move; }
+        void Push(const Move move) { if (CurrentIndex < Size) Internal[CurrentIndex++] = move; }
 
-        uint8_t Size() const { return Count; }
+        uint8_t Count() const { return CurrentIndex; }
 
-        auto begin() const { return Internal.begin()        ; }
-        auto   end() const { return Internal.begin() + Count; }
+        auto begin() const { return Internal.begin()               ; }
+        auto   end() const { return Internal.begin() + CurrentIndex; }
 
     };
 
