@@ -1001,26 +1001,33 @@ namespace StockDory
 
             Score bestEvaluation = -Infinity;
 
+            uint8_t seenQuiets = 0;
+
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move = moves[i];
 
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
 
-                if (!checked && quiet) {
-                    if (i >= 1 && staticEvaluation + depth * FutilityDepthFactor <= alpha) break;
+                seenQuiets += quiet;
 
-                    if (!Root && !PV && majorMaterial && depth <= LMPMaximumDepth &&
-                        searchedQuiets.Size() >= static_cast<uint8_t>(LMPLastQuietBase + depth * depth) &&
-                        bestEvaluation > -Infinity)
+                if (!checked && i >= 1 && quiet) {
+                    const Score margin = depth * FutilityDepthFactor;
+
+                    if (staticEvaluation + margin <= alpha) break;
+                }
+
+                if (!Root && !PV) {
+                    if (majorMaterial && !checked                                                       &&
+                        depth                 <=                      LMPMaximumDepth                   &&
+                        seenQuiets            >  static_cast<uint8_t>(LMPLastQuietBase + depth * depth) &&
+                        bestEvaluation        >  -Infinity                                               )
                         break;
                 }
 
+                const uint64_t nodesBeforeMove = Root && ThreadType == Main ? GetNodes() : 0;
+
                 const Piece movingPiece = Board[move.From()].Piece();
-
-                uint64_t nodesBeforeMove = 0;
-
-                if (Root && ThreadType == Main) nodesBeforeMove = GetNodes();
 
                 const PreviousState state = DoMove<true>(move, ply);
 
@@ -1029,29 +1036,31 @@ namespace StockDory
                 Score evaluation = -Infinity;
 
                 if (!PV || i > 0) {
-                    int16_t searchDepth = newDepth;
+                    int16_t targetDepth = newDepth;
 
                     if (!checked && depth >= LMRMinimumDepth && i >= LMRMinimumMoves) {
                         int32_t r = LMRTable[depth][i];
 
                         if (!PV) r += LMRNotPVBonus;
+
                         if (ttMove) r += LMRTTMoveBonus;
+
                         if (!improving) r += LMRNotImprovingBonus;
+
                         if (Board.Checked<OColor>()) r -= LMRGaveCheckPenalty;
 
                         if (quiet) {
                             const int16_t history = History[Color][movingPiece][move.To()];
+
                             r -= history * LMRHistoryPartition * LMRHistoryWeight / HistoryLimit;
                         }
 
-                        r /= LMRQuantization;
-
-                        searchDepth = std::clamp<int16_t>(depth - r, 1, depth);
+                        targetDepth = std::clamp<int16_t>(depth - r / LMRQuantization, 1, depth);
                     }
 
-                    evaluation = -PVS<OColor, false, false>(ply + 1, searchDepth, -alpha - 1, -alpha);
+                    evaluation = -PVS<OColor, false, false>(ply + 1, targetDepth, -alpha - 1, -alpha);
 
-                    if (evaluation > alpha && searchDepth < newDepth)
+                    if (evaluation > alpha && targetDepth < newDepth)
                         evaluation = -PVS<OColor, false, false>(ply + 1, newDepth, -alpha - 1, -alpha);
                 }
 
@@ -1065,12 +1074,8 @@ namespace StockDory
                     else if ( quiet ) searchedQuiets  .Push(move);
                 }
 
-                uint64_t moveNodes = 0;
-
-                if (Root && ThreadType == Main) {
-                    moveNodes = GetNodes() - nodesBeforeMove;
-                    RootNodes += moveNodes;
-                }
+                const uint64_t moveNodes = Root && ThreadType == Main ? GetNodes() - nodesBeforeMove : 0;
+                RootNodes += moveNodes;
 
                 if (evaluation <= bestEvaluation) continue;
 
