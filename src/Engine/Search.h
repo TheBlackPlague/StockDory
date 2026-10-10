@@ -996,47 +996,23 @@ namespace StockDory
                 .Type       = Alpha
             };
 
-            const uint8_t lmpLastQuiet = LMPLastQuietBase +   depth * depth;
-            const bool    doLMP        = !Root && majorMaterial && !checked && depth <= LMPMaximumDepth;
-            const bool    doLMR        =                           !checked && depth >= LMRMinimumDepth;
-
             SearchedMovesStack searchedCaptures;
             SearchedMovesStack searchedQuiets  ;
 
             Score bestEvaluation = -Infinity;
+
             for (uint8_t i = 0; i < moves.Count(); i++) {
                 const Move move = moves[i];
 
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
 
-                if (quiet) {
-                    // Futility Pruning (FP):
-                    //
-                    // FP is a pruning technique that prunes branches that are too bad for us to be worth searching further.
-                    // It is the opposite of RFP, and while trying to achieve the same goal as Razoring, it does so with a
-                    // very different approach - relying on the static evaluation and move policy. StockDory's Move Policy
-                    // ensures that good tactical moves always come before quiet moves, so if we are at a point where we are
-                    // searching a quiet move, we can assume that all good tactical moves have been searched already. Then,
-                    // if the static evaluation of the current position is significantly worse than our lower bound (alpha),
-                    // it is very unlikely that a non-tactical move will improve our position enough to exceed our lower
-                    // bound (alpha). Searching further in this branch is not going to change the outcome of this branch,
-                    // so we can stop early
-                    if (!checked && i >= 1) {
-                        const Score margin = depth * FutilityDepthFactor;
+                if (!checked && quiet) {
+                    if (i >= 1 && staticEvaluation + depth * FutilityDepthFactor <= alpha) break;
 
-                        if (staticEvaluation + margin <= alpha) break;
-                    }
-
-                    // Late Move Pruning (LMP):
-                    //
-                    // LMP is a pruning technique that allows us to prune branches that are too bad for us to be worth
-                    // searching further. It is similar to FP and heavily relies on the move policy, working on the
-                    // assumption that the move policy ensures that all the good moves are ordered before the bad ones
-                    // and will be searched earlier. If we are at a point where we've even searched a few quiet moves,
-                    // then it is very likely we've already searched the good moves and searching further is not going
-                    // to change the outcome of this branch - so we can stop early
-                    if (!PV && doLMP && searchedQuiets.Size() >= lmpLastQuiet && bestEvaluation > -Infinity)
+                    if (!Root && !PV && majorMaterial && depth <= LMPMaximumDepth &&
+                        searchedQuiets.Size() >= static_cast<uint8_t>(LMPLastQuietBase + depth * depth) &&
+                        bestEvaluation > -Infinity)
                         break;
                 }
 
@@ -1048,82 +1024,39 @@ namespace StockDory
 
                 const PreviousState state = DoMove<true>(move, ply);
 
-                // Principle Variation Search (PVS):
-                //
-                // PVS is a search technique that heavily relies on the move policy. It works on the assumption that the
-                // move policy ensures that the best moves are ordered first, and thus, the first move is likely the
-                // best move. As such, the first move is searched with a full window (alpha, beta), while all future
-                // moves are searched with initially with a reduced window (alpha - 1, alpha). If the reduced window
-                // search produces favorable results (i.e., the evaluation is greater than alpha), then we research
-                // with a full window (alpha, beta) to properly evaluate the move. Due to the transposition table, all
-                // researches are relatively inexpensive, and the time we save ignoring moves that don't have potential
-                // to improve our position more than the previous moves is worth it.
+                const int16_t newDepth = depth - 1;
 
-                Score evaluation = 0;
+                Score evaluation = -Infinity;
 
-                if (i == 0) evaluation = -PVS<OColor, PV, false>(ply + 1, depth - 1, -beta, -alpha);
-                else {
-                    // Assume we are not in a PV branch and use a reduced window search. If the reduced window search
-                    // shows potential to improve our position, we will research with a full window search assuming
-                    // we are in a PV branch
+                if (!PV || i > 0) {
+                    int16_t searchDepth = newDepth;
 
-                    // Late Move Reduction and Extension (LMR-E):
-                    //
-                    // Base LMR is a reduction technique that allows us to reduce the depth of the search for moves that
-                    // appear later since, according to the move policy, they are likely worse than the moves that were
-                    // searched earlier. However, LMR-E allows us to extend the search depth for moves that may be very
-                    // tactically promising or likely to fail high (i.e., produce a beta cut-off). If the reduced or
-                    // extended search gives a promising evaluation (i.e., greater than our current lower bound, which
-                    // is alpha), we then research them at a full depth. The researches are relatively inexpensive due
-                    // to the transposition table, and the time we save by not searching moves that are unlikely to
-                    // improve our position is worth it
-                    if (doLMR && i >= LMRMinimumMoves) {
-                        // Reduction values are determined by a formula that takes into account the current depth and
-                        // move number. Current formula:
-                        //
-                        // r = floor((ln(depth) * ln(i) / 2 - 0.2) * LMRGranularityFactor)
+                    if (!checked && depth >= LMRMinimumDepth && i >= LMRMinimumMoves) {
                         int32_t r = LMRTable[depth][i];
 
-                        // If we are not in a PV branch, we can afford to reduce the search depth further
                         if (!PV) r += LMRNotPVBonus;
-
-                        // Increase the reduction for moves if we have a transposition table move since it's most likely
-                        // the best move in the position and the others are likely worse
                         if (ttMove) r += LMRTTMoveBonus;
-
-                        // If we are not improving positionally, we can afford to reduce the search depth further
                         if (!improving) r += LMRNotImprovingBonus;
-
-                        // If our move gave check, we should try to reduce the search depth less as the move may be
-                        // tactical and in certain cases, extend the search depth instead
                         if (Board.Checked<OColor>()) r -= LMRGaveCheckPenalty;
 
                         if (quiet) {
-                            // Increase reduction for bad history moves and reduce for good history moves (possibly
-                            // extending the search depth)
                             const int16_t history = History[Color][movingPiece][move.To()];
                             r -= history * LMRHistoryPartition * LMRHistoryWeight / HistoryLimit;
                         }
 
-                        // Divide by the granularity factor to ensure that the fixed-point reduction is correctly
-                        // mapped to discrete reduction
                         r /= LMRQuantization;
 
-                        evaluation = -PVS<OColor, false, false>(
-                            ply + 1,
-                            std::clamp<int16_t>(depth - r, 1, depth),
-                            -alpha - 1,
-                            -alpha
-                        );
-                    } else evaluation = alpha + 1;
-
-                    if (evaluation > alpha) {
-                        evaluation = -PVS<OColor, false, false>(ply + 1, depth - 1, -alpha - 1, -alpha);
-
-                        if (evaluation > alpha && evaluation < beta)
-                            evaluation = -PVS<OColor, true, false>(ply + 1, depth - 1, -beta, -alpha);
+                        searchDepth = std::clamp<int16_t>(depth - r, 1, depth);
                     }
+
+                    evaluation = -PVS<OColor, false, false>(ply + 1, searchDepth, -alpha - 1, -alpha);
+
+                    if (evaluation > alpha && searchDepth < newDepth)
+                        evaluation = -PVS<OColor, false, false>(ply + 1, newDepth, -alpha - 1, -alpha);
                 }
+
+                if (PV && (i == 0 || (evaluation > alpha && evaluation < beta)))
+                    evaluation = -PVS<OColor, true, false>(ply + 1, newDepth, -beta, -alpha);
 
                 UndoMove<true>(state, move);
 
