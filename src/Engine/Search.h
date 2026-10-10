@@ -1064,7 +1064,7 @@ namespace StockDory
                         evaluation = -PVS<OColor, false, false>(ply + 1, newDepth, -alpha - 1, -alpha);
                 }
 
-                if (PV && (i == 0 || (evaluation > alpha && evaluation < beta)))
+                if (PV && (i == 0 || evaluation > alpha))
                     evaluation = -PVS<OColor, true, false>(ply + 1, newDepth, -beta, -alpha);
 
                 UndoMove<true>(state, move);
