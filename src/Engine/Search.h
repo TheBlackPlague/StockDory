@@ -1031,9 +1031,7 @@ namespace StockDory
                 if (!PV || i > 0) {
                     int16_t searchDepth = newDepth;
 
-                    const bool shouldLMR = !checked && depth >= LMRMinimumDepth && i >= LMRMinimumMoves;
-
-                    if (shouldLMR) {
+                    if (!checked && depth >= LMRMinimumDepth && i >= LMRMinimumMoves) {
                         int32_t r = LMRTable[depth][i];
 
                         if (!PV) r += LMRNotPVBonus;
@@ -1053,7 +1051,7 @@ namespace StockDory
 
                     evaluation = -PVS<OColor, false, false>(ply + 1, searchDepth, -alpha - 1, -alpha);
 
-                    if (evaluation > alpha && shouldLMR)
+                    if (evaluation > alpha && searchDepth < newDepth)
                         evaluation = -PVS<OColor, false, false>(ply + 1, newDepth, -alpha - 1, -alpha);
                 }
 
