@@ -65,23 +65,6 @@ namespace StockDory
 
     inline TranspositionTable<SearchTranspositionEntry> TT (16 * MB);
 
-    class SearchedMovesStack
-    {
-
-        Array<Move, MaxMove / 5> Internal;
-
-        uint8_t Count = 0;
-
-        public:
-        void Push(const Move move) { if (Count < MaxMove / 5) Internal[Count++] = move; }
-
-        uint8_t Size() const { return Count; }
-
-        auto begin() const { return Internal.begin()        ; }
-        auto   end() const { return Internal.begin() + Count; }
-
-    };
-
     inline auto LMRTable =
     [] -> Array<int32_t, MaxDepth, MaxMove>
     {
@@ -103,6 +86,25 @@ namespace StockDory
     class SearchStack
     {
 
+        class SearchedMovesStack
+        {
+
+            Array<Move, MaxMove> Internal;
+
+            uint8_t Count = 0;
+
+            public:
+            void Push(const Move move) { Internal[Count++] = move; }
+
+            void Clear() { Count = 0; }
+
+            uint8_t Size() const { return Count; }
+
+            auto begin() const { return Internal.begin()        ; }
+            auto   end() const { return Internal.begin() + Count; }
+
+        };
+
         public:
         struct Frame
         {
@@ -112,6 +114,9 @@ namespace StockDory
 
             Piece PieceToMove = NAP;
             Move         Move = { };
+
+            SearchedMovesStack SearchedCaptures {};
+            SearchedMovesStack SearchedQuiets   {};
 
         };
 
@@ -1000,8 +1005,9 @@ namespace StockDory
             const bool    doLMP        = !Root && majorMaterial && !checked && depth <= LMPMaximumDepth;
             const bool    doLMR        =                           !checked && depth >= LMRMinimumDepth;
 
-            SearchedMovesStack searchedCaptures;
-            SearchedMovesStack searchedQuiets  ;
+            // Clear the searched moves prior to searching
+            Stack[ply].SearchedCaptures.Clear();
+            Stack[ply].SearchedQuiets  .Clear();
 
             Score bestEvaluation = -Infinity;
             for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -1010,31 +1016,23 @@ namespace StockDory
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
 
-                // Futility Pruning (FP):
-                //
-                // FP is a pruning technique that prunes branches that are too bad for us to be worth searching further.
-                // It is the opposite of RFP, and while trying to achieve the same goal as Razoring, it does so with a
-                // very different approach - relying on the static evaluation and move policy. StockDory's Move Policy
-                // ensures that good tactical moves always come before quiet moves, so if we are at a point where we are
-                // searching a quiet move, we can assume that all good tactical moves have been searched already. Then,
-                // if the static evaluation of the current position is significantly worse than our lower bound (alpha),
-                // it is very unlikely that a non-tactical move will improve our position enough to exceed our lower
-                // bound (alpha). Searching further in this branch is not going to change the outcome of this branch,
-                // so we can stop early
-                if (!checked && i >= 1 && quiet) {
-                    const Score margin = depth * FutilityDepthFactor;
-
-                    if (staticEvaluation + margin <= alpha) break;
-                }
-
-                if (!PV) {
-                    // Risky Pruning:
+                if (quiet) {
+                    // Futility Pruning (FP):
                     //
-                    // The techniques below are risky pruning techniques that can cause us to miss some good moves.
-                    // Doing this in PV branches can be disastrous, however, in non-PV branches, this is relatively safe
-                    // to do. We can afford to miss some good moves in non-PV branches, as we are not that likely going
-                    // to find the best move in these branches, mainly using the results of these branches to optimize
-                    // search tree exploration
+                    // FP is a pruning technique that prunes branches that are too bad for us to be worth searching further.
+                    // It is the opposite of RFP, and while trying to achieve the same goal as Razoring, it does so with a
+                    // very different approach - relying on the static evaluation and move policy. StockDory's Move Policy
+                    // ensures that good tactical moves always come before quiet moves, so if we are at a point where we are
+                    // searching a quiet move, we can assume that all good tactical moves have been searched already. Then,
+                    // if the static evaluation of the current position is significantly worse than our lower bound (alpha),
+                    // it is very unlikely that a non-tactical move will improve our position enough to exceed our lower
+                    // bound (alpha). Searching further in this branch is not going to change the outcome of this branch,
+                    // so we can stop early
+                    if (!checked && i >= 1) {
+                        const Score margin = depth * FutilityDepthFactor;
+
+                        if (staticEvaluation + margin <= alpha) break;
+                    }
 
                     // Late Move Pruning (LMP):
                     //
@@ -1044,7 +1042,8 @@ namespace StockDory
                     // and will be searched earlier. If we are at a point where we've even searched a few quiet moves,
                     // then it is very likely we've already searched the good moves and searching further is not going
                     // to change the outcome of this branch - so we can stop early
-                    if (doLMP && quiet && searchedQuiets.Size() >= lmpLastQuiet && bestEvaluation > -Infinity) break;
+                    if (!PV && doLMP && Stack[ply].SearchedQuiets.Size() >= lmpLastQuiet && bestEvaluation > -Infinity)
+                        break;
                 }
 
                 const Piece movingPiece = Board[move.From()].Piece();
@@ -1135,8 +1134,8 @@ namespace StockDory
                 UndoMove<true>(state, move);
 
                 if (evaluation < beta) {
-                    if ( quiet ) searchedQuiets  .Push(move);
-                    if (capture) searchedCaptures.Push(move);
+                    if ( quiet ) Stack[ply].SearchedQuiets  .Push(move);
+                    if (capture) Stack[ply].SearchedCaptures.Push(move);
                 }
 
                 uint64_t moveNodes = 0;
@@ -1198,7 +1197,7 @@ namespace StockDory
                         UpdateHistory<Color, true>(move, depth, ply);
 
                         // Malus for all other quiets as they didn't cause a beta cut-off
-                        for (const auto m : searchedQuiets) UpdateHistory<Color, false>(m, depth, ply);
+                        for (const auto m : Stack[ply].SearchedQuiets) UpdateHistory<Color, false>(m, depth, ply);
                     } else if (capture) {
                         // Capture History Updates (Asymmetric Approach):
                         //
@@ -1211,7 +1210,7 @@ namespace StockDory
                     // We should apply a malus for all captures that didn't cause a beta cut-off. We generally consider
                     // captures to be good so if they aren't good (especially if they're worst than a quiet) then we
                     // should apply a malus to them
-                    for (const auto m : searchedCaptures) UpdateCaptureHistory<Color, false>(m, depth);
+                    for (const auto m : Stack[ply].SearchedCaptures) UpdateCaptureHistory<Color, false>(m, depth);
                 }
 
                 ttEntryNew.Type = Beta;
