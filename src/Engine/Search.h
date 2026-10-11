@@ -1045,6 +1045,9 @@ namespace StockDory
                 // researches are relatively inexpensive, and the time we save ignoring moves that don't have potential
                 // to improve our position more than the previous moves is worth it.
 
+                if      (capture) searchedCaptures.Push(move);
+                else if ( quiet ) searchedQuiets  .Push(move);
+
                 Score evaluation = 0;
 
                 if (i == 0) evaluation = -PVS<OColor, PV, false>(ply + 1, depth - 1, -beta, -alpha);
@@ -1113,11 +1116,6 @@ namespace StockDory
 
                 UndoMove<true>(state, move);
 
-                if (evaluation < beta) {
-                    if      (capture) searchedCaptures.Push(move);
-                    else if ( quiet ) searchedQuiets  .Push(move);
-                }
-
                 uint64_t moveNodes = 0;
 
                 if (Root && ThreadType == Main) {
@@ -1177,7 +1175,7 @@ namespace StockDory
                         UpdateHistory<Color, true>(move, depth, ply);
 
                         // Malus for all other quiets as they didn't cause a beta cut-off
-                        for (const auto m : searchedQuiets) UpdateHistory<Color, false>(m, depth, ply);
+                        for (const auto m : searchedQuiets) if (m != move) UpdateHistory<Color, false>(m, depth, ply);
                     } else if (capture) {
                         // Capture History Updates (Asymmetric Approach):
                         //
@@ -1190,7 +1188,7 @@ namespace StockDory
                     // We should apply a malus for all captures that didn't cause a beta cut-off. We generally consider
                     // captures to be good so if they aren't good (especially if they're worst than a quiet) then we
                     // should apply a malus to them
-                    for (const auto m : searchedCaptures) UpdateCaptureHistory<Color, false>(m, depth);
+                    for (const auto m : searchedCaptures) if (m != move) UpdateCaptureHistory<Color, false>(m, depth);
                 }
 
                 ttEntryNew.Type = Beta;
