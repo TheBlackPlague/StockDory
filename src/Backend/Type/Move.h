@@ -46,7 +46,7 @@ struct Move
 
     // [      FLAGS      ] [     TO     ] [    FROM    ]
     // [     4 BITS      ] [   6 BITS   ] [   6 BITS   ]
-    uint16_t Internal = 0;
+    uint16_t Internal;
 
     public:
     [[nodiscard]]
