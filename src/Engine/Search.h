@@ -109,10 +109,9 @@ namespace StockDory
 
     };
 
+    template<uint8_t Size>
     class SearchedMovesStack
     {
-
-        constexpr static uint8_t Size = MaxMove / 4;
 
         Array<Move, Size> Internal;
 
@@ -1002,8 +1001,8 @@ namespace StockDory
             const bool    doLMP        = !Root && majorMaterial && !checked && depth <= LMPMaximumDepth;
             const bool    doLMR        =                           !checked && depth >= LMRMinimumDepth;
 
-            SearchedMovesStack searchedCaptures;
-            SearchedMovesStack searchedQuiets  ;
+            SearchedMovesStack<32> searchedCaptures;
+            SearchedMovesStack<64> searchedQuiets  ;
 
             uint8_t seenQuiets = 0;
 
@@ -1154,12 +1153,7 @@ namespace StockDory
                 if (evaluation < beta) continue;
 
                 if (!Stopped()) {
-                    if        (capture) {
-                        // Capture History Updates (Asymmetric Approach):
-                        //
-                        // We should give a bonus for the capture that caused a beta cut-off
-                        UpdateCaptureHistory<Color, true>(move, depth);
-                    } else if ( quiet ) {
+                    if        ( quiet ) {
                         // Killer Updates:
                         //
                         // Update the Killer table if a quiet move caused a beta cut-off to ensure we search this move
@@ -1184,6 +1178,11 @@ namespace StockDory
 
                         // Malus for all other quiets as they didn't cause a beta cut-off
                         for (const auto m : searchedQuiets) UpdateHistory<Color, false>(m, depth, ply);
+                    } else if (capture) {
+                        // Capture History Updates (Asymmetric Approach):
+                        //
+                        // We should give a bonus for the capture that caused a beta cut-off
+                        UpdateCaptureHistory<Color, true>(move, depth);
                     }
 
                     // Capture History Updates (Asymmetric Approach):
