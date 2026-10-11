@@ -118,9 +118,15 @@ namespace StockDory
         uint8_t CurrentIndex = 0;
 
         public:
+        uint8_t Count() const { return CurrentIndex; }
+
+        Move First() const { return Internal[0]; }
+
+        Move Last() const { return Internal[CurrentIndex - 1]; }
+
         void Push(const Move move) { if (CurrentIndex < Size) Internal[CurrentIndex++] = move; }
 
-        uint8_t Count() const { return CurrentIndex; }
+        void Pop() { CurrentIndex--; }
 
         auto begin() const { return Internal.begin()               ; }
         auto   end() const { return Internal.begin() + CurrentIndex; }
@@ -1174,13 +1180,19 @@ namespace StockDory
                         // Bonus for the quiet that caused a beta cut-off
                         UpdateHistory<Color, true>(move, depth, ply);
 
+                        // Make sure we don't apply malus to the move that caused a beta cut-off
+                        if (searchedQuiets.Last() == move) searchedQuiets.Pop();
+
                         // Malus for all other quiets as they didn't cause a beta cut-off
-                        for (const auto m : searchedQuiets) if (m != move) UpdateHistory<Color, false>(m, depth, ply);
+                        for (const auto m : searchedQuiets) UpdateHistory<Color, false>(m, depth, ply);
                     } else if (capture) {
                         // Capture History Updates (Asymmetric Approach):
                         //
                         // We should give a bonus for the capture that caused a beta cut-off
                         UpdateCaptureHistory<Color, true>(move, depth);
+
+                        // Make sure we don't apply malus to the move that caused a beta cut-off
+                        if (searchedCaptures.Last() == move) searchedCaptures.Pop();
                     }
 
                     // Capture History Updates (Asymmetric Approach):
@@ -1188,7 +1200,7 @@ namespace StockDory
                     // We should apply a malus for all captures that didn't cause a beta cut-off. We generally consider
                     // captures to be good so if they aren't good (especially if they're worst than a quiet) then we
                     // should apply a malus to them
-                    for (const auto m : searchedCaptures) if (m != move) UpdateCaptureHistory<Color, false>(m, depth);
+                    for (const auto m : searchedCaptures) UpdateCaptureHistory<Color, false>(m, depth);
                 }
 
                 ttEntryNew.Type = Beta;
