@@ -1007,7 +1007,7 @@ namespace StockDory
             const bool    doLMP        = !Root && majorMaterial && !checked && depth <= LMPMaximumDepth;
             const bool    doLMR        =                           !checked && depth >= LMRMinimumDepth;
 
-            SearchedMovesStack<32> searchedCaptures;
+            SearchedMovesStack<64> searchedCaptures;
             SearchedMovesStack<64> searchedQuiets  ;
 
             uint8_t seenQuiets = 0;
