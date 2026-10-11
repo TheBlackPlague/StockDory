@@ -75,8 +75,6 @@ namespace StockDory
         public:
         void Push(const Move move) { if (Count < MaxMove / 5) Internal[Count++] = move; }
 
-        void Pop() { Count = std::clamp<uint8_t>(Count - 1, 0, MaxMove / 5); }
-
         uint8_t Size() const { return Count; }
 
         auto begin() const { return Internal.begin()        ; }
@@ -1068,9 +1066,6 @@ namespace StockDory
                 // researches are relatively inexpensive, and the time we save ignoring moves that don't have potential
                 // to improve our position more than the previous moves is worth it.
 
-                if ( quiet ) searchedQuiets  .Push(move);
-                if (capture) searchedCaptures.Push(move);
-
                 Score evaluation = 0;
 
                 if (i == 0) evaluation = -PVS<OColor, PV, false>(ply + 1, depth - 1, -beta, -alpha);
@@ -1139,6 +1134,11 @@ namespace StockDory
 
                 UndoMove<true>(state, move);
 
+                if (evaluation < beta) {
+                    if ( quiet ) searchedQuiets  .Push(move);
+                    if (capture) searchedCaptures.Push(move);
+                }
+
                 uint64_t moveNodes = 0;
 
                 if (Root && ThreadType == Main) {
@@ -1175,8 +1175,6 @@ namespace StockDory
 
                 if (!Stopped()) {
                     if (quiet) {
-                        searchedQuiets.Pop();
-
                         // Killer Updates:
                         //
                         // Update the Killer table if a quiet move caused a beta cut-off to ensure we search this move
@@ -1202,8 +1200,6 @@ namespace StockDory
                         // Malus for all other quiets as they didn't cause a beta cut-off
                         for (const auto m : searchedQuiets) UpdateHistory<Color, false>(m, depth, ply);
                     } else if (capture) {
-                        searchedCaptures.Pop();
-
                         // Capture History Updates (Asymmetric Approach):
                         //
                         // We should give a bonus for the capture that caused a beta cut-off
