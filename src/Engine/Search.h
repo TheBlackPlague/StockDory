@@ -1037,8 +1037,7 @@ namespace StockDory
                     // policy, it's very likely that all the good moves will be searched earlier and that moves that
                     // appear later in the move list are unlikely to be good moves and thus we can avoid searching them
                     if (!Root && majorMaterial && !checked && depth <= LMPMaximumDepth &&
-                        seenQuiets > static_cast<uint8_t>(LMPLastQuietBase + depth * depth) &&
-                        bestEvaluation > -Infinity) break;
+                        seenQuiets > LMPLastQuietBase + depth * depth && bestEvaluation > -Infinity) break;
                 }
 
                 const Piece movingPiece = Board[move.From()].Piece();
