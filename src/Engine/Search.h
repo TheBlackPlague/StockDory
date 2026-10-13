@@ -1023,12 +1023,23 @@ namespace StockDory
                 seenQuiets += quiet;
 
                 if (!checked && i >= 1 && quiet) {
+                    // Forward Futility Pruning (FFP):
+                    //
+                    // FFP is a technique which tries to estimate whether it's futile to further search a position. It
+                    // uses the static evaluation of the position alongside a depth-dependent margin to predict whether
+                    // in a given position (if searched deeper) will likely ever be able to recover, and if not, then
+                    // it is futile to continue searching
                     const Score margin = depth * FutilityDepthFactor;
 
                     if (staticEvaluation + margin <= alpha) break;
                 }
 
                 if (!PV) {
+                    // Late Move Pruning (LMP):
+                    //
+                    // LMP is a technique that heavily relies on the move policy. It assumes that with a reasonable move
+                    // policy, it's very likely that all the good moves will be searched earlier and that moves that
+                    // appear later in the move list are unlikely to be good moves and thus we can avoid searching them
                     if (doLMP && seenQuiets > lmpLastQuiet && bestEvaluation > -Infinity) break;
                 }
 
