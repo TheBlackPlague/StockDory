@@ -29,8 +29,10 @@ namespace StockDory
             {0000, 0000, 0000, 0000, 0000, 0000, 0000}
         }};
 
-        // Reserving the 8 upper bits for the index to be used for fast sorting
+        // Reserving the 8 lower bits for the index to be used for fast sorting
         constexpr static int32_t MaximumScore = std::numeric_limits<int32_t>::max() >> 8;
+
+        constexpr static int32_t GoodCaptureBonus = 3 * HistoryLimit;
 
         constexpr static int32_t PromotionMultiplier = 100000;
 
@@ -83,7 +85,7 @@ namespace StockDory
             // - Good Quiet Moves
             //   - Killer Moves
             //   - Good History Moves
-            // - Bad Captures (SEE < 0)
+            // - Bad Captures (SEE < 0) / Mediocre Quiets
             // - Bad Quiet Moves
             //   - Bad History Moves
 
@@ -99,6 +101,7 @@ namespace StockDory
 
                 score += MvvLva[targetPiece][Piece] * (goodCapture ? 20 : 1);
                 score += CaptureHistory[Color][Piece][move.To()][targetPiece];
+                score += goodCapture ? GoodCaptureBonus : 0;
 
                 return score;
             }
