@@ -81,15 +81,15 @@ namespace StockDory
     using TP = std::chrono::time_point<std::chrono::steady_clock>;
 
     using KTable = Array<Move, 2, MaxDepth>;
-    using HTable = Array<int16_t, 2, 6, 64>;
 
+    using        HTable = Array<int16_t, 2, 6, 64   >;
     using CaptureHTable = Array<int16_t, 2, 6, 64, 6>;
 
-    using  CHTable = Array<HTable, 6, 64>;
+    using  CHTable = Array<HTable , 2, 6, 64       >;
     using CCHTable = Array<int16_t, 2, 6, 64, 6, 64>;
 
-    using MinorCTable = Array<int16_t, 2, CorrectionHistorySize>;
-    using MajorCTable = Array<MinorCTable, 2>;
+    using MinorCTable = Array<int16_t    , 2, CorrectionHistorySize>;
+    using MajorCTable = Array<MinorCTable, 2                       >;
 
     constexpr HTable NullHistory = {};
 
