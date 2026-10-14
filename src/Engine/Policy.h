@@ -49,7 +49,8 @@ namespace StockDory
 
         const HTable& History;
 
-        const HTable& Continuation;
+        const HTable& Counter ;
+        const HTable& Followup;
 
         const CaptureHTable& CaptureHistory;
 
@@ -60,13 +61,14 @@ namespace StockDory
             const StockDory::Board& board,
             const Move kOne,
             const Move kTwo,
-            const HTable&      history,
-            const HTable& continuation,
+            const HTable&  history,
+            const HTable&  counter,
+            const HTable& followup,
             const CaptureHTable& captureHistory,
             const Move tt
         )
-        : Board(board), KillerOne(kOne), KillerTwo(kTwo), History(history), Continuation(continuation),
-          CaptureHistory(captureHistory), TTMove(tt) {}
+        : Board(board), KillerOne(kOne), KillerTwo(kTwo), History(history), Counter(counter),
+          Followup(followup), CaptureHistory(captureHistory), TTMove(tt) {}
 
         template<Piece Piece, enum Piece PromotionPiece = NAP>
         int32_t Score(const Move move) const
@@ -108,7 +110,10 @@ namespace StockDory
 
             score += History[Color][Piece][move.To()];
 
-            if (PromotionPiece == NAP) score += Continuation[Color][Piece][move.To()];
+            if (PromotionPiece == NAP) {
+                score += Counter [Color][Piece][move.To()];
+                score += Followup[Color][Piece][move.To()];
+            }
 
             return score;
         }

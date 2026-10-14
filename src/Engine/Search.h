@@ -985,10 +985,19 @@ namespace StockDory
 
             using MoveList = OrderedMoveList<Color>;
 
-            const HTable& continuation = Stack[ply - 1].Move ?
-                ContinuationHistory[Stack[ply - 1].PieceToMove][Stack[ply - 1].Move.To()] : NullHistory;
+            auto Continuation = [&](const uint8_t delta) -> const HTable&
+            {
+                if (Stack[ply - delta].Move) return ContinuationHistory[delta % 2 == 0 ? Color : OColor]
+                                                                  [Stack[ply - delta].PieceToMove      ]
+                                                                  [Stack[ply - delta].Move.To()        ];
 
-            MoveList moves (Board, ply, Killer, History, continuation, CaptureHistory, ttMove);
+                return NullHistory;
+            };
+
+            const HTable& counter  = Continuation(1);
+            const HTable& followup = Continuation(2);
+
+            MoveList moves (Board, ply, Killer, History, counter, followup, CaptureHistory, ttMove);
 
             // Out of Moves:
             //
@@ -1298,7 +1307,7 @@ namespace StockDory
 
             using MoveList = OrderedMoveList<Color, true>;
 
-            MoveList moves (Board, ply, Killer, NullHistory, NullHistory, CaptureHistory);
+            MoveList moves (Board, ply, Killer, NullHistory, NullHistory, NullHistory, CaptureHistory);
 
             Score bestEvaluation = staticEvaluation;
             for (uint8_t i = 0; i < moves.Count(); i++) {
@@ -1374,12 +1383,25 @@ namespace StockDory
 
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
 
-            if (!Stack[ply - 1].Move) return;
+            auto Continuation = [&](const uint8_t delta) -> int16_t&
+            {
+                return ContinuationHistory[delta % 2 == 0 ?        Color : Opposite(Color)              ]
+                                          [Stack[ply - delta].PieceToMove ][Stack[ply - delta].Move.To()]
+                                          [                        Color                                ]
+                                          [Board[move.From()].Piece()     ][                   move.To()];
+            };
 
-            int16_t& continuation = ContinuationHistory[Stack[ply - 1].PieceToMove][Stack[ply - 1].Move.To()]
-                                    [Color][Board[move.From()].Piece()][move.To()];
+            if (Stack[ply - 1].Move) {
+                int16_t& counter  = Continuation(1);
 
-            continuation += bonus * (Increase ? 1 : -1) - continuation * bonus / HistoryLimit;
+                counter  += bonus * (Increase ? 1 : -1) - counter  * bonus / HistoryLimit;
+            }
+
+            if (Stack[ply - 2].Move) {
+                int16_t& followup = Continuation(2);
+
+                followup += bonus * (Increase ? 1 : -1) - followup * bonus / HistoryLimit;
+            }
         }
 
         template<Color Color, bool Increase>
