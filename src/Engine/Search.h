@@ -1003,10 +1003,6 @@ namespace StockDory
                 .Type       = Alpha
             };
 
-            const uint8_t lmpLastQuiet = LMPLastQuietBase +   depth * depth;
-            const bool    doLMP        = !Root && majorMaterial && !checked && depth <= LMPMaximumDepth;
-            const bool    doLMR        =                           !checked && depth >= LMRMinimumDepth;
-
             SearchedMovesStack<64> searchedCaptures;
             SearchedMovesStack<64> searchedQuiets  ;
 
@@ -1040,7 +1036,8 @@ namespace StockDory
                     // LMP is a technique that heavily relies on the move policy. It assumes that with a reasonable move
                     // policy, it's very likely that all the good moves will be searched earlier and that moves that
                     // appear later in the move list are unlikely to be good moves and thus we can avoid searching them
-                    if (doLMP && seenQuiets > lmpLastQuiet && bestEvaluation > -Infinity) break;
+                    if (!Root && majorMaterial && !checked && depth <= LMPMaximumDepth &&
+                        seenQuiets > LMPLastQuietBase + depth * depth && bestEvaluation > -Infinity) break;
                 }
 
                 const Piece movingPiece = Board[move.From()].Piece();
@@ -1083,7 +1080,7 @@ namespace StockDory
                     // is alpha), we then research them at a full depth. The researches are relatively inexpensive due
                     // to the transposition table, and the time we save by not searching moves that are unlikely to
                     // improve our position is worth it
-                    if (doLMR && i >= LMRMinimumMoves) {
+                    if (!checked && depth >= LMRMinimumDepth && i >= LMRMinimumMoves) {
                         // Reduction values are determined by a formula that takes into account the current depth and
                         // move number. Current formula:
                         //
