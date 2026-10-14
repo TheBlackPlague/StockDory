@@ -1006,7 +1006,8 @@ namespace StockDory
             SearchedMovesStack<64> searchedCaptures;
             SearchedMovesStack<64> searchedQuiets  ;
 
-            uint8_t seenQuiets = 0;
+            bool    skipQuiets = false;
+            uint8_t seenQuiets =     0;
 
             Score bestEvaluation = -Infinity;
 
@@ -1018,27 +1019,36 @@ namespace StockDory
 
                 seenQuiets += quiet;
 
-                if (!checked && i >= 1 && quiet) {
-                    // Forward Futility Pruning (FFP):
-                    //
-                    // FFP is a technique which tries to estimate whether it's futile to further search a position. It
-                    // uses the static evaluation of the position alongside a depth-dependent margin to predict whether
-                    // in a given position (if searched deeper) will likely ever be able to recover, and if not, then
-                    // it is futile to continue searching
-                    const Score margin = depth * FutilityDepthFactor;
+                if (i >= 1 && quiet && skipQuiets) continue;
 
-                    if (staticEvaluation + margin <= alpha) break;
+                if (!checked) {
+                    if (!skipQuiets && staticEvaluation + depth * FutilityDepthFactor <= alpha) skipQuiets = true;
+
+                    if (!PV && !Root && majorMaterial && depth <= LMPMaximumDepth &&
+                        seenQuiets > LMPLastQuietBase +  depth * depth && bestEvaluation > -Infinity) break;
                 }
 
-                if (!PV) {
-                    // Late Move Pruning (LMP):
-                    //
-                    // LMP is a technique that heavily relies on the move policy. It assumes that with a reasonable move
-                    // policy, it's very likely that all the good moves will be searched earlier and that moves that
-                    // appear later in the move list are unlikely to be good moves and thus we can avoid searching them
-                    if (!Root && majorMaterial && !checked && depth <= LMPMaximumDepth &&
-                        seenQuiets > LMPLastQuietBase + depth * depth && bestEvaluation > -Infinity) break;
-                }
+                // if (!checked && i >= 1 && quiet) {
+                //     // Forward Futility Pruning (FFP):
+                //     //
+                //     // FFP is a technique which tries to estimate whether it's futile to further search a position. It
+                //     // uses the static evaluation of the position alongside a depth-dependent margin to predict whether
+                //     // in a given position (if searched deeper) will likely ever be able to recover, and if not, then
+                //     // it is futile to continue searching
+                //     const Score margin = depth * FutilityDepthFactor;
+                //
+                //     if (staticEvaluation + margin <= alpha) break;
+                // }
+                //
+                // if (!PV) {
+                //     // Late Move Pruning (LMP):
+                //     //
+                //     // LMP is a technique that heavily relies on the move policy. It assumes that with a reasonable move
+                //     // policy, it's very likely that all the good moves will be searched earlier and that moves that
+                //     // appear later in the move list are unlikely to be good moves and thus we can avoid searching them
+                //     if (!Root && majorMaterial && !checked && depth <= LMPMaximumDepth &&
+                //         seenQuiets > LMPLastQuietBase + depth * depth && bestEvaluation > -Infinity) break;
+                // }
 
                 const Piece movingPiece = Board[move.From()].Piece();
 
