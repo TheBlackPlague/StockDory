@@ -14,25 +14,24 @@
 namespace StockDory
 {
 
-    class SEE
+    namespace SEE
     {
 
-        constexpr static Array<uint16_t, 7> Internal {
+        constexpr Array<uint16_t, 7> PieceValue {
             82, 337, 365, 477, 1025, 30000, 0
         };
 
-        public:
-        static bool Accurate(const Board& board, const Move move, const int32_t threshold)
+        bool Accurate(const Board& board, const Move move, const int32_t threshold)
         {
             if (move.Promotion() != NAP || move.EnPassant() || move.Castling()) return true;
 
             const Square from = move.From();
             const Square to   = move.  To();
 
-            int32_t value = Internal[board[to].Piece()] - threshold;
+            int32_t value = PieceValue[board[to].Piece()] - threshold;
             if (value < 0) return false;
 
-            value -= Internal[board[from].Piece()];
+            value -= PieceValue[board[from].Piece()];
             if (value >= 0) return true;
 
             const BitBoard diagonal = board.PieceBoard<White>(Bishop) | board.PieceBoard<Black>(Bishop) |
@@ -55,7 +54,7 @@ namespace StockDory
 
                 ctm = Opposite(ctm);
 
-                value = -value - 1 - Internal[piece];
+                value = -value - 1 - PieceValue[piece];
                 if (value >= 0) {
                     if (piece == King && att & board[ctm]) ctm = Opposite(ctm);
 

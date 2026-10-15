@@ -11,6 +11,7 @@
 
 #include "Common.h"
 #include "SEE.h"
+#include "TunableParameter.h"
 
 namespace StockDory
 {
@@ -19,20 +20,13 @@ namespace StockDory
     class Policy
     {
 
-        constexpr static Array<uint16_t, 7, 7> MvvLva = {{
-            {2005, 2004, 2003, 2002, 2001, 2000, 0000},
-            {3005, 3004, 3003, 3002, 3001, 3000, 0000},
-            {4005, 4004, 4003, 4002, 4001, 4000, 0000},
-            {5005, 5004, 5003, 5002, 5001, 5000, 0000},
-            {6005, 6004, 6003, 6002, 6001, 6000, 0000},
-            {7005, 7004, 7003, 7002, 7001, 7000, 0000},
-            {0000, 0000, 0000, 0000, 0000, 0000, 0000}
-        }};
-
-        // Reserving the 8 upper bits for the index to be used for fast sorting
+        // Reserving the byte for the index to be used for fast sorting
         constexpr static int32_t MaximumScore = std::numeric_limits<int32_t>::max() >> 8;
 
-        constexpr static int32_t PromotionMultiplier = 100000;
+        constexpr static int32_t GoodCaptureBonus = 1 << 18;
+        constexpr static int32_t   PromotionBonus = 1 << 19;
+
+        constexpr static int32_t HistoryWeightScale = 128;
 
         constexpr static Array<uint8_t, 5> PromotionFactor = {
             0, //   Pawn
@@ -73,47 +67,35 @@ namespace StockDory
         template<Piece Piece, enum Piece PromotionPiece = NAP>
         int32_t Score(const Move move) const
         {
-            // Policy:
-            //
-            // The categories below give a rough idea of how the score is calculated for move ordering, but in practical
-            // terms, the score isn't as categorical and there are overlaps between the categories (e.g. a good capture
-            // can appear before a promotion):
-            //
-            // - Transposition Table Move
-            // - Promotions
-            // - Good Captures (SEE >= 0)
-            // - Good Quiet Moves
-            //   - Killer Moves
-            //   - Good History Moves
-            // - Bad Captures (SEE < 0)
-            // - Bad Quiet Moves
-            //   - Bad History Moves
-
             if (move == TTMove) return MaximumScore;
 
-            int32_t score = 0;
-
-            if (PromotionPiece != NAP) score += PromotionFactor[PromotionPiece] * PromotionMultiplier;
-
             if (CaptureOnly || move.Capture()) {
-                const bool goodCapture = SEE::Accurate(Board, move, 0);
                 const auto targetPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
 
-                score += MvvLva[targetPiece][Piece] * (goodCapture ? 20 : 1);
-                score += CaptureHistory[Color][Piece][move.To()][targetPiece];
+                const uint16_t victimValue = SEE::PieceValue[targetPiece];
 
-                return score;
+                const  int16_t captureHistory = CaptureHistory[Color][Piece][move.To()][targetPiece];
+
+                const int32_t  victimScore = victimValue    * PolicyCaptureValueWeight                       ;
+                const int32_t historyScore = captureHistory * PolicyCaptureHistoryWeight / HistoryWeightScale;
+
+                const int32_t score = victimScore + historyScore;
+
+                if (PromotionPiece != NAP) return PromotionFactor[PromotionPiece] * PromotionBonus + score;
+
+                return score + (SEE::Accurate(Board, move, 0) ? GoodCaptureBonus : 0);
             }
 
-            if (move.SameIdentity(KillerOne)) score += HistoryLimit    ;
-            if (move.SameIdentity(KillerTwo)) score += HistoryLimit / 2;
+            if (PromotionPiece != NAP) return PromotionFactor[PromotionPiece] * PromotionBonus;
 
-            score += History[Color][Piece][move.To()];
+            int32_t score = (
+                  History [Color][Piece][move.To()] * PolicyHistoryWeight
+                + Counter [Color][Piece][move.To()] * PolicyCounterWeight
+                + Followup[Color][Piece][move.To()] * PolicyFollowupWeight
+            ) / HistoryWeightScale;
 
-            if (PromotionPiece == NAP) {
-                score += Counter [Color][Piece][move.To()];
-                score += Followup[Color][Piece][move.To()];
-            }
+            if (move.SameIdentity(KillerOne)) score += PolicyKillerOneBonus;
+            if (move.SameIdentity(KillerTwo)) score += PolicyKillerTwoBonus;
 
             return score;
         }
