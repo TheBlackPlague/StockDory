@@ -6,11 +6,16 @@
 #ifndef STOCKDORY_THREADPOOL_H
 #define STOCKDORY_THREADPOOL_H
 
+#include <new>
 #include <thread>
 
 #include <nanothread/nanothread.h>
 
 using MemoryOrder = std::memory_order;
+
+constexpr size_t  DestructiveInterferenceSize = std:: hardware_destructive_interference_size;
+constexpr size_t ConstructiveInterferenceSize = std::hardware_constructive_interference_size;
+
 
 template<typename T>
 class Atomic
