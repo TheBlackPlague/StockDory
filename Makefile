@@ -12,12 +12,14 @@ BUILD_TUNING ?= $(if $(filter StockDoryTuning-%,$(EXE)),ON,OFF)
 ifeq ($(OS),Windows_NT)
     CP             = powershell -Command "Copy-Item -Force"
     RM             = powershell -Command "Remove-Item -Recurse -Force"
+    MKDIR		   = powershell -Command "New-Item -ItemType Directory -Force"
     EXT            = .exe
     LLVM_PROFDATA ?= llvm-profdata
     SLASH          = \\
 else
     CP    = cp
     RM    = rm -rf
+    MKDIR = mkdir -p
     EXT   =
     SLASH = /
 
@@ -45,7 +47,8 @@ all: openbench
 
 openbench:
 ifdef EVALFILE
-	$(RM) src/Engine/Model/* && \
+	$(MKDIR) src/Engine/Model
+	$(RM) src/Engine/Model/*
 	$(CP) $(EVALFILE) src/Engine/Model/Network.nnue
 endif
 	@echo "[*] Performing initial build for profiling..."
