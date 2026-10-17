@@ -90,8 +90,10 @@ namespace StockDory
         struct Frame
         {
 
-            Score   StaticEvaluation = None;
-            uint8_t HalfMoveCounter  =    0;
+            Score StaticEvaluation = None;
+            Score ScaledEvaluation = None;
+
+            uint8_t HalfMoveCounter = 0;
 
             Piece PieceToMove = NAP;
             Move         Move = { };
@@ -796,7 +798,7 @@ namespace StockDory
             bool  improving;
 
             if (checked) {
-                // Last non-checked Static Evaluation:
+                // Last non-checked Static Evaluation Recovery & Scaled Evaluation Invalidation:
                 //
                 // If the position is under check, static evaluation is most likely not reliable. As such, we should
                 // use the static evaluation from the last ply where we were not checked, which hopefully is our last
@@ -805,8 +807,12 @@ namespace StockDory
                 // Static evaluation of the current position is set to the static evaluation two plies ago, which, if we
                 // were in check, recursively, is the static evaluation from four plies ago, and so on. This essentially
                 // means the static evaluation from two plies ago is the static evaluation from the last ply where we
-                // were not checked which could be two plies ago, four plies ago, or any N * 2 plies ago
+                // were not checked which could be two plies ago, four plies ago, or any N * 2 plies ago.
+                //
+                // We mainly use the scaled evaluation to adjust history, and potentially keeping one from many turns
+                // ago can wrongly credit / discredit positional improvements so we invalidate it
                 staticEvaluation = Stack[ply].StaticEvaluation = Stack[ply - 2].StaticEvaluation;
+                scaledEvaluation = Stack[ply].ScaledEvaluation = None                           ;
 
                 // Positionally Improving:
                 //
@@ -850,22 +856,42 @@ namespace StockDory
             //
             // Without a valid entry, the corrected evaluation should be used; correction history is never applied to
             // the evaluation the transposition table
+            scaledEvaluation =   ScaleEvaluation<Color>(                     );
+            staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
+
+            Stack[ply].ScaledEvaluation = staticEvaluation;
+
             if (ttHit) {
-                staticEvaluation = ttEvaluation;
-
-                if (ttEntry.Type != Exact) {
-                    scaledEvaluation =   ScaleEvaluation<Color>(                     );
-                    staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
-
-                    if      (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttEvaluation);
-                    else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttEvaluation);
-                }
-            } else {
-                scaledEvaluation =   ScaleEvaluation<Color>(                     );
-                staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
+                if      (ttEntry.Type == Exact) staticEvaluation = ttEvaluation;
+                else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttEvaluation);
+                else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttEvaluation);
             }
 
             Stack[ply].StaticEvaluation = staticEvaluation;
+
+            // Quiet History Adjustments:
+            //
+            // We use the difference between our current scaled evaluation and the previous scaled evaluation (our
+            // opponent's) and see whether we have improved or not. This allows us to provide an extra bonus or malus to
+            // the move we just played without having to actually do a deeper search
+            if (!Root                                   &&
+                Stack[ply - 1].Move                     &&
+                Stack[ply - 1].Move.Quiet()             &&
+                Stack[ply - 1].ScaledEvaluation != None  ) {
+                const Score delta =
+                    - Stack[ply - 1].ScaledEvaluation
+                    - Stack[ply    ].ScaledEvaluation;
+
+                const int16_t bonus = static_cast<int16_t>(std::clamp<int32_t>(
+                     EvaluationHistoryAdjustmentMultiplier   * (delta + EvaluationHistoryAdjustmentOffset),
+                    -EvaluationHistoryAdjustmentMaximumMalus                                              ,
+                     EvaluationHistoryAdjustmentMaximumBonus
+                ));
+
+                int16_t& history = History[OColor][Stack[ply - 1].PieceToMove][Stack[ply - 1].Move.To()];
+
+                history += bonus - history * abs(bonus) / HistoryLimit;
+            }
 
             // Positionally Improving:
             //
@@ -1188,7 +1214,7 @@ namespace StockDory
                             Killer[0][ply] = move;
                         }
 
-                        // History Updates:
+                        // Quiet History Updates:
                         //
                         // We should update histories (raise the move that caused the beta cut-off and diminish the
                         // moves that didn't) so that we search them earlier in the future and can use their values to
@@ -1235,8 +1261,6 @@ namespace StockDory
                 // positions), we should update our correction history so we may remember the misguidedness of the
                 // neural network evaluation and can make better decisions in the future
                 if (!checked && !IsMate(bestEvaluation) && (ttEntryNew.Type == Alpha || !ttMoveIsTactical)) {
-                    if (ttHit && ttEntry.Type == Exact) scaledEvaluation = ScaleEvaluation<Color>();
-
                     const Score correctedEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
 
                     if ((ttEntryNew.Type != Beta  || bestEvaluation > correctedEvaluation) &&
