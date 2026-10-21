@@ -238,14 +238,13 @@ namespace StockDory
 
         void LoadForEvaluation(const size_t threadId = 0) const
         {
-            Evaluation::ResetNetworkState(threadId);
-
-            BitBoardIterator iterator(~Empty());
-            for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
-                const PieceColor pc = PieceAndColor[sq];
-
-                Evaluation::Activate(pc.Piece(), pc.Color(), sq, threadId);
-            }
+            Evaluation::Reset(
+                [this](const uint8_t piece, const uint8_t color) -> BitBoard
+                {
+                    return PieceBoard(static_cast<::Piece>(piece), static_cast<::Color>(color));
+                },
+                threadId
+            );
         }
 
         [[nodiscard]]
@@ -578,8 +577,6 @@ namespace StockDory
         template<MoveType T>
         PreviousState Move(const ::Move move, const size_t threadId = 0)
         {
-            if (T & NNUE) Evaluation::PreMove(threadId);
-
             const Square from = move.From();
             const Square to   = move.  To();
 
@@ -626,6 +623,8 @@ namespace StockDory
 
             if constexpr (Engine && (T & ZOBRIST)) Hash = Zobrist::HashColorFlip<T>(Hash);
 
+            MantaRay::Delta delta;
+
             if (move.Capture()) {
                 const Square captured      = move.EnPassant() ? static_cast<Square>(to ^ 8) : to;
                 const  Piece capturedPiece = move.EnPassant() ? Pawn : state.CapturedPiece.Piece();
@@ -633,7 +632,7 @@ namespace StockDory
                 RemovePiece (capturedPiece, opposite, captured);
                 HashPiece<T>(capturedPiece, opposite, captured);
 
-                if (T & NNUE) Evaluation::Deactivate(capturedPiece, opposite, captured, threadId);
+                if (T & NNUE) delta.Remove(capturedPiece, opposite, captured);
             }
 
             if (move.Promotion() != NAP) {
@@ -643,15 +642,15 @@ namespace StockDory
                 HashPiece<T>(move.Promotion(), color,   to);
 
                 if (T & NNUE) {
-                    Evaluation::Deactivate(     Pawn       , color, from, threadId);
-                    Evaluation::  Activate(move.Promotion(), color,  to , threadId);
+                    delta.Remove(     Pawn       , color, from);
+                    delta.Insert(move.Promotion(), color,  to );
                 }
             } else {
                 TransitionPiece(piece, color, from, to);
                 HashPiece<T>   (piece, color, from    );
                 HashPiece<T>   (piece, color,       to);
 
-                if (T & NNUE) Evaluation::Transition(piece, color, from, to, threadId);
+                if (T & NNUE) delta.Move(piece, color, from, to);
 
                 if (move.Castling()) {
                     state.CastlingFrom = static_cast<Square>((from & 56) + (to > from ? 7 : 0));
@@ -661,8 +660,7 @@ namespace StockDory
                     HashPiece<T>   (Rook, color, state.CastlingFrom                  );
                     HashPiece<T>   (Rook, color,                     state.CastlingTo);
 
-                    if (T & NNUE)
-                        Evaluation::Transition(Rook, color, state.CastlingFrom, state.CastlingTo, threadId);
+                    if (T & NNUE) delta.Move(Rook, color, state.CastlingFrom, state.CastlingTo);
                 } else if (move.DoublePush()) {
                     const auto ep = static_cast<Square>(to ^ 8);
 
@@ -674,6 +672,9 @@ namespace StockDory
             }
 
             UpdateNACBB();
+
+            if (T & NNUE) Evaluation::Push(delta, threadId);
+
             return state;
         }
 
@@ -686,7 +687,7 @@ namespace StockDory
         template<MoveType T>
         void UndoMove(const PreviousState& state, const Square from, const Square to, const size_t threadId = 0)
         {
-            if (T & NNUE) Evaluation::PreUndoMove(threadId);
+            if (T & NNUE) Evaluation::Pop(threadId);
 
             CastlingRightAndColorToMove = state.CastlingRightAndColorToMove;
             SetEnPassant(state.EnPassant);

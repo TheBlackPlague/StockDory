@@ -6,10 +6,13 @@
 #ifndef STOCKDORY_EVALUATION_H
 #define STOCKDORY_EVALUATION_H
 
+#include <cstdlib>
+#include <iostream>
+#include <span>
 #include <vector>
 
 #include "../Backend/ThreadPool.h"
-#include "../Backend/Type/Square.h"
+#include "../Backend/Type/Color.h"
 
 #include "Common.h"
 #include "NetworkArchitecture.h"
@@ -24,10 +27,20 @@ namespace StockDory
         using Network = Flare     ;
         using   Stack = FlareStack;
 
-        static inline Network NN = [] -> Network
+        static inline Network NN;
+
+        [[maybe_unused]]
+        static inline const bool NetworkLoaded = [] -> bool
         {
-            MantaRay::BinaryMemoryStream stream (_NeuralNetworkBinaryData, sizeof _NeuralNetworkBinaryData);
-            return Network(stream);
+            const MantaRay::LoadResult result = NN.Load(std::as_bytes(std::span(_NeuralNetworkBinaryData)));
+
+            if (!result) {
+                std::cerr << "ERROR: Failed to load the embedded neural network: " << result.Message()
+                          << " (tensor " << result.Tensor << ", index " << result.Index << ")" << std::endl;
+                std::abort();
+            }
+
+            return true;
         }();
 
         static inline std::vector<Stack> ThreadLocalStack;
@@ -45,57 +58,31 @@ namespace StockDory
             ThreadLocalStack.clear();
             ThreadLocalStack.reserve(threadCount);
 
-            for (size_t i = 0; i < threadCount; i++) {
-                ThreadLocalStack.emplace_back();
-                NN.Refresh(*ThreadLocalStack[i]);
-            }
+            for (size_t i = 0; i < threadCount; i++) ThreadLocalStack.emplace_back(NN);
         }
 
-        static void ResetNetworkState(const size_t threadId = 0)
+        template<typename PieceBoards>
+        static void Reset(const PieceBoards& boards, const size_t threadId = 0)
         {
             Stack& stack = ThreadLocalStack[threadId];
 
-            stack.Reset();
-            NN.Refresh(*stack);
+            stack.Reset(boards);
         }
 
         [[clang::always_inline]]
-        static void PreMove(const size_t threadId = 0)
+        static void Push(const MantaRay::Delta& delta, const size_t threadId = 0)
         {
             Stack& stack = ThreadLocalStack[threadId];
-            stack++;
+
+            stack.Push(delta);
         }
 
         [[clang::always_inline]]
-        static void PreUndoMove(const size_t threadId = 0)
-        {
-            Stack& stack = ThreadLocalStack[threadId];
-            stack--;
-        }
-
-        [[clang::always_inline]]
-        static void Activate(const Piece piece, const Color color, const Square sq, const size_t threadId = 0)
+        static void Pop(const size_t threadId = 0)
         {
             Stack& stack = ThreadLocalStack[threadId];
 
-            NN.Insert(piece, color, sq, *stack);
-        }
-
-        [[clang::always_inline]]
-        static void Deactivate(const Piece piece, const Color color, const Square sq, const size_t threadId = 0)
-        {
-            Stack& stack = ThreadLocalStack[threadId];
-
-            NN.Remove(piece, color, sq, *stack);
-        }
-
-        [[clang::always_inline]]
-        static void Transition(const Piece piece, const Color color, const Square from, const Square to,
-                               const size_t threadId = 0)
-        {
-            Stack& stack = ThreadLocalStack[threadId];
-
-            NN.Move(piece, color, from, to, *stack);
+            stack.Pop();
         }
 
         [[clang::always_inline]]
@@ -103,7 +90,7 @@ namespace StockDory
         {
             Stack& stack = ThreadLocalStack[threadId];
 
-            return NN.Evaluate(color, *stack);
+            return stack.Evaluate(color);
         }
 
     };
