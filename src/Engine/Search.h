@@ -419,60 +419,31 @@ namespace StockDory
 
         void IterativeDeepening()
         {
-            if (ThreadType == Main) {
-                // If we are in the main thread, we should see if we have a single move in this position. If that's the
-                // case, we can save time by searching far less (ideally just a few depths) - saving time for when we
-                // have more choices
-                SearchSingleMoveTimeOptimization();
+            StartTime = std::chrono::steady_clock::now();
 
-                // Set the starting point for all time measurements
-                StartTime = std::chrono::steady_clock::now();
-            }
-
-            // Load the board state for evaluation purposes (this needs to be done for all threads with their respective
-            // thread IDs as each thread has its own evaluation state)
             Board.LoadForEvaluation(ThreadId);
 
             Depth = 1;
-            while (Depth < MaxDepth && Depth <= Limit.Depth && !OutOfTime<Limit::Optimal>()) {
-                if (Board.ColorToMove() ==   White)
-                     Evaluation = Aspiration<White>(Depth);
-                else Evaluation = Aspiration<Black>(Depth);
 
-                // In the case that the search was stopped, we should just proceed to fire the completion event
-                if (Stopped()) break;
-
-                if (ThreadType == Main) {
-                    // On the main thread, we need to fire events to notify handlers about the completion of the
-                    // iterative deepening iteration and provide them with the results. Furthermore, if needed, the
-                    // main thread is also responsible for optimizing the time allocation for the next iterations
-
-                    const auto time = ElapsedTime();
-
-                    SearchTimeManagement();
-
-                    EventHandler::HandleIterativeDeepeningIterationCompletion({
-                        .         Depth =          Depth,
-                        .SelectiveDepth = SelectiveDepth,
-
-                        .Evaluation = WDLCalculator::S(Board, Evaluation),
-                        .WDL        = WDL             (Board, Evaluation),
-
-                        .Nodes = GetNodes(),
-                        .Time  = time,
-
-                        .PVEntry = PVTable[0]
-                    });
-                }
-
-                Depth++;
-            }
+            if (Board.ColorToMove() == White)
+                 NetworkProxy<White>();
+            else NetworkProxy<Black>();
 
             Stop();
 
             if (ThreadType == Main) {
-                // The main thread is responsible for notifying the handlers about the completion of the search,
-                // providing them with the best move found
+                EventHandler::HandleIterativeDeepeningIterationCompletion({
+                    .         Depth =          Depth,
+                    .SelectiveDepth = SelectiveDepth,
+
+                    .Evaluation = WDLCalculator::S(Board, Evaluation),
+                    .WDL        = WDL             (Board, Evaluation),
+
+                    .Nodes = GetNodes(),
+                    .Time  = ElapsedTime(),
+
+                    .PVEntry = PVTable[0]
+                });
 
                 EventHandler::HandleIterativeDeepeningCompletion({
                     .Move = BestMove
@@ -493,6 +464,60 @@ namespace StockDory
 
         private:
         void IncrementNodes() { Nodes.Store(Nodes.Load(MemoryOrder::relaxed) + 1, MemoryOrder::relaxed); }
+
+        template<Color Color>
+        void NetworkProxy()
+        {
+            constexpr auto OColor = Opposite(Color);
+
+            const OrderedMoveList<Color, false, false> moves (Board);
+
+            if (moves.Count() == 0) {
+                Evaluation = Board.Checked<Color>() ? LossIn(0) : Draw;
+                return;
+            }
+
+            SelectiveDepth = 1;
+
+            for (uint8_t i = 0; i < moves.Count(); i++) {
+                const Move move = moves.UnsortedAccess(i);
+
+                const PreviousState state = DoMove<true>(move, 0);
+
+                const Score evaluation = -NetworkProxyEvaluation<OColor>();
+
+                UndoMove<true>(state, move);
+
+                if (BestMove && evaluation <= Evaluation) continue;
+
+                Evaluation = evaluation;
+                BestMove   = move;
+
+                PVTable[0].Ply   = 1;
+                PVTable[0].PV[0] = move;
+            }
+        }
+
+        template<Color Color>
+        Score NetworkProxyEvaluation() const
+        {
+            const OrderedMoveList<Color, false, false> moves (Board);
+
+            if (moves.Count() == 0) return Board.Checked<Color>() ? LossIn(1) : Draw;
+
+            if (Stack[1].HalfMoveCounter >= 100 || Repetition.Found(Stack[1].HalfMoveCounter)) return Draw;
+
+            const uint8_t pieceCount = Count(~Board[NAC]);
+
+            if (pieceCount == 2) return Draw;
+
+            const bool knightLeft = Board.PieceBoard<White>(Knight) | Board.PieceBoard<Black>(Knight),
+                       bishopLeft = Board.PieceBoard<White>(Bishop) | Board.PieceBoard<Black>(Bishop);
+
+            if (pieceCount == 3 && (knightLeft || bishopLeft)) return Draw;
+
+            return std::clamp<Score>(Evaluation::Evaluate(Color, ThreadId), -MateInMaxDepth + 1, MateInMaxDepth - 1);
+        }
 
         template<Limit::TimeType Type>
         bool OutOfTime() const
@@ -1642,56 +1667,12 @@ namespace StockDory
         {
             if (Searching.Exchange(true, MemoryOrder::acq_rel)) return;
 
-            // Symmetric MultiProcessing (SMP):
-            //
-            // Relevant links:
-            // - http://en.wikipedia.org/wiki/Symmetric_multiprocessing
-            // - https://www.chessprogramming.org/Lazy_SMP
-            //
-            // Assuming there is more than one thread available for the search, a SMP approach is used to get a much
-            // more accurate search. This approach relies on constructive and destructive interference of multiple
-            // threads through the transposition table shared between them - the main thread is running the main search
-            // task, while the other threads are running parallel search tasks that are constructively and destructively
-            // interfering with the main search task (and with each other).
-            //
-            // Destructive interference happens when one task overwrites the transposition table entry another task is
-            // about to read - this prevents the task from reading the entry and forces it to search the position again,
-            // potentially disabling certain pruning techniques and enabling others. Regardless, the search space
-            // explored by the task gets widened, and the search is more accurate, however, searching the extra branches
-            // causes the search to take longer to complete; a consequence of destructive interference.
-            //
-            // Constructive interference happens when one task provides a transposition table entry that another task
-            // is about to read - this allows the task to read the entry and use it to speed through certain branches by
-            // returning directly from the transposition table if possible. Where this isn't possible, the task can use
-            // the entry's evaluation as the static evaluation for that branch, enabling certain pruning techniques and
-            // disabling others, once again widening the search space explored by the task. Furthermore, the provided
-            // entry's move can be used to speed through the branch since the move policy ensures that the move is
-            // the first move in the move list. This can allow the search for that branch to complete much faster,
-            // overall reducing the search time, mitigating the destructive interference's negative impact on the
-            // search time.
-            //
-            // Together, the search space is considerably widened, making the search more accurate, while the search
-            // time remains relatively the same on average. This leads the engine to find better moves in the same
-            // amount of time and avoid some pitfalls of the heuristical pruning, reduction, and search techniques used
-
-            if (ParallelTaskPool.Size()) {
-                ParallelTaskPool.Fill(l, b, r, hmc);
-                ParallelTaskPool.Execute();
-            }
-
             ReplaceInline(MainTask, l, b, r, hmc, 0);
 
             ThreadPool.Execute(
                 [] -> void
                 {
                     MainTask.IterativeDeepening();
-
-                    // The main thread is responsible for ensuring that it stops all the parallel tasks when it has
-                    // concluded searching
-                    if (ParallelTaskPool.Size()) {
-                        ParallelTaskPool.Stop();
-                        ParallelTaskPool.Clear();
-                    }
 
                     Searching.Store(false, MemoryOrder::release);
                     Searching.NotifyAll();

@@ -109,7 +109,7 @@ namespace StockDory
             }
 
             const auto nodeC = std::accumulate(nodes.begin(), nodes.end(),    0ULL);
-            const auto timeC = std::accumulate(times.begin(), times.end(), MS(0)  );
+            const auto timeC = std::max(std::accumulate(times.begin(), times.end(), MS(0)), MS(1));
 
             const auto nps = static_cast<uint64_t>(
                 static_cast<double>(nodeC) / (static_cast<double>(timeC.count()) / 1000.0)
