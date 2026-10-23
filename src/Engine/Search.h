@@ -922,8 +922,10 @@ namespace StockDory
                 // as static evaluation is in most cases just an approximation of an actual search, so we cannot say
                 // for sure. Taking the average between the static evaluation and the upper bound of the search (beta)
                 // allows us to get a more representative evaluation of the position that isn't too optimistic or one
-                // that underestimates the position
-                if (depth < ReverseFutilityMaximumDepth && abs(beta) < Mate) {
+                // that underestimates the position. As the static evaluation may have been refined to a mate score
+                // from the transposition table, we must not prune when it is a win or when beta is a loss, as the
+                // average of the two would be a score that is neither a mate score nor a meaningful evaluation
+                if (depth < ReverseFutilityMaximumDepth && !IsWin(staticEvaluation) && !IsLoss(beta)) {
                     const Score     depthMargin = depth     * ReverseFutilityDepthFactor;
                     const Score improvingMargin = improving * ReverseFutilityImprovingFactor;
 
@@ -937,8 +939,9 @@ namespace StockDory
                 // these are rare and more often than not, they are tactical sequences. Non-tactical sequences that can
                 // recover from the current position are so rare that given we are in a non-PV branch, we can afford to
                 // miss them. As such, we can step through the tactical sequences (if any are available) in Quiescence
-                // search and return the resulting evaluation
-                if (depth == RazoringDepth && staticEvaluation + RazoringEvaluationMargin < alpha)
+                // search and return the resulting evaluation. When alpha is a mate score, Quiescence search cannot
+                // be trusted to prove or refute it, so we must not razor
+                if (depth == RazoringDepth && !IsMate(alpha) && staticEvaluation + RazoringEvaluationMargin < alpha)
                     return Quiescence<Color, false>(ply, alpha, beta);
 
                 // Null Move Pruning (NMP):
@@ -1059,10 +1062,13 @@ namespace StockDory
                     // FFP is a technique which tries to estimate whether it's futile to further search a position. It
                     // uses the static evaluation of the position alongside a depth-dependent margin to predict whether
                     // in a given position (if searched deeper) will likely ever be able to recover, and if not, then
-                    // it is futile to continue searching
+                    // it is futile to continue searching. Since breaking stores our best evaluation as an upper bound,
+                    // we must not prune while it is a loss (or while a loss is all the static evaluation tells us), as
+                    // that would store a mated score without having proven it
                     const Score margin = depth * FutilityDepthFactor;
 
-                    if (staticEvaluation + margin <= alpha) break;
+                    if (!IsLoss(bestEvaluation) && !IsLoss(staticEvaluation) && staticEvaluation + margin <= alpha)
+                        break;
                 }
 
                 if (!PV) {
@@ -1070,9 +1076,11 @@ namespace StockDory
                     //
                     // LMP is a technique that heavily relies on the move policy. It assumes that with a reasonable move
                     // policy, it's very likely that all the good moves will be searched earlier and that moves that
-                    // appear later in the move list are unlikely to be good moves and thus we can avoid searching them
+                    // appear later in the move list are unlikely to be good moves and thus we can avoid searching them.
+                    // Like FFP, we must not prune while our best evaluation is a loss (which includes when no move has
+                    // been searched yet)
                     if (!Root && majorMaterial && !checked && depth <= LMPMaximumDepth &&
-                        seenQuiets > LMPLastQuietBase + depth * depth && bestEvaluation > -Infinity) break;
+                        seenQuiets > LMPLastQuietBase + depth * depth && !IsLoss(bestEvaluation)) break;
                 }
 
                 const Piece movingPiece = Board[move.From()].Piece();
