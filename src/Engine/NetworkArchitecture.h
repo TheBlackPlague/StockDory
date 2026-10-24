@@ -21,7 +21,7 @@ using PerspectiveArchitecture = MantaRay::Architecture<
         MantaRay::Weights<MantaRay::i16,       64, MantaRay::Clip<-1.98, 1.98>>,
         MantaRay::Biases <MantaRay::i16, 255 * 64                             >
     >,
-    MantaRay::Output<400>
+    MantaRay::Output<321>
 >;
 
 using StarshardArchitecture = PerspectiveArchitecture<256>;
