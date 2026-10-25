@@ -24,8 +24,8 @@ namespace StockDory
     class Evaluation
     {
 
-        using Network = Flare     ;
-        using   Stack = FlareStack;
+        using Network = Corona     ;
+        using   Stack = CoronaStack;
 
         static inline Network NN;
 
@@ -48,7 +48,7 @@ namespace StockDory
         public:
         static std::string Name()
         {
-            return "Flare";
+            return "Corona";
         }
 
         static void Initialize()
