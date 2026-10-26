@@ -58,13 +58,18 @@ namespace StockDory
 
             const uint64_t timePerMove = usableTime / movesToGo + (usableTime % movesToGo != 0);
 
-            const uint64_t incrementTime = inc / TimeIncrementPartitionDenominator * TimeIncrementPartitionNumerator +
-                                           inc % TimeIncrementPartitionDenominator * TimeIncrementPartitionNumerator /
-                                                 TimeIncrementPartitionDenominator;
+            const uint64_t incTime = inc / TimeIncrementPartitionDenominator * TimeIncrementPartitionNumerator +
+                                     inc % TimeIncrementPartitionDenominator * TimeIncrementPartitionNumerator /
+                                           TimeIncrementPartitionDenominator                                   ;
 
-            const uint64_t optimalTime = timePerMove + std::min<uint64_t>(incrementTime, usableTime - timePerMove);
-            const uint64_t  actualTime = optimalTime > usableTime / TimeHardLimitMultiplier ?
-                                                       usableTime : optimalTime * TimeHardLimitMultiplier;
+            const uint64_t clkTime = usableTime / TimeHardLimitClockDenominator * TimeHardLimitClockNumerator +
+                                     usableTime % TimeHardLimitClockDenominator * TimeHardLimitClockNumerator /
+                                                  TimeHardLimitClockDenominator                               ;
+
+            const uint64_t allocatedTime = timePerMove + std::min<uint64_t>(incTime, usableTime - timePerMove);
+
+            const uint64_t  actualTime = std::min<uint64_t>(allocatedTime * TimeHardLimitMultiplier,    clkTime);
+            const uint64_t optimalTime = std::min<uint64_t>(allocatedTime                          , actualTime);
 
             limit. ActualTime = MS( actualTime);
             limit.   BaseTime = MS(optimalTime);

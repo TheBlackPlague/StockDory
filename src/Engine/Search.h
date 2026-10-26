@@ -471,6 +471,22 @@ namespace StockDory
             Stop();
 
             if (ThreadType == Main) {
+                // If the search was stopped before the first iteration could complete, we have no best move. We should
+                // fall back to the best move found so far in the incomplete first iteration, or failing that, to the
+                // first legal move, so that we never report a null move while legal moves exist
+
+                if (!BestMove) [[unlikely]] BestMove = PVTable[0].PV[0];
+
+                if (!BestMove) [[unlikely]] {
+                    if (Board.ColorToMove() == White) {
+                        const OrderedMoveList<White, false, false> moves (Board);
+                        if (moves.Count() > 0) BestMove = moves.UnsortedAccess(0);
+                    } else {
+                        const OrderedMoveList<Black, false, false> moves (Board);
+                        if (moves.Count() > 0) BestMove = moves.UnsortedAccess(0);
+                    }
+                }
+
                 // The main thread is responsible for notifying the handlers about the completion of the search,
                 // providing them with the best move found
 
@@ -1294,6 +1310,22 @@ namespace StockDory
         {
             // Opponent's color for recursive calls
             constexpr auto OColor = Opposite(Color);
+
+            if (ThreadType == Main) {
+                const uint64_t nodes = GetNodes();
+
+                // If we are in the main thread, we should regularly (every 4096 nodes) check if the search's limits
+                // have been crossed. If they have, we should stop searching
+                if ((nodes & 4095) == 0 && OutOfTime<Limit::Actual>()) [[unlikely]]
+                    Stop();
+
+                // If we have exceeded the maximum node limit, we should stop searching
+                if (nodes > Limit.Nodes) [[unlikely]]
+                    Stop();
+            }
+
+            // If the search was stopped, we should return a draw score immediately
+            if (Stopped()) [[unlikely]] return Draw;
 
             // The main thread is responsible for ensuring that the correct selective depth is reported
             if (ThreadType == Main && PV) SelectiveDepth = std::max(SelectiveDepth, ply);
