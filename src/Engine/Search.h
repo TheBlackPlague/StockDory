@@ -1155,7 +1155,7 @@ namespace StockDory
 
                         const int16_t reducedDepth = std::clamp<int16_t>(depth - r, 1, depth);
 
-                        // Assume we are not in a PV branch and use a reduced window search
+                        // Assume we are not in a PV branch and use a null window search
                         evaluation = -PVS<OColor, false, false>(ply + 1, reducedDepth, -alpha - 1, -alpha);
 
                         // We should only research at full depth if the search was actually reduced. If it was not, or
@@ -1164,12 +1164,12 @@ namespace StockDory
                         fullDepthSearch = evaluation > alpha && reducedDepth < depth - 1;
                     }
 
-                    // Assume we are not in a PV branch and use a reduced window search
+                    // Assume we are not in a PV branch and use a null window search
                     if (fullDepthSearch)
                         evaluation = -PVS<OColor, false, false>(ply + 1, depth - 1, -alpha - 1, -alpha);
 
-                    // If the reduced window search shows potential to improve our position, we will research with a
-                    // full window search assuming we are in a PV branch
+                    // If the null window search shows potential in improving our positions, we can research with a full
+                    // window search (assuming we are in a PV branch) to get an accurate evaluation
                     if (evaluation > alpha && evaluation < beta)
                         evaluation = -PVS<OColor, true, false>(ply + 1, depth - 1, -beta, -alpha);
                 }
