@@ -25,9 +25,9 @@ using PerspectiveArchitecture = MantaRay::Architecture<
     MantaRay::Output<400>
 >;
 
-using StarshardArchitecture = PerspectiveArchitecture<256>;
-using    AuroraArchitecture = PerspectiveArchitecture<384>;
-using     FlareArchitecture = PerspectiveArchitecture<768>;
+using StarshardArchitecture = PerspectiveArchitecture<256                                                         >;
+using    AuroraArchitecture = PerspectiveArchitecture<384                                                         >;
+using     FlareArchitecture = PerspectiveArchitecture<768                                                         >;
 using    CoronaArchitecture = PerspectiveArchitecture<768, MantaRay::SquaredClippedReLU<>, MantaRay::DivideBy<255>>;
 
 // Network:

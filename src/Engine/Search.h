@@ -1091,9 +1091,12 @@ namespace StockDory
 
                 const PreviousState state = DoMove<true>(move, ply);
 
+                if      (capture) searchedCaptures.Push(move);
+                else if ( quiet ) searchedQuiets  .Push(move);
+
                 // Principle Variation Search (PVS):
                 //
-                // PVS is a search technique that heavily relies on the move policy. It works on the assumption that the
+                // PVS is a search technique that heavily relies on the move policy; working on the assumption that the
                 // move policy ensures that the best moves are ordered first, and thus, the first move is likely the
                 // best move. As such, the first move is searched with a full window (alpha, beta), while all future
                 // moves are searched with initially with a reduced window (alpha - 1, alpha). If the reduced window
@@ -1102,16 +1105,11 @@ namespace StockDory
                 // researches are relatively inexpensive, and the time we save ignoring moves that don't have potential
                 // to improve our position more than the previous moves is worth it.
 
-                if      (capture) searchedCaptures.Push(move);
-                else if ( quiet ) searchedQuiets  .Push(move);
-
                 Score evaluation = 0;
 
                 if (i == 0) evaluation = -PVS<OColor, PV, false>(ply + 1, depth - 1, -beta, -alpha);
                 else {
-                    // Assume we are not in a PV branch and use a reduced window search. If the reduced window search
-                    // shows potential to improve our position, we will research with a full window search assuming
-                    // we are in a PV branch
+                    bool fullDepthSearch = true;
 
                     // Late Move Reduction and Extension (LMR-E):
                     //
@@ -1155,20 +1153,25 @@ namespace StockDory
                         // mapped to discrete reduction
                         r /= LMRQuantization;
 
-                        evaluation = -PVS<OColor, false, false>(
-                            ply + 1,
-                            std::clamp<int16_t>(depth - r, 1, depth),
-                            -alpha - 1,
-                            -alpha
-                        );
-                    } else evaluation = alpha + 1;
+                        const int16_t reducedDepth = std::clamp<int16_t>(depth - r, 1, depth);
 
-                    if (evaluation > alpha) {
+                        // Assume we are not in a PV branch and use a null window search
+                        evaluation = -PVS<OColor, false, false>(ply + 1, reducedDepth, -alpha - 1, -alpha);
+
+                        // We should only research at full depth if the search was actually reduced. If it was not, or
+                        // if it was extended instead, the research would either repeat the same search or be shallower
+                        // than the search we just did, throwing away the deeper evaluation
+                        fullDepthSearch = evaluation > alpha && reducedDepth < depth - 1;
+                    }
+
+                    // Assume we are not in a PV branch and use a null window search
+                    if (fullDepthSearch)
                         evaluation = -PVS<OColor, false, false>(ply + 1, depth - 1, -alpha - 1, -alpha);
 
-                        if (evaluation > alpha && evaluation < beta)
-                            evaluation = -PVS<OColor, true, false>(ply + 1, depth - 1, -beta, -alpha);
-                    }
+                    // If the null window search shows potential in improving our positions, we can research with a full
+                    // window search (assuming we are in a PV branch) to get an accurate evaluation
+                    if (evaluation > alpha && evaluation < beta)
+                        evaluation = -PVS<OColor, true, false>(ply + 1, depth - 1, -beta, -alpha);
                 }
 
                 UndoMove<true>(state, move);
