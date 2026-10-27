@@ -87,6 +87,8 @@ namespace StockDory
     PARAMETER(uint8_t, TimeIncrementPartitionDenominator,  4,  4,  8);
     PARAMETER(uint8_t, TimeProcessingOverhead           , 10,  0, 50);
     PARAMETER(uint8_t, TimeHardLimitMultiplier          ,  5,  2,  8);
+    PARAMETER(uint8_t, TimeHardLimitClockNumerator      ,  3,  1,  4);
+    PARAMETER(uint8_t, TimeHardLimitClockDenominator    ,  4,  4,  8);
 
     PARAMETER(uint8_t, TimeSingleMovePartitionNumerator  ,  1,  0,  2);
     PARAMETER(uint8_t, TimeSingleMovePartitionDenominator, 20, 10, 40);
