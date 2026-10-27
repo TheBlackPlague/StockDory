@@ -592,9 +592,7 @@ namespace StockDory
             // future search iterations can be done with a smaller window centered around the previous evaluations. But
             // evaluations far from equality are likely less stable between iterations (especially at lower depths), so
             // the window grows quadratically
-            const Score scaledMargin = Evaluation * Evaluation / AspirationWindowScoreDivisor;
-
-            Score delta = AspirationWindowMargin + std::min(scaledMargin, Infinity);
+            Score delta = AspirationWindowMargin + Evaluation * Evaluation / AspirationWindowScoreDivisor;
 
             if (depth >= AspirationWindowMinimumDepth) {
                 alpha = std::max(Evaluation - delta, -Infinity);
