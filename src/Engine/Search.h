@@ -588,15 +588,25 @@ namespace StockDory
 
             // Window Configuration:
             //
-            // If we have done enough full window search iterations at lower depths to get a relatively accurate
-            // evaluation, then all future search iterations can be done with a smaller window centered around the
-            // evaluation from the previous search iteration: (evaluation - margin, evaluation + margin)
+            // If we have enough full window searches at lower depths to get a likely accurate evaluation, then all the
+            // future search iterations can be done with a smaller window centered around the previous evaluations. But
+            // evaluations far from equality are likely less stable between iterations (especially at lower depths), so
+            // the window grows quadratically
+            Score delta = AspirationWindowMargin + Evaluation * Evaluation / AspirationWindowScoreDivisor;
+
             if (depth >= AspirationWindowMinimumDepth) {
-                alpha = Evaluation - AspirationWindowMargin;
-                beta  = Evaluation + AspirationWindowMargin;
+                alpha = std::max(Evaluation - delta, -Infinity);
+                beta  = std::min(Evaluation + delta,  Infinity);
             }
 
-            uint8_t research = 0;
+            // Beta-Cutoff Depth Reduction:
+            //
+            // A move causing a beta-cutoff at the root is usually still good when searched at a lower depth, so every
+            // consecutive beta-cutoff reduces the depth of the research (unless the evaluation is a mate score, which
+            // is verified at full depth). If the evaluation falls to alpha or goes below alpha, the best move is then
+            // no longer certain, and it must be found again at full depth
+            int16_t reduction = 0;
+
             while (true) {
                 if (ThreadType == Main) {
                     // If we are in the main thread, we should regularly (every search/research) check if the search's
@@ -621,37 +631,43 @@ namespace StockDory
                     BestMoveNodes = 0;
                 }
 
-                const Score bestEvaluation = PVS<Color, true, true>(0, depth, alpha, beta);
+                const int16_t adjustedDepth = std::max<int16_t>(depth - reduction, 1);
 
-                // Possible Search Window Extending:
+                const Score bestEvaluation = PVS<Color, true, true>(0, adjustedDepth, alpha, beta);
+
+                // Optimal Search Space Searching:
                 //
-                // The search window is centered around the evaluation, but it may not always capture initially capture
-                // the relevant part of the search space. This can happen if the evaluation from the previous search
-                // iterations were not accurate or representative enough or if our initial margin was too small. In this
-                // case, we should extend the search window and research the position to find a more accurate
-                // evaluation. The window is extended at a quadratic rate to ensure that we can avoid researches and
-                // quickly converge to capture the relevant part of the search space:
+                // The search window is centered around the evaluation, but it may not always initially capture the
+                // relevant part of the search space. This can happen whenever previous depths could not provide
+                // evaluations that accurately represent the position or if our margins were too tight. In such cases,
+                // we should extend the window and research the position to more accurately grasp the search space; the
+                // violated bounds are moved past the returned evaluation by delta (which grows multiplicatively, so
+                // that we can avoid researches and quickly converge):
                 //
-                // - fail-low : lower bound (alpha) is too high, we need to decrease it
+                // - fail-low : lower bound (alpha) is too high, we need to decrease it; we also pull down the upper
+                //              bound (beta) to the midpoint to maintain a shortened window
+                //
                 // - fail-high: upper bound (beta ) is too low , we need to increase it
                 //
-                // If the window is capturing the relevant part of the search space, then we can return the best
-                // evaluation found so far
+                // We return the evaluation if we think the windows captured the relevant search space
 
                 if        (bestEvaluation <= alpha) {
-                    research++;
+                    beta  = (alpha + beta) / 2;
+                    alpha = std::max<Score>(bestEvaluation - delta, -Infinity);
 
-                    alpha = std::max<Score>(alpha - research * research * AspirationWindowMarginDelta, -Infinity);
+                    reduction = 0;
                 } else if (bestEvaluation >= beta) {
-                    research++;
+                    beta  = std::min<Score>(bestEvaluation + delta,  Infinity);
 
-                    beta  = std::min<Score>(beta  + research * research * AspirationWindowMarginDelta,  Infinity);
+                    if (!IsMate(bestEvaluation)) reduction++;
 
                     BestMove = PVTable[0].PV[0];
                 } else {
                     BestMove = PVTable[0].PV[0];
                     return bestEvaluation;
                 }
+
+                delta += delta * AspirationWindowWideningFactor / AspirationWindowWideningQuantization;
             }
         }
 

@@ -100,10 +100,11 @@ namespace StockDory
     PARAMETER(double , TimeBestMoveStabilityWeight,  0.500, 0.000,  1.000);
     PARAMETER(uint8_t, TimeBestMoveStabilityMax   , 10    , 4    , 20    );
 
-    PARAMETER(uint16_t, AspirationWindowFallbackBound, 3500, 2000, 6000);
-    PARAMETER(uint8_t , AspirationWindowMargin       ,   16,    8,   64);
-    PARAMETER(uint8_t , AspirationWindowMarginDelta  ,   23,    8,   64);
-    PARAMETER(uint8_t , AspirationWindowMinimumDepth ,    5,    3,    8);
+    PARAMETER(uint16_t, AspirationWindowFallbackBound , 3500, 2000,  6000);
+    PARAMETER(uint8_t , AspirationWindowMargin        ,   16,    8,    64);
+    PARAMETER(uint16_t, AspirationWindowScoreDivisor  , 8192, 2048, 32768);
+    PARAMETER(uint8_t , AspirationWindowWideningFactor,   48,   16,   128);
+    PARAMETER(uint8_t , AspirationWindowMinimumDepth  ,    5,    3,     8);
 
     PARAMETER(uint8_t, CheckExtension, 1, 0, 1);
 
