@@ -181,8 +181,7 @@ namespace StockDory
 
                 const auto ep = static_cast<Square>((fields[3][1] - '1') * 8 + fields[3][0] - 'a');
 
-                if (AttackTable::Pawn[Opposite(ColorToMove())][ep] & PieceBoard(Pawn, ColorToMove()))
-                    SetEnPassant(ep);
+                if (EnPassantCapturable(ep, ColorToMove())) SetEnPassant(ep);
             }
 
             UpdateNACBB();
@@ -664,7 +663,7 @@ namespace StockDory
                 } else if (move.DoublePush()) {
                     const auto ep = static_cast<Square>(to ^ 8);
 
-                    if ((T & PERFT) || (AttackTable::Pawn[color][ep] & PieceBoard(Pawn, opposite))) {
+                    if ((T & PERFT) || EnPassantCapturable(ep, opposite)) {
                         SetEnPassant    (ep);
                         HashEnPassant<T>(ep);
                     }
@@ -751,6 +750,32 @@ namespace StockDory
         {
             if (Engine) return ColorBB[NAC];
             return ~(ColorBB[White] | ColorBB[Black]);
+        }
+
+        [[nodiscard]]
+        bool EnPassantCapturable(const Square ep, const Color capturing) const
+        {
+            const Color pushed = Opposite(capturing);
+
+            const BitBoard candidates = AttackTable::Pawn[pushed][ep] & PieceBoard(Pawn, capturing);
+            if (!candidates) return false;
+
+            const Square   king     = ToSquare(PieceBoard(King, capturing));
+            const BitBoard queen    = PieceBoard(Queen, pushed);
+            const BitBoard straight = queen | PieceBoard(Rook  , pushed);
+            const BitBoard diagonal = queen | PieceBoard(Bishop, pushed);
+            const BitBoard occupied = (ColorBB[White] | ColorBB[Black]) & ~FromSquare(static_cast<Square>(ep ^ 8));
+
+            BitBoardIterator iterator(candidates);
+            for (Square sq = iterator.Value(); sq != NASQ; sq = iterator.Value()) {
+                const BitBoard after = (occupied & ~FromSquare(sq)) | FromSquare(ep);
+
+                if (!(AttackTable::Sliding[BlackMagicFactory::MagicIndex(Rook  , king, after)] & straight) &&
+                    !(AttackTable::Sliding[BlackMagicFactory::MagicIndex(Bishop, king, after)] & diagonal))
+                    return true;
+            }
+
+            return false;
         }
 
         void SetEnPassant(const Square sq)
