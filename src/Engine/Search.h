@@ -781,36 +781,30 @@ namespace StockDory
             // exists a transposition entry - if the entry is valid, depending on the quality of the entry, we can
             // return the evaluation from the entry. Even if the entry isn't of sufficient quality to return directly,
             // we can still search the move in the entry first, since it most likely is the best move in the position
-            SearchTranspositionEntry ttEntry      = TT[hash];
-            Move                     ttMove       = {};
-            bool                     ttHit        = false;
-            Score                    ttSearchEval = None;
+            const SearchTranspositionEntry ttEntry = TT[hash];
 
-            if (ttEntry.Type != Invalid) {
-                ttHit  = true;
-                ttMove = ttEntry.Move;
+            const bool  ttHit        = ttEntry.Type != Invalid                       ;
+            const Move  ttMove       = ttEntry.Move                                  ;
+            const Score ttSearchEval = DecompressScore(ttEntry.SearchEvaluation, ply);
 
-                ttSearchEval = DecompressScore(ttEntry.SearchEvaluation, ply);
+            if (!PV && ttHit && ttEntry.Depth >= depth) {
+                // If the entry is of sufficient quality, depending on the bounding type of the entry, we can
+                // directly return the evaluation from the entry. We shouldn't do this in PV branches as even a
+                // slight inaccuracy due to hash collisions or other factors can cause us to miss a good move.
+                //
+                // An entry's quality is currently determined by:
+                // - entry depth >= current search depth
+                //
+                // Returning the evaluation from the entry if the bounding type is:
+                // - Exact: The evaluation is accurate and representative of an actual search
+                // - Beta : The evaluation caused a beta cut-off in the producing search, but we should only return
+                //          if it is capable of causing a beta cut-off in the current search
+                // - Alpha: The evaluation never exceeded alpha in the producing search, but we should only return
+                //          if we know it isn't exceeding alpha in the current search
 
-                if (!PV && ttEntry.Depth >= depth) {
-                    // If the entry is of sufficient quality, depending on the bounding type of the entry, we can
-                    // directly return the evaluation from the entry. We shouldn't do this in PV branches as even a
-                    // slight inaccuracy due to hash collisions or other factors can cause us to miss a good move.
-                    //
-                    // An entry's quality is currently determined by:
-                    // - entry depth >= current search depth
-                    //
-                    // Returning the evaluation from the entry if the bounding type is:
-                    // - Exact: The evaluation is accurate and representative of an actual search
-                    // - Beta : The evaluation caused a beta cut-off in the producing search, but we should only return
-                    //          if it is capable of causing a beta cut-off in the current search
-                    // - Alpha: The evaluation never exceeded alpha in the producing search, but we should only return
-                    //          if we know it isn't exceeding alpha in the current search
-
-                    if (ttEntry.Type == Exact                         ) return ttSearchEval;
-                    if (ttEntry.Type == Beta  && ttSearchEval >= beta ) return ttSearchEval;
-                    if (ttEntry.Type == Alpha && ttSearchEval <= alpha) return ttSearchEval;
-                }
+                if (ttEntry.Type == Exact                         ) return ttSearchEval;
+                if (ttEntry.Type == Beta  && ttSearchEval >= beta ) return ttSearchEval;
+                if (ttEntry.Type == Alpha && ttSearchEval <= alpha) return ttSearchEval;
             }
 
             const bool majorMaterial = Board.HasMajorMaterial<Color>();
@@ -829,7 +823,7 @@ namespace StockDory
             bool improving;
 
             if (checked) {
-                // Last non-checked Static Evaluation Recovery, Scaled & Corrected Evaluation Invalidation:
+                // Evaluation Recovery & Invalidation:
                 //
                 // If the position is under check, static evaluation is most likely not reliable. As such, we should
                 // use the static evaluation from the last ply where we were not checked, which hopefully is our last
@@ -1343,16 +1337,13 @@ namespace StockDory
 
             const SearchTranspositionEntry ttEntry = TT[hash];
 
-            Score ttSearchEval = None;
+            const bool  ttHit        = ttEntry.Type != Invalid                       ;
+            const Score ttSearchEval = DecompressScore(ttEntry.SearchEvaluation, ply);
 
-            if (ttEntry.Type != Invalid) {
-                ttSearchEval = DecompressScore(ttEntry.SearchEvaluation, ply);
-
-                if (!PV) {
-                    if (ttEntry.Type == Exact                         ) return ttSearchEval;
-                    if (ttEntry.Type == Beta  && ttSearchEval >= beta ) return ttSearchEval;
-                    if (ttEntry.Type == Alpha && ttSearchEval <= alpha) return ttSearchEval;
-                }
+            if (!PV && ttHit) {
+                if (ttEntry.Type == Exact                         ) return ttSearchEval;
+                if (ttEntry.Type == Beta  && ttSearchEval >= beta ) return ttSearchEval;
+                if (ttEntry.Type == Alpha && ttSearchEval <= alpha) return ttSearchEval;
             }
 
             Score scaledEvaluation;
