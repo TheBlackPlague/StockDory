@@ -1360,7 +1360,7 @@ namespace StockDory
 
             Score staticEvaluation = correctedEvaluation;
 
-            if (ttSearchEval != None && !IsMate(ttSearchEval)) {
+            if (ttHit && !IsMate(ttSearchEval)) {
                 if      (ttEntry.Type == Exact) staticEvaluation =                                      ttSearchEval ;
                 else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(correctedEvaluation, ttSearchEval);
                 else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(correctedEvaluation, ttSearchEval);
