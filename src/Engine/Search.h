@@ -87,8 +87,8 @@ namespace StockDory
         struct Frame
         {
 
-            Score StaticEvaluation = None;
-            Score ScaledEvaluation = None;
+            Score CorrectedEvaluation = None;
+            Score    StaticEvaluation = None;
 
             uint8_t HalfMoveCounter = 0;
 
@@ -822,12 +822,14 @@ namespace StockDory
             if (depth >= IIRMinimumDepth && !ttMove)
                 depth -= IIRDepthReduction;
 
-            Score scaledEvaluation;
-            Score staticEvaluation;
-            bool  improving;
+            Score    scaledEvaluation;
+            Score correctedEvaluation;
+            Score    staticEvaluation;
+
+            bool improving;
 
             if (checked) {
-                // Last non-checked Static Evaluation Recovery & Scaled Evaluation Invalidation:
+                // Last non-checked Static Evaluation Recovery, Scaled & Corrected Evaluation Invalidation:
                 //
                 // If the position is under check, static evaluation is most likely not reliable. As such, we should
                 // use the static evaluation from the last ply where we were not checked, which hopefully is our last
@@ -838,10 +840,11 @@ namespace StockDory
                 // means the static evaluation from two plies ago is the static evaluation from the last ply where we
                 // were not checked which could be two plies ago, four plies ago, or any N * 2 plies ago.
                 //
-                // We mainly use the scaled evaluation to adjust quiet history, and potentially keeping one from many
+                // We mainly use the corrected evaluation to adjust quiet history, and potentially keeping one from many
                 // turns ago can wrongly credit / discredit positional improvements so we invalidate it
-                staticEvaluation = Stack[ply].StaticEvaluation = Stack[ply - 2].StaticEvaluation;
-                scaledEvaluation = Stack[ply].ScaledEvaluation = None                           ;
+                   scaledEvaluation =                                  None                           ;
+                correctedEvaluation = Stack[ply].CorrectedEvaluation = None                           ;
+                   staticEvaluation = Stack[ply].   StaticEvaluation = Stack[ply - 2].StaticEvaluation;
 
                 // Positionally Improving:
                 //
@@ -870,30 +873,32 @@ namespace StockDory
                 if (!ttHit) TT[hash] = { .ScaledEvaluation = static_cast<CompressedScore>(scaledEvaluation) };
             }
 
-            staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
+            correctedEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
 
-            Stack[ply].ScaledEvaluation = staticEvaluation;
+            Stack[ply].CorrectedEvaluation = correctedEvaluation;
 
             if (ttHit) {
-                if      (ttEntry.Type == Exact) staticEvaluation =                                   ttSearchEval ;
-                else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttSearchEval);
-                else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttSearchEval);
-            }
+                if      (ttEntry.Type == Exact) staticEvaluation =                                      ttSearchEval ;
+                else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(correctedEvaluation, ttSearchEval);
+                else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(correctedEvaluation, ttSearchEval);
+
+                else std::unreachable();
+            } else staticEvaluation = correctedEvaluation;
 
             Stack[ply].StaticEvaluation = staticEvaluation;
 
             // Quiet History Adjustment:
             //
-            // We use the difference between our current scaled evaluation and the previous scaled evaluation (our
+            // We use the difference between our current corrected evaluation and the previous corrected evaluation (our
             // opponent's) and see whether we have improved or not. This allows us to provide an extra bonus or malus to
             // the move we just played without having to actually do a deeper search
-            if (!Root                                   &&
-                Stack[ply - 1].Move                     &&
-                Stack[ply - 1].Move.Quiet()             &&
-                Stack[ply - 1].ScaledEvaluation != None  ) {
+            if (!Root                                      &&
+                Stack[ply - 1].Move                        &&
+                Stack[ply - 1].Move.Quiet()                &&
+                Stack[ply - 1].CorrectedEvaluation != None  ) {
                 const Score delta =
-                    - Stack[ply - 1].ScaledEvaluation
-                    - Stack[ply    ].ScaledEvaluation;
+                    - Stack[ply - 1].CorrectedEvaluation
+                    - Stack[ply    ].CorrectedEvaluation;
 
                 const int16_t bonus = static_cast<int16_t>(std::clamp<int32_t>(
                      EvaluationHistoryAdjustmentMultiplier   * (delta + EvaluationHistoryAdjustmentOffset),
@@ -1285,11 +1290,13 @@ namespace StockDory
                 // positions), we should update our correction history so we may remember the misguidedness of the
                 // neural network evaluation and can make better decisions in the future
                 if (!checked && !IsMate(bestEvaluation) && (ttEntryNew.Type == Alpha || !ttMoveIsTactical)) {
-                    const Score correctedEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
+                    // The correction history may have changed while searching this position's subtree, so we recorrect
+                    // the scaled evaluation and use that to better orientate our correction history
+                    const Score recorrectedEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
 
-                    if ((ttEntryNew.Type != Beta  || bestEvaluation > correctedEvaluation) &&
-                        (ttEntryNew.Type != Alpha || bestEvaluation < correctedEvaluation))
-                        UpdateCorrectionHistory<Color>(bestEvaluation - correctedEvaluation, depth, ply);
+                    if ((ttEntryNew.Type != Beta  || bestEvaluation > recorrectedEvaluation) &&
+                        (ttEntryNew.Type != Alpha || bestEvaluation < recorrectedEvaluation)  )
+                        UpdateCorrectionHistory<Color>(bestEvaluation - recorrectedEvaluation, depth, ply);
                 }
 
                 // Transposition Table Writing:
@@ -1358,13 +1365,16 @@ namespace StockDory
                     TT[hash] = { .ScaledEvaluation = static_cast<CompressedScore>(scaledEvaluation) };
             }
 
-            Score staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
+            const Score correctedEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
+
+            Score staticEvaluation;
 
             if (ttSearchEval != None && !IsMate(ttSearchEval)) {
-                if      (ttEntry.Type == Exact) staticEvaluation =                                   ttSearchEval ;
-                else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttSearchEval);
-                else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttSearchEval);
-            }
+                if      (ttEntry.Type == Exact) staticEvaluation =                                      ttSearchEval ;
+                else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(correctedEvaluation, ttSearchEval);
+                else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(correctedEvaluation, ttSearchEval);
+                else std::unreachable();
+            } else staticEvaluation = correctedEvaluation;
 
             // Window Adjustment:
             //
