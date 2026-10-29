@@ -6,6 +6,7 @@
 #ifndef STOCKDORY_TRANSPOSITIONTABLE_H
 #define STOCKDORY_TRANSPOSITIONTABLE_H
 
+#include <bit>
 #include <vector>
 
 #include "../Backend/ThreadPool.h"
@@ -22,27 +23,28 @@ namespace StockDory
     class TranspositionTable
     {
 
-        using Entry = Atomic<T>;
+        static_assert(sizeof(T) == sizeof(uint64_t), "Entries must be packable into 64 bits");
 
-        class Reference
+        struct Entry
         {
 
-            Entry* Internal;
+            Atomic<uint64_t> Key  {};
+            Atomic<uint64_t> Data {};
 
-            public:
-            explicit Reference(Entry& entry) : Internal(&entry) {}
-
-            // ReSharper disable once CppNonExplicitConversionOperator
-            operator T() const
+            T Load(const ZobristHash hash) const
             {
-                return Internal->Load(MemoryOrder::relaxed);
+                const uint64_t data = Data.Load(MemoryOrder::relaxed);
+                const uint64_t key  = Key .Load(MemoryOrder::relaxed);
+
+                return (key ^ data) == hash ? std::bit_cast<T>(data) : T();
             }
 
-            Reference& operator =(const T& value)
+            void Store(const ZobristHash hash, const T& value)
             {
-                Internal->Store(value, MemoryOrder::relaxed);
+                const auto data = std::bit_cast<uint64_t>(value);
 
-                return *this;
+                Data.Store(data       , MemoryOrder::relaxed);
+                Key .Store(data ^ hash, MemoryOrder::relaxed);
             }
 
         };
@@ -54,10 +56,7 @@ namespace StockDory
         size_t Count = 0;
 
         public:
-        explicit TranspositionTable(const size_t bytes)
-        {
-            Resize(bytes);
-        }
+        explicit TranspositionTable(const size_t bytes) { Resize(bytes); }
 
         void Resize(const size_t bytes)
         {
@@ -66,30 +65,36 @@ namespace StockDory
             Clear();
         }
 
-        void Clear()
-        {
-            Internal = Storage(Count);
-        }
+        void Clear() { Internal = Storage(Count); }
 
-        Reference operator [](const ZobristHash hash)
-        {
-            return Reference(Internal[fastrange64(hash, Count)]);
-        }
+        [[nodiscard]]
+        size_t Size() const { return Internal.size(); }
 
-        T operator [](const ZobristHash hash) const
+        private:
+        class Reference
         {
-            return Internal[fastrange64(hash, Count)].Load(MemoryOrder::relaxed);
-        }
+
+            Entry*      Internal;
+            ZobristHash Hash    ;
+
+            public:
+            explicit Reference(Entry& entry, const ZobristHash hash) : Internal(&entry), Hash(hash) {}
+
+            // ReSharper disable once CppNonExplicitConversionOperator
+            operator T() const { return Internal->Load(Hash); }
+
+            Reference& operator =(const T& value) { Internal->Store(Hash, value); return *this; }
+
+        };
+
+        public:
+        Reference operator [](const ZobristHash hash) { return Reference(Internal[fastrange64(hash, Count)], hash); }
+
+        T operator [](const ZobristHash hash) const { return Internal[fastrange64(hash, Count)].Load(hash); }
 
         void Prefetch(const ZobristHash hash) const
         {
             __builtin_prefetch(static_cast<const void*>(&Internal[fastrange64(hash, Count)]), 0, 3);
-        }
-
-        [[nodiscard]]
-        size_t Size() const
-        {
-            return Internal.size();
         }
 
     };
