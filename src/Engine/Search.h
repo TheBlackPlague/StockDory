@@ -1625,7 +1625,11 @@ namespace StockDory
                                              (static_cast<int32_t>(Count(rook  )) - 4) * MaterialScalingWeightRook   +
                                              (static_cast<int32_t>(Count(queen )) - 2) * MaterialScalingWeightQueen  ;
 
-            return (Evaluation::Evaluate(Color, ThreadId) * weightedMaterial) / MaterialScalingQuantization;
+            return std::clamp<Score>(
+                (Evaluation::Evaluate(Color, ThreadId) * weightedMaterial) / MaterialScalingQuantization,
+                -MateInMaxDepth + 1,
+                 MateInMaxDepth - 1
+            );
         }
 
         static void TryReplaceTT(const ZobristHash hash, const SearchTranspositionEntry nEntry)
