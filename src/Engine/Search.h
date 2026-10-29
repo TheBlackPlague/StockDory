@@ -35,10 +35,7 @@ namespace StockDory
 
     };
 
-    using CompressedHash  = uint16_t;
-    using CompressedScore =  int16_t;
-
-    CompressedHash  CompressHash (const ZobristHash hash) { return hash; }
+    using CompressedScore = int16_t;
 
     CompressedScore CompressScore(const Score score, const uint8_t ply)
     {
@@ -55,11 +52,11 @@ namespace StockDory
 
         using EntryType = SearchTranspositionEntryType;
 
-        CompressedHash  Hash       = 0;
-        CompressedScore Evaluation = 0;
-        Move            Move       = ::Move();
-        uint8_t         Depth      = 0;
-        EntryType       Type       = Invalid;
+        CompressedScore SearchEvaluation = None;
+        CompressedScore ScaledEvaluation = None;
+        Move            Move             = ::Move();
+        uint8_t         Depth            = 0;
+        EntryType       Type             = Invalid;
 
     };
 
@@ -787,13 +784,13 @@ namespace StockDory
             SearchTranspositionEntry ttEntry      = TT[hash];
             Move                     ttMove       = {};
             bool                     ttHit        = false;
-            Score                    ttEvaluation = None;
+            Score                    ttSearchEval = None;
 
-            if (ttEntry.Type != Invalid && ttEntry.Hash == CompressHash(hash)) {
+            if (ttEntry.Type != Invalid) {
                 ttHit  = true;
                 ttMove = ttEntry.Move;
 
-                ttEvaluation = DecompressScore(ttEntry.Evaluation, ply);
+                ttSearchEval = DecompressScore(ttEntry.SearchEvaluation, ply);
 
                 if (!PV && ttEntry.Depth >= depth) {
                     // If the entry is of sufficient quality, depending on the bounding type of the entry, we can
@@ -810,9 +807,9 @@ namespace StockDory
                     // - Alpha: The evaluation never exceeded alpha in the producing search, but we should only return
                     //          if we know it isn't exceeding alpha in the current search
 
-                    if (ttEntry.Type == Exact                         ) return ttEvaluation;
-                    if (ttEntry.Type == Beta  && ttEvaluation >= beta ) return ttEvaluation;
-                    if (ttEntry.Type == Alpha && ttEvaluation <= alpha) return ttEvaluation;
+                    if (ttEntry.Type == Exact                         ) return ttSearchEval;
+                    if (ttEntry.Type == Beta  && ttSearchEval >= beta ) return ttSearchEval;
+                    if (ttEntry.Type == Alpha && ttSearchEval <= alpha) return ttSearchEval;
                 }
             }
 
@@ -866,37 +863,21 @@ namespace StockDory
                 goto Checked;
             }
 
-            // Static Evaluation:
-            //
-            // If we're not in check, then we are more-so safe to use the static evaluation to guide some aggressive
-            // pruning & reduction techniques in an attempt to narrow the search space. We calculate it by applying
-            // material scaling to the neural network's evaluation of the position and then adjusting it using the
-            // search-trained correction history; it is important to retain the evaluation pre-adjustment so we can
-            // later use it for error criterion to train the correction history.
-            //
-            // A valid transposition table entry can then replace or refine this static evaluation:
-            //
-            // - Exact:
-            //   We can use the search result directly as it will almost always be just as accurate (if not more) then
-            //   whatever our static evaluation is.
-            //
-            // - Beta :
-            // - Alpha:
-            //   In this case, the type indicates the position is either too good or too unsalvageable. Thus we will go
-            //   one step further in the direction of the extremity and respectively use either the more optimistic or
-            //   pessimistic evaluation.
-            //
-            // Without a valid entry, the corrected evaluation should be used; correction history is never applied to
-            // the evaluation the transposition table
-            scaledEvaluation =   ScaleEvaluation<Color>(                     );
+            if (ttEntry.ScaledEvaluation != None) scaledEvaluation = ttEntry.ScaledEvaluation;
+            else {
+                scaledEvaluation = ScaleEvaluation<Color>();
+
+                if (!ttHit) TT[hash] = { .ScaledEvaluation = static_cast<CompressedScore>(scaledEvaluation) };
+            }
+
             staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
 
             Stack[ply].ScaledEvaluation = staticEvaluation;
 
             if (ttHit) {
-                if      (ttEntry.Type == Exact) staticEvaluation = ttEvaluation;
-                else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttEvaluation);
-                else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttEvaluation);
+                if      (ttEntry.Type == Exact) staticEvaluation =                                   ttSearchEval ;
+                else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttSearchEval);
+                else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttSearchEval);
             }
 
             Stack[ply].StaticEvaluation = staticEvaluation;
@@ -1067,10 +1048,10 @@ namespace StockDory
 
             SearchTranspositionEntry ttEntryNew
             {
-                .Hash       = CompressHash(hash),
-                .Move       = ttMove,
-                .Depth      = static_cast<uint8_t>(depth),
-                .Type       = Alpha
+                .ScaledEvaluation = static_cast<CompressedScore>(scaledEvaluation),
+                .Move             = ttMove,
+                .Depth            = static_cast<uint8_t>(depth),
+                .Type             = Alpha
             };
 
             SearchedMovesStack<64> searchedCaptures;
@@ -1293,7 +1274,7 @@ namespace StockDory
                 break;
             }
 
-            ttEntryNew.Evaluation = CompressScore(bestEvaluation, ply);
+            ttEntryNew.SearchEvaluation = CompressScore(bestEvaluation, ply);
 
             if (!Stopped()) {
                 const bool ttMoveIsTactical = ttEntryNew.Move.Capture() || ttEntryNew.Move.Promotion() != NAP;
@@ -1351,33 +1332,39 @@ namespace StockDory
             if (ply >= MaxDepth) [[unlikely]]
                 return Board.Checked<Color>() ? Draw : CorrectEvaluation<Color>(ScaleEvaluation<Color>(), ply);
 
-            if (!PV) {
-                // Transposition Table Reading:
-                //
-                // We can check if the current position has been searched before, and if it has, then there most likely
-                // exists a transposition entry - if the entry is valid, depending on the bounds of the entry, we can
-                // return the evaluation from the entry. We do not check for the entry's depth here, as we are already
-                // at a non-positive depth and all entries are going to be at least deeper than this depth. We also do
-                // not do this in PV branches as even a slight inaccuracy due to hash collisions or other factors can
-                // cause us to miss a good move
+            const ZobristHash hash = Board.Zobrist();
 
-                const ZobristHash hash = Board.Zobrist();
+            const SearchTranspositionEntry ttEntry = TT[hash];
 
-                const SearchTranspositionEntry ttEntry = TT[hash];
+            Score ttSearchEval = None;
 
-                if (ttEntry.Hash == CompressHash(hash)) {
-                    const Score ttEvaluation = DecompressScore(ttEntry.Evaluation, ply);
+            if (ttEntry.Type != Invalid) {
+                ttSearchEval = DecompressScore(ttEntry.SearchEvaluation, ply);
 
-                    if (ttEntry.Type == Exact                         ) return ttEvaluation;
-                    if (ttEntry.Type == Beta  && ttEvaluation >= beta ) return ttEvaluation;
-                    if (ttEntry.Type == Alpha && ttEvaluation <= alpha) return ttEvaluation;
+                if (!PV) {
+                    if (ttEntry.Type == Exact                         ) return ttSearchEval;
+                    if (ttEntry.Type == Beta  && ttSearchEval >= beta ) return ttSearchEval;
+                    if (ttEntry.Type == Alpha && ttSearchEval <= alpha) return ttSearchEval;
                 }
             }
 
-            // Static Evaluation:
-            //
-            // In Quiescence search, we use the neural network evaluation directly as the static evaluation
-            const Score staticEvaluation = CorrectEvaluation<Color>(ScaleEvaluation<Color>(), ply);
+            Score scaledEvaluation;
+
+            if (ttEntry.ScaledEvaluation != None) scaledEvaluation = ttEntry.ScaledEvaluation;
+            else {
+                scaledEvaluation = ScaleEvaluation<Color>();
+
+                if (ttEntry.Type == Invalid)
+                    TT[hash] = { .ScaledEvaluation = static_cast<CompressedScore>(scaledEvaluation) };
+            }
+
+            Score staticEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
+
+            if (ttSearchEval != None && !IsMate(ttSearchEval)) {
+                if      (ttEntry.Type == Exact) staticEvaluation =                                   ttSearchEval ;
+                else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(staticEvaluation, ttSearchEval);
+                else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(staticEvaluation, ttSearchEval);
+            }
 
             // Window Adjustment:
             //
@@ -1604,7 +1591,7 @@ namespace StockDory
         {
             const SearchTranspositionEntry pEntry = TT[hash];
 
-            if (nEntry.Type == Exact || nEntry.Hash != pEntry.Hash ||
+            if (nEntry.Type == Exact || pEntry.Type == Invalid ||
                (pEntry.Type == Alpha &&
                 nEntry.Type == Beta) ||
                 nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
