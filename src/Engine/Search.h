@@ -877,13 +877,13 @@ namespace StockDory
 
             Stack[ply].CorrectedEvaluation = correctedEvaluation;
 
+            staticEvaluation = correctedEvaluation;
+
             if (ttHit) {
                 if      (ttEntry.Type == Exact) staticEvaluation =                                      ttSearchEval ;
                 else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(correctedEvaluation, ttSearchEval);
                 else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(correctedEvaluation, ttSearchEval);
-
-                else std::unreachable();
-            } else staticEvaluation = correctedEvaluation;
+            }
 
             Stack[ply].StaticEvaluation = staticEvaluation;
 
@@ -1367,14 +1367,13 @@ namespace StockDory
 
             const Score correctedEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
 
-            Score staticEvaluation;
+            Score staticEvaluation = correctedEvaluation;
 
             if (ttSearchEval != None && !IsMate(ttSearchEval)) {
                 if      (ttEntry.Type == Exact) staticEvaluation =                                      ttSearchEval ;
                 else if (ttEntry.Type == Beta ) staticEvaluation = std::max<Score>(correctedEvaluation, ttSearchEval);
                 else if (ttEntry.Type == Alpha) staticEvaluation = std::min<Score>(correctedEvaluation, ttSearchEval);
-                else std::unreachable();
-            } else staticEvaluation = correctedEvaluation;
+            }
 
             // Window Adjustment:
             //
