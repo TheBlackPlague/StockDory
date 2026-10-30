@@ -24,8 +24,8 @@ namespace StockDory
     class Evaluation
     {
 
-        using Network = Corona     ;
-        using   Stack = CoronaStack;
+        using Network = Eclipse     ;
+        using   Stack = EclipseStack;
 
         static inline Network NN;
 
