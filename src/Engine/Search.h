@@ -54,9 +54,12 @@ namespace StockDory
 
         CompressedScore SearchEvaluation = None;
         CompressedScore ScaledEvaluation = None;
-        Move            Move             = ::Move();
-        uint8_t         Depth            = 0;
-        EntryType       Type             = Invalid;
+
+        Move    Move  = ::Move();
+        uint8_t Depth =        0;
+
+        EntryType Type      : 8 - TranspositionTableGenerationBits = Invalid;
+        uint8_t   Generation:     TranspositionTableGenerationBits =       0;
 
     };
 
@@ -1634,13 +1637,15 @@ namespace StockDory
 
         static void TryReplaceTT(const ZobristHash hash, const SearchTranspositionEntry nEntry)
         {
-            const SearchTranspositionEntry pEntry = TT[hash];
+            auto entry = TT[hash];
 
-            if (nEntry.Type == Exact || pEntry.Type == Invalid ||
+            const SearchTranspositionEntry pEntry = entry;
+
+            if (nEntry.Type == Exact || pEntry.Type == Invalid || pEntry.Generation != TT.Generation() ||
                (pEntry.Type == Alpha &&
                 nEntry.Type == Beta) ||
                 nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
-                TT[hash] = nEntry;
+                entry = nEntry;
         }
 
     };
@@ -1764,6 +1769,8 @@ namespace StockDory
             // Together, the search space is considerably widened, making the search more accurate, while the search
             // time remains relatively the same on average. This leads the engine to find better moves in the same
             // amount of time and avoid some pitfalls of the heuristical pruning, reduction, and search techniques used
+
+            TT.BumpGeneration();
 
             if (ParallelTaskPool.Size()) {
                 ParallelTaskPool.Fill(l, b, r, hmc);

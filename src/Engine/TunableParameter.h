@@ -160,7 +160,8 @@ namespace StockDory
     PARAMETER(uint16_t, MaterialScalingWeightRook        ,  521,  300,   800);
     PARAMETER(uint16_t, MaterialScalingWeightQueen       ,  994,  600,  1200);
 
-    PARAMETER(uint8_t, TTReplacementDepthMargin, 3, 0, 6);
+    PARAMETER(uint8_t, TTReplacementDepthMargin, 3, 0,  6);
+    PARAMETER(uint8_t, TTReplacementAgeWeight  , 4, 0, 16);
 
 #undef PARAMETER
 
