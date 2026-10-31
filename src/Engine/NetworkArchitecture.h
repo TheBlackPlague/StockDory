@@ -25,16 +25,18 @@ using PerspectiveArchitecture = MantaRay::Architecture<
     MantaRay::Output<400>
 >;
 
-using StarshardArchitecture = PerspectiveArchitecture<256                                                         >;
-using    AuroraArchitecture = PerspectiveArchitecture<384                                                         >;
-using     FlareArchitecture = PerspectiveArchitecture<768                                                         >;
-using    CoronaArchitecture = PerspectiveArchitecture<768, MantaRay::SquaredClippedReLU<>, MantaRay::DivideBy<255>>;
+using StarshardArchitecture = PerspectiveArchitecture< 256                                                         >;
+using    AuroraArchitecture = PerspectiveArchitecture< 384                                                         >;
+using     FlareArchitecture = PerspectiveArchitecture< 768                                                         >;
+using    CoronaArchitecture = PerspectiveArchitecture< 768, MantaRay::SquaredClippedReLU<>, MantaRay::DivideBy<255>>;
+using   EclipseArchitecture = PerspectiveArchitecture<1536, MantaRay::SquaredClippedReLU<>, MantaRay::DivideBy<255>>;
 
 // Network:
 using Starshard = MantaRay::Network<StarshardArchitecture>;
 using    Aurora = MantaRay::Network<   AuroraArchitecture>;
 using     Flare = MantaRay::Network<    FlareArchitecture>;
 using    Corona = MantaRay::Network<   CoronaArchitecture>;
+using   Eclipse = MantaRay::Network<  EclipseArchitecture>;
 
 // Accumulator Stack:
 constexpr size_t AccumulatorStackSize = StockDory::MaxDepth + 1;
@@ -47,5 +49,6 @@ using StarshardStack = NetworkStack<StarshardArchitecture>;
 using    AuroraStack = NetworkStack<   AuroraArchitecture>;
 using     FlareStack = NetworkStack<    FlareArchitecture>;
 using    CoronaStack = NetworkStack<   CoronaArchitecture>;
+using   EclipseStack = NetworkStack<  EclipseArchitecture>;
 
 #endif //STOCKDORY_NETWORKARCHITECTURE_H
