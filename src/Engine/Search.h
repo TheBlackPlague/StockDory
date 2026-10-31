@@ -452,7 +452,7 @@ namespace StockDory
                         .         Depth =          Depth,
                         .SelectiveDepth = SelectiveDepth,
 
-                        .Evaluation = WDLCalculator::S(Board, Evaluation),
+                        .Evaluation =                         Evaluation ,
                         .WDL        = WDL             (Board, Evaluation),
 
                         .Nodes = GetNodes(),
@@ -497,7 +497,7 @@ namespace StockDory
 
         bool Stopped() const { return Status.Load(MemoryOrder::relaxed) == SearchTaskStatus::Stopped; }
 
-        Score GetEvaluation() const { return WDLCalculator::S(Board, Evaluation); }
+        Score GetEvaluation() const { return Evaluation; }
 
         WDL GetWDL() const { return WDL(Board, Evaluation); }
 
