@@ -237,8 +237,8 @@ namespace StockDory
         enum Weight : uint8_t { A, B };
 
         constexpr static Array<double, 2, 4> WValue = {{
-            { -39.30487954, 262.98923259, -419.98251081, 445.64485738 },
-            { -19.92536318, 135.60358857, -123.93301877, 103.36733479 }
+            {  1.54363519,  76.49578271, -182.11148657, 347.75603188 },
+            { 31.82765250, -31.52675019,   39.79576152,  42.21105998 }
         }};
 
         template<Weight W>
@@ -291,7 +291,7 @@ namespace StockDory
         [[clang::always_inline]]
         static Score S(const Board& board, const Score cp)
         {
-            if (cp == 0 || abs(cp) >= Mate - MaxDepth) return cp;
+            if (cp == 0 || IsMate(cp)) return cp;
 
             const auto [a, b] = Coefficient(board);
 
