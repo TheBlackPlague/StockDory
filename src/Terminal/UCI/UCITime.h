@@ -6,6 +6,8 @@
 #ifndef STOCKDORY_UCITIME_H
 #define STOCKDORY_UCITIME_H
 
+#include <cmath>
+
 #include "../../Engine/Search.h"
 
 namespace StockDory
@@ -42,6 +44,8 @@ namespace StockDory
         uint64_t BlackInc  = 0;
         uint64_t MovesToGo = 0;
 
+        uint16_t FullMoveNumber = 1;
+
         Color ColorToMove = NAC;
 
         void AsLimit(Limit& limit) const
@@ -54,9 +58,16 @@ namespace StockDory
 
             const uint64_t usableTime = time > TimeProcessingOverhead ? time - TimeProcessingOverhead : 0;
 
-            const uint64_t movesToGo = MovesToGo > 0 ? MovesToGo : TimeDefaultMovesToGo;
+            uint64_t timePerMove;
 
-            const uint64_t timePerMove = usableTime / movesToGo + (usableTime % movesToGo != 0);
+            if (MovesToGo > 0) {
+                timePerMove = usableTime / MovesToGo + (usableTime % MovesToGo != 0);
+            } else {
+                const double fraction = (TimeSoftFractionMax - TimeSoftFractionDecay *
+                                         std::exp(-TimeSoftFractionRate / 1000.0 * FullMoveNumber)) / 1000.0;
+
+                timePerMove = static_cast<uint64_t>(static_cast<double>(usableTime) * std::max(fraction, 0.0));
+            }
 
             const uint64_t incTime = inc / TimeIncrementPartitionDenominator * TimeIncrementPartitionNumerator +
                                      inc % TimeIncrementPartitionDenominator * TimeIncrementPartitionNumerator /

@@ -50,6 +50,7 @@ namespace StockDory
         static inline Board                     Board {};
         static inline RepetitionStack      Repetition {};
         static inline uint8_t         HalfMoveCounter {};
+        static inline uint16_t         FullMoveNumber { 1 };
 
         static inline UCISearchEventHandler SearchEventHandler;
 
@@ -58,6 +59,7 @@ namespace StockDory
         {
             Repetition.Push(Board.Zobrist());
             HalfMoveCounter = 0;
+            FullMoveNumber  = 1;
 
             RegisterOptions();
             RegisterCommands();
@@ -217,6 +219,7 @@ namespace StockDory
             Board           = {   };
             Repetition      = {   };
             HalfMoveCounter =   0  ;
+            FullMoveNumber  =   1  ;
 
             Repetition.Push(Board.Zobrist());
 
@@ -315,6 +318,7 @@ namespace StockDory
                 Board           = StockDory::Board(fen);
                 Repetition      = {};
                 HalfMoveCounter = std::stoi(fenToken[4]);
+                FullMoveNumber  = static_cast<uint16_t>(std::clamp(std::stoi(fenToken[5]), 1, 65535));
 
                 Repetition.Push(Board.Zobrist());
 
@@ -325,6 +329,7 @@ namespace StockDory
 
                 Repetition.Push(Board.Zobrist());
                 HalfMoveCounter = 0;
+                FullMoveNumber  = 1;
             } else return;
 
             if (args.size() >= moveStrIndex &&
@@ -339,6 +344,8 @@ namespace StockDory
                     if (!move) return;
 
                     HalfMoveCounter = move.Capture() || Board[move.From()].Piece() == Pawn ? 0 : HalfMoveCounter + 1;
+
+                    if (Board.ColorToMove() == Black && FullMoveNumber < 65535) FullMoveNumber++;
 
                     Board.Move<ZOBRIST>(move);
 
@@ -388,6 +395,8 @@ namespace StockDory
                     .WhiteInc  = TokenToValue<uint64_t>(args, "winc"     , 0),
                     .BlackInc  = TokenToValue<uint64_t>(args, "binc"     , 0),
                     .MovesToGo = TokenToValue<uint64_t>(args, "movestogo", 0),
+
+                    .FullMoveNumber = FullMoveNumber,
 
                     .ColorToMove = Board.ColorToMove()
                 };

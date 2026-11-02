@@ -82,13 +82,16 @@ namespace StockDory
 
 #endif
 
-    PARAMETER(uint8_t, TimeDefaultMovesToGo             , 24, 12, 48);
     PARAMETER(uint8_t, TimeIncrementPartitionNumerator  ,  3,  1,  4);
     PARAMETER(uint8_t, TimeIncrementPartitionDenominator,  4,  4,  8);
     PARAMETER(uint8_t, TimeProcessingOverhead           , 10,  0, 50);
     PARAMETER(uint8_t, TimeHardLimitMultiplier          ,  5,  2,  8);
     PARAMETER(uint8_t, TimeHardLimitClockNumerator      ,  3,  1,  4);
     PARAMETER(uint8_t, TimeHardLimitClockDenominator    ,  4,  4,  8);
+
+    PARAMETER(double , TimeSoftFractionMax   , 41.600, 25.000, 60.000);
+    PARAMETER(double , TimeSoftFractionDecay , 34.400, 15.000, 50.000);
+    PARAMETER(double , TimeSoftFractionRate  , 38.600, 15.000, 80.000);
 
     PARAMETER(uint8_t, TimeSingleMovePartitionNumerator  ,  1,  0,  2);
     PARAMETER(uint8_t, TimeSingleMovePartitionDenominator, 20, 10, 40);
