@@ -50,7 +50,7 @@ namespace StockDory
         static inline Board                     Board {};
         static inline RepetitionStack      Repetition {};
         static inline uint8_t         HalfMoveCounter {};
-        static inline uint16_t         FullMoveNumber { 1 };
+        static inline uint16_t         FullMoveNumber {};
 
         static inline UCISearchEventHandler SearchEventHandler;
 
@@ -318,7 +318,7 @@ namespace StockDory
                 Board           = StockDory::Board(fen);
                 Repetition      = {};
                 HalfMoveCounter = std::stoi(fenToken[4]);
-                FullMoveNumber  = static_cast<uint16_t>(std::clamp(std::stoi(fenToken[5]), 1, 65535));
+                FullMoveNumber  = std::stoi(fenToken[5]);
 
                 Repetition.Push(Board.Zobrist());
 
@@ -332,10 +332,11 @@ namespace StockDory
                 FullMoveNumber  = 1;
             } else return;
 
-            if (args.size() >= moveStrIndex &&
-                strutil::compare_ignore_case(args[moveStrIndex - 1], "moves"))
-                for (const Arguments movesToken = {args.begin() + moveStrIndex, args.end()};
-                     const std::string& moveStr: movesToken) {
+            if (args.size() >= moveStrIndex && strutil::compare_ignore_case(args[moveStrIndex - 1], "moves")) {
+                for (
+                    const Arguments movesToken = {args.begin() + moveStrIndex, args.end()};
+                    const std::string& moveStr: movesToken
+                    ) {
                     const Move parsed = Move::FromString(moveStr);
                     if (!parsed) return;
 
@@ -345,12 +346,13 @@ namespace StockDory
 
                     HalfMoveCounter = move.Capture() || Board[move.From()].Piece() == Pawn ? 0 : HalfMoveCounter + 1;
 
-                    if (Board.ColorToMove() == Black && FullMoveNumber < 65535) FullMoveNumber++;
+                    if (Board.ColorToMove() == Black) FullMoveNumber++;
 
                     Board.Move<ZOBRIST>(move);
 
                     Repetition.Push(Board.Zobrist());
                 }
+            }
         }
 
         template<typename T>
