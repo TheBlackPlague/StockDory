@@ -71,9 +71,9 @@ namespace StockDory
             if (MovesToGo > 0) {
                 baseTimeForMove = usableTime / MovesToGo + (usableTime % MovesToGo != 0);
             } else {
-                const double exp = std::exp(-TimeSoftFractionRate / 1000.0 * FullMoveNumber);
+                const double decayFactor = std::exp(-TimeSoftFractionRate / 1000.0 * FullMoveNumber);
 
-                const double fraction = (TimeSoftFractionMax - TimeSoftFractionDecay * exp) / 1000.0;
+                const double fraction = (TimeSoftFractionMax - TimeSoftFractionDecay * decayFactor) / 1000.0;
 
                 baseTimeForMove = static_cast<uint64_t>(static_cast<double>(usableTime) * std::max(fraction, 0.0));
             }
