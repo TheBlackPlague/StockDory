@@ -6,6 +6,8 @@
 #ifndef STOCKDORY_UCITIME_H
 #define STOCKDORY_UCITIME_H
 
+#include <cmath>
+
 #include "../../Engine/Search.h"
 
 namespace StockDory
@@ -42,6 +44,8 @@ namespace StockDory
         uint64_t BlackInc  = 0;
         uint64_t MovesToGo = 0;
 
+        uint16_t FullMoveNumber = 1;
+
         Color ColorToMove = NAC;
 
         void AsLimit(Limit& limit) const
@@ -54,10 +58,6 @@ namespace StockDory
 
             const uint64_t usableTime = time > TimeProcessingOverhead ? time - TimeProcessingOverhead : 0;
 
-            const uint64_t movesToGo = MovesToGo > 0 ? MovesToGo : TimeDefaultMovesToGo;
-
-            const uint64_t timePerMove = usableTime / movesToGo + (usableTime % movesToGo != 0);
-
             const uint64_t incTime = inc / TimeIncrementPartitionDenominator * TimeIncrementPartitionNumerator +
                                      inc % TimeIncrementPartitionDenominator * TimeIncrementPartitionNumerator /
                                            TimeIncrementPartitionDenominator                                   ;
@@ -66,7 +66,19 @@ namespace StockDory
                                      usableTime % TimeHardLimitClockDenominator * TimeHardLimitClockNumerator /
                                                   TimeHardLimitClockDenominator                               ;
 
-            const uint64_t allocatedTime = timePerMove + std::min<uint64_t>(incTime, usableTime - timePerMove);
+            uint64_t baseTimeForMove;
+
+            if (MovesToGo > 0) {
+                baseTimeForMove = usableTime / MovesToGo + (usableTime % MovesToGo != 0);
+            } else {
+                const double decayFactor = std::exp(-TimeSoftFractionRate / 1000.0 * FullMoveNumber);
+
+                const double fraction = (TimeSoftFractionMax - TimeSoftFractionDecay * decayFactor) / 1000.0;
+
+                baseTimeForMove = static_cast<uint64_t>(static_cast<double>(usableTime) * std::max(fraction, 0.0));
+            }
+
+            const uint64_t allocatedTime = baseTimeForMove + std::min<uint64_t>(incTime, usableTime - baseTimeForMove);
 
             const uint64_t  actualTime = std::min<uint64_t>(allocatedTime * TimeHardLimitMultiplier,    clkTime);
             const uint64_t optimalTime = std::min<uint64_t>(allocatedTime                          , actualTime);

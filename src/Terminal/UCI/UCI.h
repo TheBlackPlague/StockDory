@@ -50,6 +50,7 @@ namespace StockDory
         static inline Board                     Board {};
         static inline RepetitionStack      Repetition {};
         static inline uint8_t         HalfMoveCounter {};
+        static inline uint16_t         FullMoveNumber {};
 
         static inline UCISearchEventHandler SearchEventHandler;
 
@@ -58,6 +59,7 @@ namespace StockDory
         {
             Repetition.Push(Board.Zobrist());
             HalfMoveCounter = 0;
+            FullMoveNumber  = 1;
 
             RegisterOptions();
             RegisterCommands();
@@ -217,6 +219,7 @@ namespace StockDory
             Board           = {   };
             Repetition      = {   };
             HalfMoveCounter =   0  ;
+            FullMoveNumber  =   1  ;
 
             Repetition.Push(Board.Zobrist());
 
@@ -315,6 +318,7 @@ namespace StockDory
                 Board           = StockDory::Board(fen);
                 Repetition      = {};
                 HalfMoveCounter = std::stoi(fenToken[4]);
+                FullMoveNumber  = std::stoi(fenToken[5]);
 
                 Repetition.Push(Board.Zobrist());
 
@@ -325,12 +329,14 @@ namespace StockDory
 
                 Repetition.Push(Board.Zobrist());
                 HalfMoveCounter = 0;
+                FullMoveNumber  = 1;
             } else return;
 
-            if (args.size() >= moveStrIndex &&
-                strutil::compare_ignore_case(args[moveStrIndex - 1], "moves"))
-                for (const Arguments movesToken = {args.begin() + moveStrIndex, args.end()};
-                     const std::string& moveStr: movesToken) {
+            if (args.size() >= moveStrIndex && strutil::compare_ignore_case(args[moveStrIndex - 1], "moves")) {
+                for (
+                    const Arguments movesToken = {args.begin() + moveStrIndex, args.end()};
+                    const std::string& moveStr: movesToken
+                    ) {
                     const Move parsed = Move::FromString(moveStr);
                     if (!parsed) return;
 
@@ -340,10 +346,13 @@ namespace StockDory
 
                     HalfMoveCounter = move.Capture() || Board[move.From()].Piece() == Pawn ? 0 : HalfMoveCounter + 1;
 
+                    if (Board.ColorToMove() == Black) FullMoveNumber++;
+
                     Board.Move<ZOBRIST>(move);
 
                     Repetition.Push(Board.Zobrist());
                 }
+            }
         }
 
         template<typename T>
@@ -388,6 +397,8 @@ namespace StockDory
                     .WhiteInc  = TokenToValue<uint64_t>(args, "winc"     , 0),
                     .BlackInc  = TokenToValue<uint64_t>(args, "binc"     , 0),
                     .MovesToGo = TokenToValue<uint64_t>(args, "movestogo", 0),
+
+                    .FullMoveNumber = FullMoveNumber,
 
                     .ColorToMove = Board.ColorToMove()
                 };
