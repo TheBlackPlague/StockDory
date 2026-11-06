@@ -1084,8 +1084,8 @@ namespace StockDory
                     // FFP is a technique which tries to estimate whether it's futile to continue searching moves that
                     // may not have a major impact, and if deemed so, prunes them. It uses the static evaluation of the
                     // position alongside a depth-dependent margin to predict whether we're close to recovering and it
-                    // is worth searching low-impact (quiet) moves or whether only explosive (non-quiet; tactical) moves
-                    // are the only way for recovering
+                    // is worth searching low-impact (quiet) moves or whether tactical moves are the only way for
+                    // recovering this doomed position
                     if (quiet && !IsLoss(staticEvaluation) && staticEvaluation + depth * FutilityDepthFactor <= alpha)
                         continue;
 
