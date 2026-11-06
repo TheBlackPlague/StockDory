@@ -140,7 +140,7 @@ namespace StockDory
 
     PARAMETER(uint8_t, FutilityDepthFactor, 150, 75, 255);
 
-    PARAMETER(uint8_t, SEEPruningCaptureFactor, 20, 5, 60);
+    PARAMETER(uint8_t, SEEPruningCaptureFactor, 10, 5, 60);
 
     PARAMETER(uint16_t, HistoryMultiplier, 300, 150, 450);
     PARAMETER(uint16_t, HistoryShiftDown , 250,   0, 500);
