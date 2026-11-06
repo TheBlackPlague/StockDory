@@ -7,6 +7,7 @@
 #define STOCKDORY_SEARCH_H
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <memory>
 #include <ranges>
@@ -382,8 +383,7 @@ namespace StockDory
 
         TP StartTime = {};
 
-        uint64_t     RootNodes = 0;
-        uint64_t BestMoveNodes = 0;
+        Array<uint64_t, 64, 64> RootNodes {};
 
         Move LastBestMove {};
 
@@ -560,8 +560,10 @@ namespace StockDory
 
             double factor = 1.0;
 
-            if (RootNodes > 0) {
-                const double effort = static_cast<double>(BestMoveNodes) / RootNodes;
+            if (GetNodes() && BestMove) {
+                const uint64_t bestMoveNodes = RootNodes[BestMove.From()][BestMove.To()];
+
+                const double effort = static_cast<double>(bestMoveNodes) / GetNodes();
                 factor *= TimeNodeBase - TimeNodeEffortWeight * effort;
             }
 
@@ -622,11 +624,6 @@ namespace StockDory
                 // window and try again for future search iterations with a better understanding of the search space
                 if (alpha < -AspirationWindowFallbackBound) alpha = -Infinity;
                 if (beta  >  AspirationWindowFallbackBound) beta  =  Infinity;
-
-                if (ThreadType == Main) {
-                    RootNodes     = 0;
-                    BestMoveNodes = 0;
-                }
 
                 const int16_t adjustedDepth = std::max<int16_t>(depth - reduction, 1);
 
@@ -1199,18 +1196,11 @@ namespace StockDory
 
                 UndoMove<true>(state, move);
 
-                uint64_t moveNodes = 0;
-
-                if (Root && ThreadType == Main) {
-                    moveNodes = GetNodes() - nodesBeforeMove;
-                    RootNodes += moveNodes;
-                }
+                if (Root && ThreadType == Main) RootNodes[move.From()][move.To()] += GetNodes() - nodesBeforeMove;
 
                 if (evaluation <= bestEvaluation) continue;
 
                 bestEvaluation = evaluation;
-
-                if (Root && ThreadType == Main) BestMoveNodes = moveNodes;
 
                 if (evaluation <= alpha) continue;
 
