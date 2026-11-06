@@ -1105,7 +1105,7 @@ namespace StockDory
                         // SEE is essentially an evaluation that determines if an exchange of pieces is materially
                         // favorable for us or not given a margin (depth-dependent in this case), and when it is not,
                         // then that tactical sequence is likely not worth searching further at all
-                        if (capture && !SEE::Accurate(Board, move, -SEEPruningCaptureFactor * depth * depth)) continue;
+                        if (capture && !SEE::Accurate(Board, move, -SEEPruningCaptureFactor * depth)) continue;
                     }
                 }
 
