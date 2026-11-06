@@ -1087,7 +1087,7 @@ namespace StockDory
                     // is worth searching low-impact (quiet) moves or whether tactical moves are the only way for
                     // recovering this doomed position
                     if (quiet && !IsLoss(staticEvaluation) && staticEvaluation + depth * FutilityDepthFactor <= alpha)
-                        continue;
+                        break;
 
                     // Avoid certain pruning at root to avoid missing some continuations
                     if (!Root) {
