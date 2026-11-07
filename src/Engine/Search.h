@@ -19,6 +19,7 @@
 
 #include "Common.h"
 #include "OrderedMoveList.h"
+#include "SEE.h"
 #include "TranspositionTable.h"
 #include "TunableParameter.h"
 
