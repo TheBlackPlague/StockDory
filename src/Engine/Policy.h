@@ -34,6 +34,8 @@ namespace StockDory
 
         constexpr static int32_t PromotionMultiplier = 100000;
 
+        constexpr static int32_t BadCaptureOffset = -(1 << 20);
+
         constexpr static Array<uint8_t, 5> PromotionFactor = {
             0, //   Pawn
             3, // Knight
@@ -82,12 +84,11 @@ namespace StockDory
             // - Transposition Table Move
             // - Promotions
             // - Good Captures (SEE >= 0)
-            // - Good Quiet Moves
+            // - Quiet Moves
             //   - Killer Moves
             //   - Good History Moves
-            // - Bad Captures (SEE < 0)
-            // - Bad Quiet Moves
             //   - Bad History Moves
+            // - Bad Captures (SEE < 0)
 
             if (move == TTMove) return MaximumScore;
 
@@ -99,7 +100,7 @@ namespace StockDory
                 const bool goodCapture = SEE::Accurate(Board, move, 0);
                 const auto targetPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
 
-                score += MvvLva[targetPiece][Piece] * (goodCapture ? 20 : 1);
+                score += goodCapture ? MvvLva[targetPiece][Piece] * 20 : BadCaptureOffset + MvvLva[targetPiece][Piece];
                 score += CaptureHistory[Color][Piece][move.To()][targetPiece];
 
                 return score;

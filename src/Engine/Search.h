@@ -1064,7 +1064,8 @@ namespace StockDory
             SearchedMovesStack<64> searchedCaptures;
             SearchedMovesStack<64> searchedQuiets  ;
 
-            uint8_t seenQuiets = 0;
+            uint8_t seenQuiets =     0;
+            bool    skipQuiets = false;
 
             Score bestEvaluation = -Infinity;
 
@@ -1073,6 +1074,9 @@ namespace StockDory
 
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
+
+                // Skip quiets if we don't want to search them
+                if (skipQuiets && quiet) continue;
 
                 seenQuiets += quiet;
 
@@ -1087,19 +1091,24 @@ namespace StockDory
                     // is worth searching low-impact (quiet) moves or whether tactical moves are the only way for
                     // recovering this doomed position
                     if (quiet && !IsLoss(staticEvaluation) &&
-                        staticEvaluation + FFPLowDepthBias + depth * FFPDepthFactor <= alpha)
+                        staticEvaluation + FFPLowDepthBias + depth * FFPDepthFactor <= alpha) {
+                        skipQuiets = true;
                         continue;
+                    }
 
                     // Avoid certain pruning at root to avoid missing some continuations
                     if (!Root) {
                         // Late Move Pruning (LMP):
                         //
                         // LMP is a technique that heavily relies on the move policy. It assumes that with a reasonable
-                        // move policy, it's highly likely that all the good moves will be searched earlier and all
-                        // later searched moves are unlikely to be good moves and it is reasonable to avoid searching
+                        // move policy, it's highly likely that all the good quiet moves will be searched earlier and
+                        // all later quiet moves are unlikely to be good moves and it is reasonable to avoid searching
                         // them altogether
-                        if (!PV && majorMaterial && depth <= LMPMaximumDepth &&
-                            seenQuiets > LMPLastQuietBase + depth * depth     ) break;
+                        if (!PV && quiet && majorMaterial && depth <= LMPMaximumDepth &&
+                            seenQuiets > LMPLastQuietBase + depth * depth) {
+                            skipQuiets = true;
+                            continue;
+                        }
 
                         // Static Exchange Evaluation (SEE) Pruning:
                         //
