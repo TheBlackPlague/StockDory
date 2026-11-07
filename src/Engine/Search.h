@@ -945,9 +945,9 @@ namespace StockDory
                 // that underestimates the position. As the static evaluation may have been refined to a mate score
                 // from the transposition table, we must not prune when it is a win or when beta is a loss, as the
                 // average of the two would be a score that is neither a mate score nor a meaningful evaluation
-                if (depth < ReverseFutilityMaximumDepth && !IsWin(staticEvaluation) && !IsLoss(beta)) {
-                    const Score     depthMargin = depth     * ReverseFutilityDepthFactor;
-                    const Score improvingMargin = improving * ReverseFutilityImprovingFactor;
+                if (depth < RFPMaximumDepth && !IsWin(staticEvaluation) && !IsLoss(beta)) {
+                    const Score     depthMargin = depth     * RFPDepthFactor;
+                    const Score improvingMargin = improving * RFPImprovingFactor;
 
                     if (staticEvaluation - depthMargin + improvingMargin >= beta) return (staticEvaluation + beta) / 2;
                 }
@@ -976,7 +976,7 @@ namespace StockDory
                 // binary search window, centered around our upper bound (beta) as their lower bound (alpha). If the
                 // branch is bad for the opponent, they'll be unable to improve upon their lower bound and fail-low. In
                 // turn, this can allow us to produce a beta cut-off and prune this branch
-                if (!Root && NMPAllowed && depth >= NullMoveMinimumDepth && staticEvaluation >= beta &&
+                if (!Root && NMPAllowed && depth >= NMPMinimumDepth && staticEvaluation >= beta &&
                     majorMaterial && !IsMate(beta) && !IsMate(staticEvaluation)) {
                     // The reduced depth is determined by the below formula:
                     //
@@ -992,15 +992,15 @@ namespace StockDory
                     //
                     // r = d - (mR + d // dF + min((e - b) // eF, mR))
 
-                    const auto ScalingDepthReduction      = depth / NullMoveDepthFactor;
+                    const auto ScalingDepthReduction      = depth / NMPDepthFactor;
                     const auto ScalingEvaluationReduction = std::min<int16_t>(
-                        (staticEvaluation - beta) / NullMoveEvaluationFactor,
-                        NullMoveMinimumReduction
+                        (staticEvaluation - beta) / NMPEvaluationFactor,
+                        NMPMinimumReduction
                     );
 
                     const int16_t reducedDepth =
                           depth
-                        - (  NullMoveMinimumReduction
+                        - (  NMPMinimumReduction
                           +  ScalingDepthReduction
                           +  ScalingEvaluationReduction
                           );
@@ -1086,7 +1086,7 @@ namespace StockDory
                     // position alongside a depth-dependent margin to predict whether we're close to recovering and it
                     // is worth searching low-impact (quiet) moves or whether tactical moves are the only way for
                     // recovering this doomed position
-                    if (quiet && !IsLoss(staticEvaluation) && staticEvaluation + depth * FutilityDepthFactor <= alpha)
+                    if (quiet && !IsLoss(staticEvaluation) && staticEvaluation + depth * FFPDepthFactor <= alpha)
                         continue;
 
                     // Avoid certain pruning at root to avoid missing some continuations

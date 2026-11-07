@@ -111,17 +111,17 @@ namespace StockDory
 
     PARAMETER(uint8_t, CheckExtension, 1, 0, 1);
 
-    PARAMETER(uint8_t, ReverseFutilityMaximumDepth   ,  7,  3,  10);
-    PARAMETER(uint8_t, ReverseFutilityDepthFactor    , 80, 40, 160);
-    PARAMETER(uint8_t, ReverseFutilityImprovingFactor, 60,  0, 120);
+    PARAMETER(uint8_t, RFPMaximumDepth   ,  7,  3,  10);
+    PARAMETER(uint8_t, RFPDepthFactor    , 80, 40, 160);
+    PARAMETER(uint8_t, RFPImprovingFactor, 60,  0, 120);
 
     PARAMETER(uint8_t, RazoringDepth           ,   1,  1,   3);
     PARAMETER(uint8_t, RazoringEvaluationMargin, 150, 75, 255);
 
-    PARAMETER(uint8_t, NullMoveMinimumDepth    ,   3,  2,   8);
-    PARAMETER(uint8_t, NullMoveMinimumReduction,   3,  1,   6);
-    PARAMETER(uint8_t, NullMoveDepthFactor     ,   3,  2,   6);
-    PARAMETER(uint8_t, NullMoveEvaluationFactor, 180, 90, 255);
+    PARAMETER(uint8_t, NMPMinimumDepth    ,   3,  2,   8);
+    PARAMETER(uint8_t, NMPMinimumReduction,   3,  1,   6);
+    PARAMETER(uint8_t, NMPDepthFactor     ,   3,  2,   6);
+    PARAMETER(uint8_t, NMPEvaluationFactor, 180, 90, 255);
 
     PARAMETER(uint8_t, IIRMinimumDepth  , 4, 3, 8);
     PARAMETER(uint8_t, IIRDepthReduction, 1, 0, 2);
@@ -138,7 +138,7 @@ namespace StockDory
     PARAMETER(uint16_t, LMRHistoryWeight    , 1024, 512, 2048);
     PARAMETER(uint16_t, LMRHistoryPartition ,    2,   1,    4);
 
-    PARAMETER(uint8_t, FutilityDepthFactor, 150, 75, 255);
+    PARAMETER(uint8_t, FFPDepthFactor, 100, 50, 250);
 
     PARAMETER(uint8_t, SEEPruningCaptureFactor, 30, 5, 60);
 
