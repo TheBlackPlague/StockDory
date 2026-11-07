@@ -10,7 +10,6 @@
 #include "../Backend/Type/Move.h"
 
 #include "Common.h"
-#include "SEE.h"
 
 namespace StockDory
 {
@@ -81,11 +80,10 @@ namespace StockDory
             //
             // - Transposition Table Move
             // - Promotions
-            // - Good Captures (SEE >= 0)
+            // - Captures
             // - Good Quiet Moves
             //   - Killer Moves
             //   - Good History Moves
-            // - Bad Captures (SEE < 0)
             // - Bad Quiet Moves
             //   - Bad History Moves
 
@@ -96,10 +94,9 @@ namespace StockDory
             if (PromotionPiece != NAP) score += PromotionFactor[PromotionPiece] * PromotionMultiplier;
 
             if (CaptureOnly || move.Capture()) {
-                const bool goodCapture = SEE::Accurate(Board, move, 0);
                 const auto targetPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
 
-                score += MvvLva[targetPiece][Piece] * (goodCapture ? 20 : 1);
+                score += MvvLva[targetPiece][Piece] * 20;
                 score += CaptureHistory[Color][Piece][move.To()][targetPiece];
 
                 return score;
