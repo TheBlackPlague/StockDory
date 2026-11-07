@@ -1086,7 +1086,8 @@ namespace StockDory
                     // position alongside a depth-dependent margin to predict whether we're close to recovering and it
                     // is worth searching low-impact (quiet) moves or whether tactical moves are the only way for
                     // recovering this doomed position
-                    if (quiet && !IsLoss(staticEvaluation) && staticEvaluation + depth * FFPDepthFactor <= alpha)
+                    if (quiet && !IsLoss(staticEvaluation) &&
+                        staticEvaluation + FFPLowDepthBias + depth * FFPDepthFactor <= alpha)
                         continue;
 
                     // Avoid certain pruning at root to avoid missing some continuations

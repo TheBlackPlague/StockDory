@@ -138,7 +138,8 @@ namespace StockDory
     PARAMETER(uint16_t, LMRHistoryWeight    , 1024, 512, 2048);
     PARAMETER(uint16_t, LMRHistoryPartition ,    2,   1,    4);
 
-    PARAMETER(uint8_t, FFPDepthFactor, 200, 50, 250);
+    PARAMETER(uint8_t, FFPLowDepthBias, 100, 25, 175);
+    PARAMETER(uint8_t, FFPDepthFactor , 150, 50, 250);
 
     PARAMETER(uint8_t, SEEPruningCaptureFactor, 30, 5, 60);
 
