@@ -668,6 +668,8 @@ namespace StockDory
         template<Color Color, bool PV, bool Root, bool NMPAllowed = true>
         Score PVS(const uint8_t ply, int16_t depth, Score alpha, Score beta)
         {
+            static_assert(!Root || PV, "The root must always be searched as PV");
+
             // Opponent's color for recursive calls
             constexpr auto OColor = Opposite(Color);
 
@@ -945,9 +947,9 @@ namespace StockDory
                 // that underestimates the position. As the static evaluation may have been refined to a mate score
                 // from the transposition table, we must not prune when it is a win or when beta is a loss, as the
                 // average of the two would be a score that is neither a mate score nor a meaningful evaluation
-                if (depth < ReverseFutilityMaximumDepth && !IsWin(staticEvaluation) && !IsLoss(beta)) {
-                    const Score     depthMargin = depth     * ReverseFutilityDepthFactor;
-                    const Score improvingMargin = improving * ReverseFutilityImprovingFactor;
+                if (depth < RFPMaximumDepth && !IsWin(staticEvaluation) && !IsLoss(beta)) {
+                    const Score     depthMargin = depth     * RFPDepthFactor;
+                    const Score improvingMargin = improving * RFPImprovingFactor;
 
                     if (staticEvaluation - depthMargin + improvingMargin >= beta) return (staticEvaluation + beta) / 2;
                 }
@@ -976,7 +978,7 @@ namespace StockDory
                 // binary search window, centered around our upper bound (beta) as their lower bound (alpha). If the
                 // branch is bad for the opponent, they'll be unable to improve upon their lower bound and fail-low. In
                 // turn, this can allow us to produce a beta cut-off and prune this branch
-                if (!Root && NMPAllowed && depth >= NullMoveMinimumDepth && staticEvaluation >= beta &&
+                if (!Root && NMPAllowed && depth >= NMPMinimumDepth && staticEvaluation >= beta &&
                     majorMaterial && !IsMate(beta) && !IsMate(staticEvaluation)) {
                     // The reduced depth is determined by the below formula:
                     //
@@ -984,23 +986,23 @@ namespace StockDory
                     // r = reduced depth
                     // e = static evaluation
                     // b = beta
-                    // dF = NullMoveDepthFactor
-                    // eF = NullMoveEvaluationFactor
-                    // mR = NullMoveMinimumReduction
+                    // dF = NMPDepthFactor
+                    // eF = NMPEvaluationFactor
+                    // mR = NMPMinimumReduction
                     //
                     // Using "//" to denote integer division - in C++, integer division approaches towards zero
                     //
                     // r = d - (mR + d // dF + min((e - b) // eF, mR))
 
-                    const auto ScalingDepthReduction      = depth / NullMoveDepthFactor;
+                    const auto ScalingDepthReduction      = depth / NMPDepthFactor;
                     const auto ScalingEvaluationReduction = std::min<int16_t>(
-                        (staticEvaluation - beta) / NullMoveEvaluationFactor,
-                        NullMoveMinimumReduction
+                        (staticEvaluation - beta) / NMPEvaluationFactor,
+                        NMPMinimumReduction
                     );
 
                     const int16_t reducedDepth =
                           depth
-                        - (  NullMoveMinimumReduction
+                        - (  NMPMinimumReduction
                           +  ScalingDepthReduction
                           +  ScalingEvaluationReduction
                           );
@@ -1032,8 +1034,6 @@ namespace StockDory
             // We continue from here if we are in check
             Checked:
 
-            using MoveList = OrderedMoveList<Color>;
-
             auto Continuation = [&](const uint8_t delta) -> const HTable&
             {
                 if (Stack[ply - delta].Move) return ContinuationHistory[delta % 2 == 0 ? Color : OColor]
@@ -1045,6 +1045,8 @@ namespace StockDory
 
             const HTable& counter  = Continuation(1);
             const HTable& followup = Continuation(2);
+
+            using MoveList = OrderedMoveList<Color>;
 
             MoveList moves (Board, ply, Killer, History, counter, followup, CaptureHistory, ttMove);
 
@@ -1076,31 +1078,31 @@ namespace StockDory
 
                 seenQuiets += quiet;
 
-                if (!checked && i >= 1 && quiet) {
+                // Avoid pruning when in check or if our best evaluation is currently a loss as that would potentially
+                // cause us to return a mate score
+                if (!checked && !IsLoss(bestEvaluation)) {
                     // Forward Futility Pruning (FFP):
                     //
-                    // FFP is a technique which tries to estimate whether it's futile to further search a position. It
-                    // uses the static evaluation of the position alongside a depth-dependent margin to predict whether
-                    // in a given position (if searched deeper) will likely ever be able to recover, and if not, then
-                    // it is futile to continue searching. Since breaking stores our best evaluation as an upper bound,
-                    // we must not prune while it is a loss (or while a loss is all the static evaluation tells us), as
-                    // that would store a mated score without having proven it
-                    const Score margin = depth * FutilityDepthFactor;
-
-                    if (!IsLoss(bestEvaluation) && !IsLoss(staticEvaluation) && staticEvaluation + margin <= alpha)
+                    // FFP is a technique which tries to reasonably estimate whether it's futile to continue searching
+                    // through the subtrees of a branch. It uses the static evaluation, with the addition of a margin
+                    // that depends on how far the search is from the leaf, and checks if the branch is recoverable; if
+                    // it is not, then the branch is pruned, saving search time for elsewhere
+                    if (!IsLoss(staticEvaluation) && quiet && staticEvaluation + depth * FFPDepthFactor <= alpha)
                         break;
-                }
 
-                if (!PV) {
-                    // Late Move Pruning (LMP):
-                    //
-                    // LMP is a technique that heavily relies on the move policy. It assumes that with a reasonable move
-                    // policy, it's very likely that all the good moves will be searched earlier and that moves that
-                    // appear later in the move list are unlikely to be good moves and thus we can avoid searching them.
-                    // Like FFP, we must not prune while our best evaluation is a loss (which includes when no move has
-                    // been searched yet)
-                    if (!Root && majorMaterial && !checked && depth <= LMPMaximumDepth &&
-                        seenQuiets > LMPLastQuietBase + depth * depth && !IsLoss(bestEvaluation)) break;
+                    // Avoid certain pruning in principle variation nodes (which includes root nodes) as it can cost us
+                    // to miss some important lines
+                    if (!PV) {
+                        // Late Move Pruning (LMP):
+                        //
+                        // LMP is a technique which heavily relies on the accuracy of the move policy: it leverages that
+                        // with an accurate and stable move policy, in the vast majority of branches, all the good moves
+                        // would have already been searched earlier and that all the moves that are searched later are
+                        // likely not good moves and we can avoid searching them entirely. This is less reliable further
+                        // from the leaves of the tree and hence applied at low depths
+                        if (majorMaterial && depth <= LMPMaximumDepth && seenQuiets > LMPLastQuietBase + depth * depth)
+                            break;
+                    }
                 }
 
                 const Piece movingPiece = Board[move.From()].Piece();
