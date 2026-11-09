@@ -1080,7 +1080,7 @@ namespace StockDory
 
                 // Avoid pruning when in check or if our best evaluation is currently a loss as that would potentially
                 // cause us to return a mate score
-                if (!checked && !IsLoss(bestEvaluation)) {
+                if (!Root && !checked && !IsLoss(bestEvaluation)) {
                     // Forward Futility Pruning (FFP):
                     //
                     // FFP is a technique which tries to reasonably estimate whether it's futile to continue searching
