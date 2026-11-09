@@ -1078,8 +1078,8 @@ namespace StockDory
 
                 seenQuiets += quiet;
 
-                // Avoid pruning when in check or if our best evaluation is currently a loss as that would potentially
-                // cause us to return a mate score
+                // Avoid pruning at root, when in check, or if our best evaluation so far is a loss (as that'll return
+                // a mated score without verifying)
                 if (!Root && !checked && !IsLoss(bestEvaluation)) {
                     // Forward Futility Pruning (FFP):
                     //
@@ -1090,8 +1090,7 @@ namespace StockDory
                     if (!IsLoss(staticEvaluation) && quiet && staticEvaluation + depth * FFPDepthFactor <= alpha)
                         break;
 
-                    // Avoid certain pruning in principle variation nodes (which includes root nodes) as it can cost us
-                    // to miss some important lines
+                    // Avoid certain pruning in principle variation nodes as it can cause us to miss important lines
                     if (!PV) {
                         // Late Move Pruning (LMP):
                         //
