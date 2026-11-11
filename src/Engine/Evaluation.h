@@ -37,6 +37,7 @@ namespace StockDory
             if (!result) {
                 std::cerr << "ERROR: Failed to load the embedded neural network: " << result.Message()
                           << " (tensor " << result.Tensor << ", index " << result.Index << ")" << std::endl;
+
                 std::abort();
             }
 
@@ -48,7 +49,7 @@ namespace StockDory
         public:
         static std::string Name()
         {
-            return "Corona";
+            return "Eclipse";
         }
 
         static void Initialize()
@@ -61,16 +62,16 @@ namespace StockDory
             for (size_t i = 0; i < threadCount; i++) ThreadLocalStack.emplace_back(NN);
         }
 
-        template<typename PieceBoards>
-        static void Reset(const PieceBoards& boards, const size_t threadId = 0)
+        template<typename BoardView>
+        static void Reset(const BoardView& board, const size_t threadId = 0)
         {
             Stack& stack = ThreadLocalStack[threadId];
 
-            stack.Reset(boards);
+            stack.Reset(board);
         }
 
         [[clang::always_inline]]
-        static void Push(const MantaRay::Delta& delta, const size_t threadId = 0)
+        static void Push(const MantaRay::PieceDelta& delta, const size_t threadId = 0)
         {
             Stack& stack = ThreadLocalStack[threadId];
 

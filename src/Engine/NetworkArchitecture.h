@@ -9,46 +9,55 @@
 #include <MantaRay/MantaRay.h>
 
 // Architecture:
-template<MantaRay::s00 HiddenSize, typename Activation = MantaRay::ClippedReLU<>, typename Schedule = MantaRay::Exact>
-using PerspectiveArchitecture = MantaRay::Architecture<
-    MantaRay::FeatureTransformer<MantaRay::Chess768, HiddenSize,
-        MantaRay::Weights<MantaRay::i16, 255, MantaRay::Clip<-1.98, 1.98>>,
-        MantaRay::Biases <MantaRay::i16, 255, MantaRay::Clip<-1.98, 1.98>>
-    >,
-    Activation,
-    MantaRay::Concat,
-    MantaRay::Affine<HiddenSize * 2, 1,
-        MantaRay::Weights<MantaRay::i16,       64, MantaRay::Clip<-1.98, 1.98>>,
-        MantaRay::Biases <MantaRay::i16, 255 * 64                             >,
-        Schedule
-    >,
-    MantaRay::Output<400>
->;
+namespace Networks
+{
 
-using StarshardArchitecture = PerspectiveArchitecture< 256                                                         >;
-using    AuroraArchitecture = PerspectiveArchitecture< 384                                                         >;
-using     FlareArchitecture = PerspectiveArchitecture< 768                                                         >;
-using    CoronaArchitecture = PerspectiveArchitecture< 768, MantaRay::SquaredClippedReLU<>, MantaRay::DivideBy<255>>;
-using   EclipseArchitecture = PerspectiveArchitecture<1536, MantaRay::SquaredClippedReLU<>, MantaRay::DivideBy<255>>;
+    template<size_t Hidden, bool SquaredActivation = true>
+    constexpr auto PerspectiveBase768()
+    {
+        using namespace MantaRay;
+
+        auto [stm, ntm] = Input<Chess768>();
+
+        const auto l0 = Affine(768, Hidden, Weights<i16>(255, Clip(1.98)), Biases<i16>(255, Clip(1.98)));
+        const auto l1 = SquaredActivation ?
+            Affine(2 * Hidden, 1, Weights<i16>(64, Clip(1.98)), Biases<i16>(255 * 64), DivideBy(255)) :
+            Affine(2 * Hidden, 1, Weights<i16>(64, Clip(1.98)), Biases<i16>(255 * 64)               ) ;
+
+        const auto yStm = SquaredActivation ? SquaredClippedReLU(l0(stm)) : ClippedReLU(l0(stm));
+        const auto yNtm = SquaredActivation ? SquaredClippedReLU(l0(ntm)) : ClippedReLU(l0(ntm));
+
+        const auto yConcat = Concat(yStm, yNtm);
+
+        const auto y = l1(yConcat);
+
+        return Output(y, 400);
+    }
+
+    constexpr auto Starshard() { return PerspectiveBase768<256, false>(); }
+    constexpr auto Aurora   () { return PerspectiveBase768<384, false>(); }
+    constexpr auto Flare    () { return PerspectiveBase768<768, false>(); }
+
+    constexpr auto Corona () { return PerspectiveBase768< 768>(); }
+    constexpr auto Eclipse() { return PerspectiveBase768<1536>(); }
+
+} // Networks
 
 // Network:
-using Starshard = MantaRay::Network<StarshardArchitecture>;
-using    Aurora = MantaRay::Network<   AuroraArchitecture>;
-using     Flare = MantaRay::Network<    FlareArchitecture>;
-using    Corona = MantaRay::Network<   CoronaArchitecture>;
-using   Eclipse = MantaRay::Network<  EclipseArchitecture>;
+using Starshard = MantaRay::Network<Networks::Starshard>;
+using    Aurora = MantaRay::Network<Networks::Aurora   >;
+using     Flare = MantaRay::Network<Networks::Flare    >;
+using    Corona = MantaRay::Network<Networks::Corona   >;
+using   Eclipse = MantaRay::Network<Networks::Eclipse  >;
 
 // Accumulator Stack:
 constexpr size_t AccumulatorStackSize = StockDory::MaxDepth + 1;
 
 // Defaults to lazy updates
-template<typename Architecture>
-using NetworkStack = MantaRay::AccumulatorStack<Architecture, AccumulatorStackSize>;
-
-using StarshardStack = NetworkStack<StarshardArchitecture>;
-using    AuroraStack = NetworkStack<   AuroraArchitecture>;
-using     FlareStack = NetworkStack<    FlareArchitecture>;
-using    CoronaStack = NetworkStack<   CoronaArchitecture>;
-using   EclipseStack = NetworkStack<  EclipseArchitecture>;
+using StarshardStack = MantaRay::AccumulatorStack<Networks::Starshard, AccumulatorStackSize>;
+using    AuroraStack = MantaRay::AccumulatorStack<Networks::Aurora   , AccumulatorStackSize>;
+using     FlareStack = MantaRay::AccumulatorStack<Networks::Flare    , AccumulatorStackSize>;
+using    CoronaStack = MantaRay::AccumulatorStack<Networks::Corona   , AccumulatorStackSize>;
+using   EclipseStack = MantaRay::AccumulatorStack<Networks::Eclipse  , AccumulatorStackSize>;
 
 #endif //STOCKDORY_NETWORKARCHITECTURE_H

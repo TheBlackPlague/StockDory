@@ -235,15 +235,28 @@ namespace StockDory
             }
         }
 
+        struct EvaluationBoardView
+        {
+
+            const BasicBoard& Position;
+
+            [[nodiscard]]
+            MantaRay::u64 Pieces(const MantaRay::u08 color, const MantaRay::Piece piece) const
+            {
+                return Position.PieceBoard(static_cast<::Piece>(piece), static_cast<::Color>(color));
+            }
+
+            [[nodiscard]]
+            MantaRay::u08 SideToMove() const
+            {
+                return Position.ColorToMove();
+            }
+
+        };
+
         void LoadForEvaluation(const size_t threadId = 0) const
         {
-            Evaluation::Reset(
-                [this](const uint8_t piece, const uint8_t color) -> BitBoard
-                {
-                    return PieceBoard(static_cast<::Piece>(piece), static_cast<::Color>(color));
-                },
-                threadId
-            );
+            Evaluation::Reset(EvaluationBoardView { *this }, threadId);
         }
 
         [[nodiscard]]
@@ -622,7 +635,7 @@ namespace StockDory
 
             if constexpr (Engine && (T & ZOBRIST)) Hash = Zobrist::HashColorFlip<T>(Hash);
 
-            MantaRay::Delta delta;
+            MantaRay::PieceDelta delta;
 
             if (move.Capture()) {
                 const Square captured      = move.EnPassant() ? static_cast<Square>(to ^ 8) : to;
@@ -631,7 +644,7 @@ namespace StockDory
                 RemovePiece (capturedPiece, opposite, captured);
                 HashPiece<T>(capturedPiece, opposite, captured);
 
-                if (T & NNUE) delta.Remove(capturedPiece, opposite, captured);
+                if (T & NNUE) delta.Remove(static_cast<MantaRay::Piece>(capturedPiece), opposite, captured);
             }
 
             if (move.Promotion() != NAP) {
@@ -641,15 +654,15 @@ namespace StockDory
                 HashPiece<T>(move.Promotion(), color,   to);
 
                 if (T & NNUE) {
-                    delta.Remove(     Pawn       , color, from);
-                    delta.Insert(move.Promotion(), color,  to );
+                    delta.Remove(static_cast<MantaRay::Piece>(     Pawn       ), color, from);
+                    delta.Insert(static_cast<MantaRay::Piece>(move.Promotion()), color,  to );
                 }
             } else {
                 TransitionPiece(piece, color, from, to);
                 HashPiece<T>   (piece, color, from    );
                 HashPiece<T>   (piece, color,       to);
 
-                if (T & NNUE) delta.Move(piece, color, from, to);
+                if (T & NNUE) delta.Move(static_cast<MantaRay::Piece>(piece), color, from, to);
 
                 if (move.Castling()) {
                     state.CastlingFrom = static_cast<Square>((from & 56) + (to > from ? 7 : 0));
@@ -659,7 +672,8 @@ namespace StockDory
                     HashPiece<T>   (Rook, color, state.CastlingFrom                  );
                     HashPiece<T>   (Rook, color,                     state.CastlingTo);
 
-                    if (T & NNUE) delta.Move(Rook, color, state.CastlingFrom, state.CastlingTo);
+                    if (T & NNUE)
+                        delta.Move(static_cast<MantaRay::Piece>(Rook), color, state.CastlingFrom, state.CastlingTo);
                 } else if (move.DoublePush()) {
                     const auto ep = static_cast<Square>(to ^ 8);
 
