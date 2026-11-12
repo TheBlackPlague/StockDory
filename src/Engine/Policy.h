@@ -108,12 +108,9 @@ namespace StockDory
             if (move.SameIdentity(KillerOne)) score += HistoryLimit    ;
             if (move.SameIdentity(KillerTwo)) score += HistoryLimit / 2;
 
-            score += History[Color][Piece][move.To()];
-
-            if (PromotionPiece == NAP) {
-                score += Counter [Color][Piece][move.To()];
-                score += Followup[Color][Piece][move.To()];
-            }
+            score += History [Color][Piece][move.To()];
+            score += Counter [Color][Piece][move.To()];
+            score += Followup[Color][Piece][move.To()];
 
             return score;
         }
