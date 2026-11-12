@@ -1078,9 +1078,9 @@ namespace StockDory
 
                 seenQuiets += quiet;
 
-                // Avoid pruning at root, when in check, or if our best evaluation so far is a loss (as that'll return
-                // a mated score without verifying)
-                if (!Root && !checked && !IsLoss(bestEvaluation)) {
+                // Avoid pruning in PV (includes root), when under check, or when our best evaluation so far is losing
+                // as we may return a mated score without verifying otherwise
+                if (!PV && !checked && !IsLoss(bestEvaluation)) {
                     // Forward Futility Pruning (FFP):
                     //
                     // FFP is a technique which tries to reasonably estimate whether it's futile to continue searching
@@ -1090,18 +1090,15 @@ namespace StockDory
                     if (!IsLoss(staticEvaluation) && quiet && staticEvaluation + depth * FFPDepthFactor <= alpha)
                         break;
 
-                    // Avoid certain pruning in principle variation nodes as it can cause us to miss important lines
-                    if (!PV) {
-                        // Late Move Pruning (LMP):
-                        //
-                        // LMP is a technique which heavily relies on the accuracy of the move policy: it leverages that
-                        // with an accurate and stable move policy, in the vast majority of branches, all the good moves
-                        // would have already been searched earlier and that all the moves that are searched later are
-                        // likely not good moves and we can avoid searching them entirely. This is less reliable further
-                        // from the leaves of the tree and hence applied at low depths
-                        if (majorMaterial && depth <= LMPMaximumDepth && seenQuiets > LMPLastQuietBase + depth * depth)
-                            break;
-                    }
+                    // Late Move Pruning (LMP):
+                    //
+                    // LMP is a technique which heavily relies on the accuracy of the move policy: it leverages that
+                    // with an accurate and stable move policy, in the vast majority of branches, all the good moves
+                    // would have already been searched earlier and that all the moves that are searched later are
+                    // likely not good moves and we can avoid searching them entirely. This is less reliable further
+                    // from the leaves of the tree and hence applied at low depths
+                    if (majorMaterial && depth <= LMPMaximumDepth && seenQuiets > LMPLastQuietBase + depth * depth)
+                        break;
                 }
 
                 const Piece movingPiece = Board[move.From()].Piece();
