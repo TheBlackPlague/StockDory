@@ -1109,22 +1109,22 @@ namespace StockDory
                     // move has been, historically, and how far we're currently from the leaves of the search tree. If
                     // it can be determined that the exchange is indeed losing past the margin, then most likely this
                     // exchange isn't worth exploring and can be skipped
-                    if (quiet) {
-                        const int32_t history = History [Color][movingPiece][move.To()] +
-                                                counter [Color][movingPiece][move.To()] +
-                                                followup[Color][movingPiece][move.To()] ;
-
-                        const int32_t margin = SEEPruningQuietDepthFactor * depth +
-                                               history / SEEPruningQuietHistoryDivisor;
-
-                        if (!SEE::Accurate(Board, move, -std::max<int32_t>(margin, 0))) continue;
-                    } else if (capture) {
+                    if (capture) {
                         const Piece targetPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
 
                         const int32_t history = CaptureHistory[Color][movingPiece][move.To()][targetPiece];
 
                         const int32_t margin = SEEPruningCaptureBase + SEEPruningCaptureDepthFactor * depth +
                                                history / SEEPruningCaptureHistoryDivisor;
+
+                        if (!SEE::Accurate(Board, move, -std::max<int32_t>(margin, 0))) continue;
+                    } else {
+                        const int32_t history = History [Color][movingPiece][move.To()] +
+                                                counter [Color][movingPiece][move.To()] +
+                                                followup[Color][movingPiece][move.To()] ;
+
+                        const int32_t margin = SEEPruningQuietDepthFactor * depth +
+                                               history / SEEPruningQuietHistoryDivisor;
 
                         if (!SEE::Accurate(Board, move, -std::max<int32_t>(margin, 0))) continue;
                     }
