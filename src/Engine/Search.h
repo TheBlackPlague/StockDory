@@ -1078,6 +1078,8 @@ namespace StockDory
 
                 seenQuiets += quiet;
 
+                const Piece movingPiece = Board[move.From()].Piece();
+
                 // Avoid pruning in PV (includes root), when under check, or when our best evaluation so far is losing
                 // as we may return a mated score without verifying otherwise
                 if (!PV && !checked && !IsLoss(bestEvaluation)) {
@@ -1099,9 +1101,34 @@ namespace StockDory
                     // from the leaves of the tree and hence applied at low depths
                     if (majorMaterial && depth <= LMPMaximumDepth && seenQuiets > LMPLastQuietBase + depth * depth)
                         break;
-                }
 
-                const Piece movingPiece = Board[move.From()].Piece();
+                    // Static Exchange Evaluation (SEE) Pruning:
+                    //
+                    // SEE is essentially a cheap evaluation that determines if an exchange of pieces started by a move
+                    // is materially favorable or not past a certain margin, which is largely dependent on how good the
+                    // move has been, historically, and how far we're currently from the leaves of the search tree. If
+                    // it can be determined that the exchange is indeed losing past the margin, then most likely this
+                    // exchange isn't worth exploring and can be skipped
+                    if (quiet) {
+                        const int32_t history = History [Color][movingPiece][move.To()] +
+                                                counter [Color][movingPiece][move.To()] +
+                                                followup[Color][movingPiece][move.To()] ;
+
+                        const int32_t margin = SEEPruningQuietDepthFactor * depth +
+                                               history / SEEPruningQuietHistoryDivisor;
+
+                        if (!SEE::Accurate(Board, move, -std::max<int32_t>(margin, 0))) continue;
+                    } else if (capture) {
+                        const Piece targetPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
+
+                        const int32_t history = CaptureHistory[Color][movingPiece][move.To()][targetPiece];
+
+                        const int32_t margin = SEEPruningCaptureBase + SEEPruningCaptureDepthFactor * depth +
+                                               history / SEEPruningCaptureHistoryDivisor;
+
+                        if (!SEE::Accurate(Board, move, -std::max<int32_t>(margin, 0))) continue;
+                    }
+                }
 
                 uint64_t nodesBeforeMove = 0;
 

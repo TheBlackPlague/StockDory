@@ -140,6 +140,12 @@ namespace StockDory
 
     PARAMETER(uint8_t, FFPDepthFactor, 150, 75, 255);
 
+    PARAMETER(uint8_t , SEEPruningQuietDepthFactor     ,  64,  16, 128);
+    PARAMETER(uint8_t , SEEPruningQuietHistoryDivisor  ,  16,   4,  64);
+    PARAMETER(uint16_t, SEEPruningCaptureBase          , 400, 100, 800);
+    PARAMETER(uint8_t , SEEPruningCaptureDepthFactor   ,  40,  10, 120);
+    PARAMETER(uint8_t , SEEPruningCaptureHistoryDivisor,  16,   4,  64);
+
     PARAMETER(uint16_t, HistoryMultiplier, 300, 150, 450);
     PARAMETER(uint16_t, HistoryShiftDown , 250,   0, 500);
 
