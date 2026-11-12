@@ -105,6 +105,8 @@ namespace StockDory
                 return score;
             }
 
+            if (PromotionPiece != NAP) return score;
+
             if (move.SameIdentity(KillerOne)) score += HistoryLimit    ;
             if (move.SameIdentity(KillerTwo)) score += HistoryLimit / 2;
 
