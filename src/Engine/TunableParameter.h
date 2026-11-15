@@ -73,7 +73,7 @@ namespace StockDory
     };
 
 #define PARAMETER(Type, Name, Value, Min, Max) \
-    inline constinit Type Name = Value; \
+    constinit Type Name = Value; \
     [[maybe_unused]] inline const bool Name##Registered = TunableParameter::Register<Name>(#Name, Value, Min, Max)
 
 #else
@@ -169,4 +169,4 @@ namespace StockDory
 
 }
 
-#endif
+#endif //STOCKDORY_TUNABLEPARAMETER_H

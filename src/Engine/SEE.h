@@ -6,10 +6,7 @@
 #ifndef STOCKDORY_SEE_H
 #define STOCKDORY_SEE_H
 
-#include "../Backend/Board.h"
-#include "../Backend/Type/Move.h"
-
-#include "Common.h"
+#include "Board.h"
 
 namespace StockDory
 {
@@ -24,15 +21,15 @@ namespace StockDory
         public:
         static bool Accurate(const Board& board, const Move move, const int32_t threshold)
         {
-            if (move.Promotion() != NAP || move.EnPassant() || move.Castling()) return true;
+            if (move.Promotion() != NAPT || move.EnPassant() || move.Castling()) return true;
 
             const Square from = move.From();
             const Square to   = move.  To();
 
-            int32_t value = Internal[board[to].Piece()] - threshold;
+            int32_t value = Internal[board[to].Type()] - threshold;
             if (value < 0) return false;
 
-            value -= Internal[board[from].Piece()];
+            value -= Internal[board[from].Type()];
             if (value >= 0) return true;
 
             const BitBoard diagonal = board.PieceBoard<White>(Bishop) | board.PieceBoard<Black>(Bishop) |
@@ -40,41 +37,39 @@ namespace StockDory
             const BitBoard straight = board.PieceBoard<White>(Rook  ) | board.PieceBoard<Black>(Rook  ) |
                                       board.PieceBoard<White>(Queen ) | board.PieceBoard<Black>(Queen ) ;
 
-            BitBoard occ = ~board[NAC] ^ FromSquare(from);
-            BitBoard att = board.SquareAttackers(to, occ);
+            BitBoard occ = board.Occupied() ^ FromSquare(from);
+            BitBoard att = board.Attackers(to, occ);
 
-            Color ctm = Opposite(board.ColorToMove());
+            Side ctm = Opposite(board.SideToMove());
             while (true) {
                 att &= occ;
 
                 const BitBoard us = att & board[ctm];
                 if (!us) break;
 
-                Piece piece;
-                for (piece = Pawn; piece < King; piece = Next(piece)) if (us & board.PieceBoard(piece, ctm)) break;
+                PieceType type;
+                for (type = Pawn; type < King; type = Next(type)) if (us & board.PieceBoard(type, ctm)) break;
 
                 ctm = Opposite(ctm);
 
-                value = -value - 1 - Internal[piece];
+                value = -value - 1 - Internal[type];
                 if (value >= 0) {
-                    if (piece == King && att & board[ctm]) ctm = Opposite(ctm);
+                    if (type == King && att & board[ctm]) ctm = Opposite(ctm);
 
                     break;
                 }
 
-                Set<false>(occ, ToSquare(us & board.PieceBoard(piece, Opposite(ctm))));
+                Clear(occ, ToSquare(us & board.PieceBoard(type, Opposite(ctm))));
 
-                if (piece == Pawn || piece == Bishop || piece == Queen) {
-                    const uint32_t idx = BlackMagicFactory::MagicIndex(Bishop, move.To(), occ);
-                    att |= AttackTable::Sliding[idx] & diagonal;
+                if (type == Pawn || type == Bishop || type == Queen) {
+                    att |= AttackTable::Bishop(move.To(), occ) & diagonal;
                 }
-                if (piece == Rook || piece == Queen) {
-                    const uint32_t idx = BlackMagicFactory::MagicIndex(Rook, move.To(), occ);
-                    att |= AttackTable::Sliding[idx] & straight;
+                if (type == Rook || type == Queen) {
+                    att |= AttackTable::Rook  (move.To(), occ) & straight;
                 }
             }
 
-            return ctm != board.ColorToMove();
+            return ctm != board.SideToMove();
         }
 
     };

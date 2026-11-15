@@ -6,16 +6,12 @@
 #ifndef STOCKDORY_POLICY_H
 #define STOCKDORY_POLICY_H
 
-#include "../Backend/Board.h"
-#include "../Backend/Type/Move.h"
-
-#include "Common.h"
 #include "SEE.h"
 
 namespace StockDory
 {
 
-    template<Color Color, bool CaptureOnly = false>
+    template<Side Us, bool CaptureOnly = false>
     class Policy
     {
 
@@ -59,18 +55,17 @@ namespace StockDory
         public:
         Policy(
             const StockDory::Board& board,
-            const Move kOne,
-            const Move kTwo,
+            const Move killerOne,
+            const Move killerTwo,
             const HTable&  history,
             const HTable&  counter,
             const HTable& followup,
             const CaptureHTable& captureHistory,
             const Move tt
-        )
-        : Board(board), KillerOne(kOne), KillerTwo(kTwo), History(history), Counter(counter),
-          Followup(followup), CaptureHistory(captureHistory), TTMove(tt) {}
+        ) : Board(board), KillerOne(killerOne), KillerTwo(killerTwo), History(history), Counter(counter),
+            Followup(followup), CaptureHistory(captureHistory), TTMove(tt) {}
 
-        template<Piece Piece, enum Piece PromotionPiece = NAP>
+        template<PieceType Type, PieceType Promotion = NAPT>
         int32_t Score(const Move move) const
         {
             // Policy:
@@ -93,26 +88,26 @@ namespace StockDory
 
             int32_t score = 0;
 
-            if (PromotionPiece != NAP) score += PromotionFactor[PromotionPiece] * PromotionMultiplier;
+            if (Promotion != NAPT) score += PromotionFactor[Promotion] * PromotionMultiplier;
 
             if (CaptureOnly || move.Capture()) {
                 const bool goodCapture = SEE::Accurate(Board, move, 0);
-                const auto targetPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
+                const auto targetPiece = move.EnPassant() ? Pawn : Board[move.To()].Type();
 
-                score += MvvLva[targetPiece][Piece] * (goodCapture ? 20 : 1);
-                score += CaptureHistory[Color][Piece][move.To()][targetPiece];
+                score += MvvLva[targetPiece][Type] * (goodCapture ? 20 : 1);
+                score += CaptureHistory[Us][Type][move.To()][targetPiece];
 
                 return score;
             }
 
-            if (PromotionPiece != NAP) return score;
+            if (Promotion != NAPT) return score;
 
             if (move.SameIdentity(KillerOne)) score += HistoryLimit    ;
             if (move.SameIdentity(KillerTwo)) score += HistoryLimit / 2;
 
-            score += History [Color][Piece][move.To()];
-            score += Counter [Color][Piece][move.To()];
-            score += Followup[Color][Piece][move.To()];
+            score += History [Us][Type][move.To()];
+            score += Counter [Us][Type][move.To()];
+            score += Followup[Us][Type][move.To()];
 
             return score;
         }

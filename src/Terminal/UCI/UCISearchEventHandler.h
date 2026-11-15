@@ -6,69 +6,60 @@
 #ifndef STOCKDORY_UCISEARCHEVENTHANDLER_H
 #define STOCKDORY_UCISEARCHEVENTHANDLER_H
 
-#include "../../Engine/Search.h"
+#include <algorithm>
+#include <cstdint>
+#include <format>
+#include <string>
+
+#include "Engine/Engine.h"
+
+#include "Terminal/Output.h"
 
 namespace StockDory
 {
 
-    class UCISearchEventHandler : DefaultSearchEventHandler
+    struct UCISearchEventHandler
     {
 
-        static inline bool OutputWDL = false;
+        bool ShowWDL  = false;
+        bool ChessFRC = false;
 
-        static std::string PVLine(const PVEntry& pv)
+        void HandleIterationCompletion(const IterationCompletionEvent& event) const
         {
-            std::stringstream line;
+            const int64_t time = std::max<int64_t>(event.Time.count(), 1);
 
-            for (uint8_t i = 0; i < pv.Ply; i++) {
-                line << pv.PV[i].ToString();
+            const auto nps = static_cast<uint64_t>(static_cast<double>(event.Nodes) /
+                                                  (static_cast<double>(time       ) / 1000.0));
 
-                if (i != pv.Ply - 1) line << " ";
-            }
-
-            return line.str();
-        }
-
-        public:
-        static void HandleIterativeDeepeningIterationCompletion(const IterativeDeepeningIterationCompletionEvent& event)
-        {
-            std::stringstream output;
-
-            int64_t displayedTime = event.Time.count();
-            displayedTime         = std::max(displayedTime, static_cast<int64_t>(1));
-
-            const auto nps = static_cast<uint64_t>(static_cast<double>(event.Nodes  ) /
-                                                  (static_cast<double>(displayedTime) / 1000.0));
-
-            output << "info depth " << static_cast<uint16_t>(event.         Depth) << " ";
-            output <<   "seldepth " << static_cast<uint16_t>(event.SelectiveDepth) << " ";
-
-            output << "score ";
+            std::string line = std::format("info depth {} seldepth {} ", event.Depth, event.SelectiveDepth);
 
             if (IsMate(event.Evaluation)) {
                 const Score ply = PlyToMate(event.Evaluation);
 
-                output << "mate " << (ply > 0 ? (ply + 1) / 2 : (ply - 1) / 2) << " ";
+                line += std::format("score mate {} ", ply > 0 ? (ply + 1) / 2 : (ply - 1) / 2);
             } else {
-                output << "cp " << event.Evaluation << " ";
+                line += std::format("score cp {} ", event.Evaluation);
             }
 
-            if (OutputWDL) output << "wdl " << event.WDL.W << " " << event.WDL.D << " " << event.WDL.L << " ";
+            if (ShowWDL) line += std::format("wdl {} {} {} ", event.WDL.W, event.WDL.D, event.WDL.L);
 
-            output << "nodes " << event.Nodes << " ";
-            output << "nps " << nps << " ";
-            output << "time " << displayedTime << " ";
-            output << "pv " << PVLine(event.PVEntry);
+            line += std::format("nodes {} nps {} hashfull {} time {} ", event.Nodes, nps, Engine::HashFull(), time);
 
-            std::cout << output.str() << std::endl;
+            line += "pv ";
+
+            for (uint8_t i = 0; i < event.PVEntry.Ply; i++) {
+                if (i != 0) line += " ";
+
+                line += event.Board.ToString(event.PVEntry.PV[i], ChessFRC);
+            }
+
+            Print(line);
         }
 
-        static void HandleIterativeDeepeningCompletion(const IterativeDeepeningCompletionEvent& event)
+        void HandleSearchCompletion(const SearchCompletionEvent& event) const
         {
-            std::cout << "bestmove " << event.Move.ToString() << std::endl;
+            Print(std::format("bestmove {}", event.Board.ToString(event.Move, ChessFRC)));
         }
-
-        static void SetOutputWDL(const bool value) { OutputWDL = value; }
 
     };
 

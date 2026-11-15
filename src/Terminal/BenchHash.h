@@ -6,12 +6,15 @@
 #ifndef STOCKDORY_BENCHHASH_H
 #define STOCKDORY_BENCHHASH_H
 
-#include <numeric>
-#include <array>
+#include <algorithm>
+#include <chrono>
+#include <cstdint>
+#include <format>
 #include <string>
 
-#include "../Engine/Search.h"
-#include "../External/strutil.h"
+#include "Engine/Engine.h"
+
+#include "Terminal/Output.h"
 
 namespace StockDory
 {
@@ -19,9 +22,10 @@ namespace StockDory
     class BenchHash
     {
 
-        constexpr static size_t BenchCount = 50;
-        constexpr static auto   BenchLimit = Limit { .Depth = 15 };
+        constexpr static size_t  BenchCount = 50;
+        constexpr static uint8_t BenchDepth = 15;
 
+        // ReSharper disable StringLiteralTypo
         static inline Array<std::string, BenchCount> Positions {
             "r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14",
             "4rrk1/2p1b1p1/p1p3q1/4p3/2P2n1p/1P1NR2P/PB3PP1/3R1QK1 b - - 2 24",
@@ -74,48 +78,42 @@ namespace StockDory
             "3br1k1/p1pn3p/1p3n2/5pNq/2P1p3/1PN3PP/P2Q1PB1/4R1K1 w - - 0 23",
             "2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93"
         };
-
-        static inline SearchTask<> Search {};
+        // ReSharper restore StringLiteralTypo
 
         public:
         static void Run()
         {
-            Array<uint64_t, BenchCount> nodes;
-            Array<   MS   , BenchCount> times;
+            uint64_t                 nodeC = 0;
+            std::chrono::nanoseconds timeC {};
 
             for (size_t i = 0; i < BenchCount; i++) {
-                std::cout << "Position (" << std::setw(2) << std::setfill('0')
-                          << static_cast<uint16_t>(i + 1) << "/" << static_cast<uint16_t>(BenchCount) << "): ";
-                std::cout << Positions[i];
+                Engine::NewGame();
 
-                Board           board(Positions[i]);
-                RepetitionStack repetition;
+                if (const auto set = Engine::SetPosition(Positions[i]); !set) [[unlikely]]
+                    return Error(std::format("Bench position {}: {}", i + 1, set.error()));
 
-                const uint8_t hmc = static_cast<uint8_t>(std::stoi(strutil::split(Positions[i], ' ')[4]));
+                const SearchResult result = Engine::Search({ .Depth = BenchDepth });
 
-                repetition.Push(board.Zobrist());
+                nodeC += result.Nodes;
+                timeC += result.Time ;
 
-                ReplaceInline(Search, BenchLimit, board, repetition, hmc);
-
-                Search.IterativeDeepening();
-
-                times[i] = Search.ElapsedTime();
-                nodes[i] = Search.GetNodes();
-
-                const Score evaluation = Search.GetEvaluation();
-                std::cout << " -> " << evaluation << " cp " << nodes[i] << " nodes" << std::endl;
-
-                TT.Clear();
+                Print(std::format(
+                    "Position ({:02}/{}): {} -> {} cp {} nodes",
+                    i + 1,
+                    BenchCount,
+                    Positions[i],
+                    result.Evaluation,
+                    result.Nodes
+                ));
             }
 
-            const auto nodeC = std::accumulate(nodes.begin(), nodes.end(),    0ULL);
-            const auto timeC = std::accumulate(times.begin(), times.end(), MS(0)  );
-
-            const auto nps = static_cast<uint64_t>(
-                static_cast<double>(nodeC) / (static_cast<double>(timeC.count()) / 1000.0)
+            const uint64_t ms = std::max<uint64_t>(
+                1, static_cast<uint64_t>(std::chrono::duration_cast<MS>(timeC).count())
             );
 
-            std::cout << nodeC << " nodes " << nps << " nps" << std::endl;
+            const uint64_t nps = nodeC * 1000 / ms;
+
+            Print(std::format("{} nodes {} nps", nodeC, nps));
         }
 
     };
