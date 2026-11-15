@@ -400,7 +400,7 @@ namespace StockDory
                 else if (errno != EINVAL) break;
             }
 
-            constexpr std::string procCgroup = "/proc/self/cgroup", cgroupRoot = "/sys/fs/cgroup";
+            const std::string procCgroup = "/proc/self/cgroup", cgroupRoot = "/sys/fs/cgroup";
             const auto Tighten = [&](const std::string& directory, const bool v2) -> void
             {
                 long long q = 0, p = 0;
