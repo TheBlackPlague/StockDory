@@ -381,22 +381,10 @@ namespace StockDory
     [[gnu::used]]
     CacheLine<Atomic<bool>> SearchStopped { true };
 
-    template<SearchThreadType ThreadType>
-    class SearchTask;
-
-    inline std::vector<SearchTask<Parallel>*> ParallelTaskPool;
-
-    template<SearchThreadType ThreadType>
-    class alignas(DestructiveAlignment) SearchTask
+    struct SearchPersistentData
     {
 
-        Board Board {};
-
-        Evaluator Evaluator {};
-
-        KTable Killer  {};
-        HTable History {};
-
+               HTable        History {};
         CaptureHTable CaptureHistory {};
 
          CHTable           ContinuationHistory {};
@@ -404,6 +392,29 @@ namespace StockDory
 
         MinorCTable MinorCorrectionHistory {};
         MajorCTable MajorCorrectionHistory {};
+
+        void Decay()
+        {
+            for (auto& side : History) for (auto& piece : side) for (int16_t& history : piece)
+                history = static_cast<int16_t>(history * HistoryDecayFactorN / HistoryDecayFactorD);
+        }
+
+    };
+
+    template<SearchThreadType ThreadType>
+    class SearchTask;
+
+    inline std::vector<SearchTask<Parallel>*> ParallelTaskPool;
+
+    template<SearchThreadType ThreadType>
+    class alignas(DestructiveAlignment) SearchTask : public SearchPersistentData
+    {
+
+        Board Board {};
+
+        Evaluator Evaluator {};
+
+        KTable Killer {};
 
         SearchStack Stack {};
 
@@ -439,9 +450,10 @@ namespace StockDory
             const StockDory::Limit&          limit,
             const StockDory::Board&          board,
             const RepetitionStack&      repetition,
-            const uint8_t            halfMoveClock
+            const uint8_t            halfMoveClock,
+            const SearchPersistentData& persistent
         )
-        : Board(board), Repetition(repetition), Limit(limit)
+        : SearchPersistentData(persistent), Board(board), Repetition(repetition), Limit(limit)
         {
             Stack[0].HalfMoveClock = halfMoveClock;
         }

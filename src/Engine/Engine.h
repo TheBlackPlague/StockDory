@@ -137,6 +137,8 @@ namespace StockDory
 
             ThreadPool.For(parts, [parts](const size_t part) -> void { TT.Clear(part, parts); });
 
+            ThreadedSearch::Reset();
+
             Board      = {};
             Repetition = {};
 
