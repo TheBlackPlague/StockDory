@@ -8,17 +8,13 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
-#include <memory>
-#include <ranges>
+#include <concepts>
+#include <vector>
 
-#include "../Backend/Board.h"
-#include "../Backend/Misc.h"
-#include "../Backend/ThreadPool.h"
-#include "../Backend/Type/Move.h"
-
-#include "Common.h"
-#include "OrderedMoveList.h"
+#include "Evaluation.h"
+#include "MoveList.h"
 #include "TranspositionTable.h"
 #include "TunableParameter.h"
 
@@ -55,7 +51,7 @@ namespace StockDory
 
         CompressedScore SearchEvaluation = None;
         CompressedScore ScaledEvaluation = None;
-        Move            Move             = ::Move();
+        Move            Move             = StockDory::Move();
         uint8_t         Depth            = 0;
         EntryType       Type             = Invalid;
 
@@ -91,10 +87,10 @@ namespace StockDory
             Score CorrectedEvaluation = None;
             Score    StaticEvaluation = None;
 
-            uint8_t HalfMoveCounter = 0;
+            uint8_t HalfMoveClock = 0;
 
-            Piece PieceToMove = NAP;
-            Move         Move = { };
+            PieceType PieceToMove = NAPT;
+            Move             Move = { };
 
         };
 
@@ -161,12 +157,12 @@ namespace StockDory
 
         void PopNull(const size_t previous) { Pop(); NullBoundary = previous; }
 
-        bool Found(const uint8_t halfMoveCounter) const
+        bool Found(const uint8_t halfMoveClock) const
         {
             if (CurrentIndex <= NullBoundary) return false;
 
             const size_t current = CurrentIndex - 1;
-            const size_t limit   = std::min<size_t>(halfMoveCounter, current - NullBoundary);
+            const size_t limit   = std::min<size_t>(halfMoveClock, current - NullBoundary);
 
             const ZobristHash hash = Internal[current];
 
@@ -194,14 +190,6 @@ namespace StockDory
     };
 
     using PVTable = Array<PVEntry, MaxDepth + 1>;
-
-    enum SearchTaskStatus : uint8_t
-    {
-
-        Stopped,
-        Running
-
-    };
 
     enum SearchThreadType : uint8_t
     {
@@ -315,7 +303,7 @@ namespace StockDory
 
     };
 
-    struct IterativeDeepeningIterationCompletionEvent
+    struct IterationCompletionEvent
     {
 
         uint8_t          Depth {};
@@ -329,31 +317,82 @@ namespace StockDory
 
         PVEntry PVEntry {};
 
+        Board Board {};
+
     };
 
-    struct IterativeDeepeningCompletionEvent
+    struct SearchResult
     {
 
-        Move Move {};
+        Move        Move     {};
+        Score Evaluation = None;
+
+        uint64_t Nodes = 0;
+
+        std::chrono::nanoseconds Time {};
 
     };
 
-    struct DefaultSearchEventHandler
+    struct SearchCompletionEvent
     {
 
-        static void HandleIterativeDeepeningIterationCompletion(const IterativeDeepeningIterationCompletionEvent& _)
-        {}
-
-        static void HandleIterativeDeepeningCompletion(const IterativeDeepeningCompletionEvent& _)
-        {}
+        Move           Move {};
+        SearchResult Result {};
+        Board         Board {};
 
     };
 
-    template<SearchThreadType ThreadType = Main, class EventHandler = DefaultSearchEventHandler>
+    class SearchEventSink
+    {
+
+        using  IterationEvent = IterationCompletionEvent;
+        using CompletionEvent =    SearchCompletionEvent;
+
+        void* Handler = nullptr;
+
+        void (*Iteration )(void*, const  IterationEvent&) = [](void*, const  IterationEvent&) -> void {};
+        void (*Completion)(void*, const CompletionEvent&) = [](void*, const CompletionEvent&) -> void {};
+
+        public:
+        SearchEventSink() = default;
+
+        template<typename H>
+        requires (!std::same_as<H, SearchEventSink>)
+        explicit SearchEventSink(H& handler) : Handler(&handler)
+        {
+            Iteration  = [](void* h, const  IterationEvent& event) -> void
+            {
+                static_cast<H*>(h)->HandleIterationCompletion(event);
+            };
+
+            Completion = [](void* h, const CompletionEvent& event) -> void
+            {
+                static_cast<H*>(h)->   HandleSearchCompletion(event);
+            };
+        }
+
+        void HandleIterationCompletion(const  IterationEvent& event) const { Iteration (Handler, event); }
+        void    HandleSearchCompletion(const CompletionEvent& event) const { Completion(Handler, event); }
+
+    };
+
+    SearchEventSink EventHandler;
+
+    [[gnu::used]]
+    CacheLine<Atomic<bool>> SearchStopped { true };
+
+    template<SearchThreadType ThreadType>
+    class SearchTask;
+
+    inline std::vector<SearchTask<Parallel>*> ParallelTaskPool;
+
+    template<SearchThreadType ThreadType>
     class alignas(DestructiveAlignment) SearchTask
     {
 
         Board Board {};
+
+        Evaluator Evaluator {};
 
         KTable Killer  {};
         HTable History {};
@@ -391,28 +430,32 @@ namespace StockDory
 
         bool SingleMove = false;
 
-        size_t ThreadId = 0;
-
-        Atomic<    uint64_t    > Nodes  {    0    };
-        Atomic<SearchTaskStatus> Status { Running };
+        CacheLine<Atomic<uint64_t>> Nodes { 0 };
 
         public:
         SearchTask() {}
 
-        // ReSharper disable CppPassValueParameterByConstReference
         SearchTask(
-            const StockDory::Limit      limit,
-            const StockDory::Board      board,
-            const RepetitionStack  repetition,
-            const uint8_t                 hmc,
-            const size_t             threadId = 0)
-        : Board(board), Repetition(repetition), Limit(limit), ThreadId(threadId)
+            const StockDory::Limit&          limit,
+            const StockDory::Board&          board,
+            const RepetitionStack&      repetition,
+            const uint8_t            halfMoveClock
+        )
+        : Board(board), Repetition(repetition), Limit(limit)
         {
-            Stack[0].HalfMoveCounter = hmc;
+            Stack[0].HalfMoveClock = halfMoveClock;
         }
-        // ReSharper restore CppPassValueParameterByConstReference
 
         uint64_t GetNodes() const { return Nodes.Load(MemoryOrder::relaxed); }
+
+        uint64_t TotalNodes() const
+        {
+            uint64_t nodes = GetNodes();
+
+            for (const SearchTask<Parallel>* task : ParallelTaskPool) nodes += task->GetNodes();
+
+            return nodes;
+        }
 
         void IterativeDeepening()
         {
@@ -426,17 +469,16 @@ namespace StockDory
                 StartTime = std::chrono::steady_clock::now();
             }
 
-            // Load the board state for evaluation purposes (this needs to be done for all threads with their respective
-            // thread IDs as each thread has its own evaluation state)
-            Board.LoadForEvaluation(ThreadId);
+            // Load the board state for evaluation purposes (this needs to be done for all threads as each thread has
+            // its own evaluation state)
+            Evaluator.Reset(Board);
 
             Depth = 1;
             while (Depth < MaxDepth && Depth <= Limit.Depth && !OutOfTime<Limit::Optimal>()) {
-                if (Board.ColorToMove() ==   White)
+                if (Board.SideToMove() ==    White)
                      Evaluation = Aspiration<White>(Depth);
                 else Evaluation = Aspiration<Black>(Depth);
 
-                // In the case that the search was stopped, we should just proceed to fire the completion event
                 if (Stopped()) break;
 
                 if (ThreadType == Main) {
@@ -448,24 +490,24 @@ namespace StockDory
 
                     SearchTimeManagement();
 
-                    EventHandler::HandleIterativeDeepeningIterationCompletion({
+                    EventHandler.HandleIterationCompletion({
                         .         Depth =          Depth,
                         .SelectiveDepth = SelectiveDepth,
 
                         .Evaluation = WDLCalculator::S(Board, Evaluation),
                         .WDL        = WDL             (Board, Evaluation),
 
-                        .Nodes = GetNodes(),
+                        .Nodes = TotalNodes(),
                         .Time  = time,
 
-                        .PVEntry = PVTable[0]
+                        .PVEntry = PVTable[0],
+
+                        .Board = Board
                     });
                 }
 
                 Depth++;
             }
-
-            Stop();
 
             if (ThreadType == Main) {
                 // If the search was stopped before the first iteration could complete, we have no best move. We should
@@ -475,27 +517,24 @@ namespace StockDory
                 if (!BestMove) [[unlikely]] BestMove = PVTable[0].PV[0];
 
                 if (!BestMove) [[unlikely]] {
-                    if (Board.ColorToMove() == White) {
-                        const OrderedMoveList<White, false, false> moves (Board);
-                        if (moves.Count() > 0) BestMove = moves.UnsortedAccess(0);
-                    } else {
-                        const OrderedMoveList<Black, false, false> moves (Board);
-                        if (moves.Count() > 0) BestMove = moves.UnsortedAccess(0);
-                    }
+                    BestMove = WithSide(
+                        Board.SideToMove(),
+                        [&]<Side Us> -> Move
+                        {
+                            const MoveList<Us> moves (Board);
+
+                            return moves.Count() > 0 ? moves[0] : Move {};
+                        }
+                    );
                 }
-
-                // The main thread is responsible for notifying the handlers about the completion of the search,
-                // providing them with the best move found
-
-                EventHandler::HandleIterativeDeepeningCompletion({
-                    .Move = BestMove
-                });
             }
         }
 
-        void Stop() { Status.Store(SearchTaskStatus::Stopped, MemoryOrder::relaxed); }
+        // ReSharper disable once CppMemberFunctionMayBeStatic
+        void Stop() { SearchStopped.Store(true, MemoryOrder::relaxed); }
 
-        bool Stopped() const { return Status.Load(MemoryOrder::relaxed) == SearchTaskStatus::Stopped; }
+        // ReSharper disable once CppMemberFunctionMayBeStatic
+        bool Stopped() const { return SearchStopped.Load(MemoryOrder::relaxed); }
 
         Score GetEvaluation() const { return WDLCalculator::S(Board, Evaluation); }
 
@@ -503,6 +542,11 @@ namespace StockDory
 
         MS ElapsedTime() const
         { return std::chrono::duration_cast<MS>(std::chrono::steady_clock::now() - StartTime); }
+
+        SearchResult Summary(const uint64_t nodes, const std::chrono::nanoseconds time) const
+        {
+            return { .Move = BestMove, .Evaluation = GetEvaluation(), .Nodes = nodes, .Time = time };
+        }
 
         private:
         void IncrementNodes() { Nodes.Store(Nodes.Load(MemoryOrder::relaxed) + 1, MemoryOrder::relaxed); }
@@ -523,17 +567,7 @@ namespace StockDory
             if (!Limit.Timed) return;
             if ( Limit.Fixed) return;
 
-            uint8_t moveCount;
-
-            if (Board.ColorToMove() == White) {
-                const OrderedMoveList<White, false, false> moves (Board);
-                moveCount = moves.Count();
-            } else {
-                const OrderedMoveList<Black, false, false> moves (Board);
-                moveCount = moves.Count();
-            }
-
-            SingleMove = moveCount <= 1;
+            SingleMove = MoveCount(Board) <= 1;
 
             if (!SingleMove) return;
 
@@ -579,7 +613,7 @@ namespace StockDory
             Limit.OptimalTime = MS(optimalTime);
         }
 
-        template<Color Color>
+        template<Side Us>
         Score Aspiration(const int16_t depth)
         {
             Score alpha = -Infinity;
@@ -627,7 +661,7 @@ namespace StockDory
 
                 const int16_t adjustedDepth = std::max<int16_t>(depth - reduction, 1);
 
-                const Score bestEvaluation = PVS<Color, true, true>(0, adjustedDepth, alpha, beta);
+                const Score bestEvaluation = PVS<Us, true, true>(0, adjustedDepth, alpha, beta);
 
                 // Optimal Search Space Searching:
                 //
@@ -665,13 +699,13 @@ namespace StockDory
             }
         }
 
-        template<Color Color, bool PV, bool Root, bool NMPAllowed = true>
+        template<Side Us, bool PV, bool Root, bool NMPAllowed = true>
         Score PVS(const uint8_t ply, int16_t depth, Score alpha, Score beta)
         {
             static_assert(!Root || PV, "The root must always be searched as PV");
 
-            // Opponent's color for recursive calls
-            constexpr auto OColor = Opposite(Color);
+            // Opponent's side for recursive calls
+            constexpr Side Them = Opposite(Us);
 
             if (ThreadType == Main) {
                 const uint64_t nodes = GetNodes();
@@ -698,12 +732,12 @@ namespace StockDory
                 if (PV) SelectiveDepth = std::max(SelectiveDepth, ply);
             }
 
-            const bool checked = Board.Checked<Color>();
+            const bool checked = Board.Checked<Us>();
 
             // We should stop searching if we have reached the maximum depth as otherwise we may start accessing
             // memory we haven't allocated
             if (ply >= MaxDepth) [[unlikely]]
-                return checked ? Draw : CorrectEvaluation<Color>(ScaleEvaluation<Color>(), ply);
+                return checked ? Draw : CorrectEvaluation<Us>(ScaleEvaluation<Us>(), ply);
 
             const ZobristHash hash = Board.Zobrist();
 
@@ -716,17 +750,15 @@ namespace StockDory
                 // 50-move rule:
                 //
                 // The 50-move rule states that if there have been 50 full moves without a pawn move or a capture, then
-                // the game is drawn. The half-move counter tracks the number of half-moves since the last pawn move or
+                // the game is drawn. The half-move clock tracks the number of half-moves since the last pawn move or
                 // capture, so if it reaches 100, the game is drawn
-                if (Stack[ply].HalfMoveCounter >= 100) {
+                if (Stack[ply].HalfMoveClock >= 100) {
                     if (!checked) return Draw;
-
-                    const OrderedMoveList<Color, false, false> moves (Board);
 
                     // Out of Moves:
                     //
                     // Checkmate takes precedence over the 50-move rule
-                    return moves.Count() == 0 ? LossIn(ply) : Draw;
+                    return MoveCount<Us>(Board) == 0 ? LossIn(ply) : Draw;
                 }
 
                 // Repetition:
@@ -735,7 +767,7 @@ namespace StockDory
                 // check this by storing the Zobrist Hashes of all positions we've seen in the current branch of the
                 // search. We check if the current position's hash has been seen before N times, where N is equal to
                 // the repetition limit (3 by default)
-                if (Repetition.Found(Stack[ply].HalfMoveCounter)) return Draw;
+                if (Repetition.Found(Stack[ply].HalfMoveClock)) return Draw;
 
                 // Insufficient material:
                 //
@@ -745,7 +777,7 @@ namespace StockDory
                 // - If there are only kings and a knight left (belonging to either side)
                 // - If there are only kings and a bishop left (belonging to either side)
                 {
-                    const uint8_t pieceCount = Count(~Board[NAC]);
+                    const uint8_t pieceCount = Count(Board.Occupied());
 
                     if (pieceCount == 2) return Draw;
 
@@ -772,7 +804,7 @@ namespace StockDory
             // sequences just over the horizon. If there are, we should get a more accurate evaluation through a
             // Quiescence search. If we are in check, we should go down the normal search path, extending as needed to
             // ensure we find a suitable evasion
-            if (depth <= 0 && !checked) return Quiescence<Color, PV>(ply, alpha, beta);
+            if (depth <= 0 && !checked) return Quiescence<Us, PV>(ply, alpha, beta);
 
             // Transposition Table Reading:
             //
@@ -803,7 +835,7 @@ namespace StockDory
                 if (ttEntry.Type == Alpha && ttSearchEval <= alpha) return ttSearchEval;
             }
 
-            const bool majorMaterial = Board.HasMajorMaterial<Color>();
+            const bool majorMaterial = Board.HasMajorMaterial<Us>();
 
             // Internal Iterative Reduction (IIR):
             //
@@ -872,12 +904,12 @@ namespace StockDory
             //   is far more optimistic or pessimistic (it may end up being a mate score)
             if (ttEntry.ScaledEvaluation != None) scaledEvaluation = ttEntry.ScaledEvaluation;
             else {
-                scaledEvaluation = ScaleEvaluation<Color>();
+                scaledEvaluation = ScaleEvaluation<Us>();
 
                 if (!ttHit) TT[hash] = { .ScaledEvaluation = static_cast<CompressedScore>(scaledEvaluation) };
             }
 
-            correctedEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
+            correctedEvaluation = CorrectEvaluation<Us>(scaledEvaluation, ply);
 
             Stack[ply].CorrectedEvaluation = correctedEvaluation;
 
@@ -910,7 +942,7 @@ namespace StockDory
                      EvaluationHistoryAdjustmentMaximumBonus
                 ));
 
-                int16_t& history = History[OColor][Stack[ply - 1].PieceToMove][Stack[ply - 1].Move.To()];
+                int16_t& history = History[Them][Stack[ply - 1].PieceToMove][Stack[ply - 1].Move.To()];
 
                 history += bonus - history * abs(bonus) / HistoryLimit;
             }
@@ -964,7 +996,7 @@ namespace StockDory
                 // search and return the resulting evaluation. When alpha is a mate score, Quiescence search cannot
                 // be trusted to prove or refute it, so we must not razor
                 if (depth == RazoringDepth && !IsMate(alpha) && staticEvaluation + RazoringEvaluationMargin < alpha)
-                    return Quiescence<Color, false>(ply, alpha, beta);
+                    return Quiescence<Us, false>(ply, alpha, beta);
 
                 // Null Move Pruning (NMP):
                 //
@@ -1007,16 +1039,16 @@ namespace StockDory
                           +  ScalingEvaluationReduction
                           );
 
-                    Stack[ply].PieceToMove = NAP;
+                    Stack[ply].PieceToMove = NAPT;
                     Stack[ply].       Move = { };
 
-                    Stack[ply + 1].HalfMoveCounter = Stack[ply].HalfMoveCounter;
+                    Stack[ply + 1].HalfMoveClock = Stack[ply].HalfMoveClock;
 
-                    const PreviousStateNull state = Board.Move();
+                    const PreviousStateNull state = Board.MakeNullMove();
 
                     const size_t previous = Repetition.PushNull(Board.Zobrist());
 
-                    const auto evaluation = -PVS<OColor, false, false, false>(
+                    const auto evaluation = -PVS<Them, false, false, false>(
                         ply + 1,
                         reducedDepth,
                         -beta,
@@ -1025,7 +1057,7 @@ namespace StockDory
 
                     Repetition.PopNull(previous);
 
-                    Board.UndoMove(state);
+                    Board.UndoNullMove(state);
 
                     if (evaluation >= beta) return beta;
                 }
@@ -1036,9 +1068,9 @@ namespace StockDory
 
             auto Continuation = [&](const uint8_t delta) -> const HTable&
             {
-                if (Stack[ply - delta].Move) return ContinuationHistory[delta % 2 == 0 ? Color : OColor]
-                                                                  [Stack[ply - delta].PieceToMove      ]
-                                                                  [Stack[ply - delta].Move.To()        ];
+                if (Stack[ply - delta].Move) return ContinuationHistory[            delta % 2 == 0 ? Us : Them]
+                                                                       [Stack[ply - delta].PieceToMove        ]
+                                                                       [Stack[ply - delta].Move.To()          ];
 
                 return NullHistory;
             };
@@ -1046,14 +1078,7 @@ namespace StockDory
             const HTable& counter  = Continuation(1);
             const HTable& followup = Continuation(2);
 
-            using MoveList = OrderedMoveList<Color>;
-
-            MoveList moves (Board, ply, Killer, History, counter, followup, CaptureHistory, ttMove);
-
-            // Out of Moves:
-            //
-            // If we have no moves to search at this point, it is either because we are in checkmate or stalemate
-            if (moves.Count() == 0) return checked ? LossIn(ply) : Draw;
+            MoveList<Us, Ordered> moves (Board, ply, Killer, History, counter, followup, CaptureHistory, ttMove);
 
             SearchTranspositionEntry ttEntryNew
             {
@@ -1070,9 +1095,7 @@ namespace StockDory
 
             Score bestEvaluation = -Infinity;
 
-            for (uint8_t i = 0; i < moves.Count(); i++) {
-                const Move move = moves[i];
-
+            for (const auto [i, move] : moves) {
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
 
@@ -1101,7 +1124,7 @@ namespace StockDory
                         break;
                 }
 
-                const Piece movingPiece = Board[move.From()].Piece();
+                const PieceType movingPiece = Board[move.From()].Type();
 
                 uint64_t nodesBeforeMove = 0;
 
@@ -1125,7 +1148,7 @@ namespace StockDory
 
                 Score evaluation = 0;
 
-                if (i == 0) evaluation = -PVS<OColor, PV, false>(ply + 1, depth - 1, -beta, -alpha);
+                if (i == 0) evaluation = -PVS<Them, PV, false>(ply + 1, depth - 1, -beta, -alpha);
                 else {
                     bool fullDepthSearch = true;
 
@@ -1158,12 +1181,12 @@ namespace StockDory
 
                         // If our move gave check, we should try to reduce the search depth less as the move may be
                         // tactical and in certain cases, extend the search depth instead
-                        if (Board.Checked<OColor>()) r -= LMRGaveCheckPenalty;
+                        if (Board.Checked<Them>()) r -= LMRGaveCheckPenalty;
 
                         if (quiet) {
                             // Increase reduction for bad history moves and reduce for good history moves (possibly
                             // extending the search depth)
-                            const int16_t history = History[Color][movingPiece][move.To()];
+                            const int16_t history = History[Us][movingPiece][move.To()];
                             r -= history * LMRHistoryPartition * LMRHistoryWeight / HistoryLimit;
                         }
 
@@ -1174,7 +1197,7 @@ namespace StockDory
                         const int16_t reducedDepth = std::clamp<int16_t>(depth - r, 1, depth);
 
                         // Assume we are not in a PV branch and use a null window search
-                        evaluation = -PVS<OColor, false, false>(ply + 1, reducedDepth, -alpha - 1, -alpha);
+                        evaluation = -PVS<Them, false, false>(ply + 1, reducedDepth, -alpha - 1, -alpha);
 
                         // We should only research at full depth if the search was actually reduced. If it was not, or
                         // if it was extended instead, the research would either repeat the same search or be shallower
@@ -1184,12 +1207,12 @@ namespace StockDory
 
                     // Assume we are not in a PV branch and use a null window search
                     if (fullDepthSearch)
-                        evaluation = -PVS<OColor, false, false>(ply + 1, depth - 1, -alpha - 1, -alpha);
+                        evaluation = -PVS<Them, false, false>(ply + 1, depth - 1, -alpha - 1, -alpha);
 
                     // If the null window search shows potential in improving our positions, we can research with a full
                     // window search (assuming we are in a PV branch) to get an accurate evaluation
                     if (evaluation > alpha && evaluation < beta)
-                        evaluation = -PVS<OColor, true, false>(ply + 1, depth - 1, -beta, -alpha);
+                        evaluation = -PVS<Them, true, false>(ply + 1, depth - 1, -beta, -alpha);
                 }
 
                 UndoMove<true>(state, move);
@@ -1243,18 +1266,18 @@ namespace StockDory
                         // make better reduction & pruning decisions and order similar moves earlier
 
                         // Bonus for the quiet that caused a beta cut-off
-                        UpdateHistory<Color, true>(move, depth, ply);
+                        UpdateHistory<Us, true>(move, depth, ply);
 
                         // Make sure we don't apply malus to the move that caused a beta cut-off
                         if (searchedQuiets.Last() == move) searchedQuiets.Pop();
 
                         // Malus for all other quiets as they didn't cause a beta cut-off
-                        for (const auto m : searchedQuiets) UpdateHistory<Color, false>(m, depth, ply);
+                        for (const auto m : searchedQuiets) UpdateHistory<Us, false>(m, depth, ply);
                     } else if (capture) {
                         // Capture History Updates (Asymmetric Approach):
                         //
                         // We should give a bonus for the capture that caused a beta cut-off
-                        UpdateCaptureHistory<Color, true>(move, depth);
+                        UpdateCaptureHistory<Us, true>(move, depth);
 
                         // Make sure we don't apply malus to the move that caused a beta cut-off
                         if (searchedCaptures.Last() == move) searchedCaptures.Pop();
@@ -1265,17 +1288,22 @@ namespace StockDory
                     // We should apply a malus for all captures that didn't cause a beta cut-off. We generally consider
                     // captures to be good so if they aren't good (especially if they're worst than a quiet) then we
                     // should apply a malus to them
-                    for (const auto m : searchedCaptures) UpdateCaptureHistory<Color, false>(m, depth);
+                    for (const auto m : searchedCaptures) UpdateCaptureHistory<Us, false>(m, depth);
                 }
 
                 ttEntryNew.Type = Beta;
                 break;
             }
 
+            // Out of Moves:
+            //
+            // If we had no moves to search, it is either because we are in checkmate or stalemate
+            if (moves.Count() == 0) return checked ? LossIn(ply) : Draw;
+
             ttEntryNew.SearchEvaluation = CompressScore(bestEvaluation, ply);
 
             if (!Stopped()) {
-                const bool ttMoveIsTactical = ttEntryNew.Move.Capture() || ttEntryNew.Move.Promotion() != NAP;
+                const bool ttMoveIsTactical = ttEntryNew.Move.Capture() || ttEntryNew.Move.Promotion() != NAPT;
 
                 // Correction History Update:
                 //
@@ -1285,11 +1313,11 @@ namespace StockDory
                 if (!checked && !IsMate(bestEvaluation) && (ttEntryNew.Type == Alpha || !ttMoveIsTactical)) {
                     // The correction history may have changed while searching this position's subtree, so we recorrect
                     // the scaled evaluation and use that to better orientate our correction history
-                    const Score recorrectedEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
+                    const Score recorrectedEvaluation = CorrectEvaluation<Us>(scaledEvaluation, ply);
 
                     if ((ttEntryNew.Type != Beta  || bestEvaluation > recorrectedEvaluation) &&
                         (ttEntryNew.Type != Alpha || bestEvaluation < recorrectedEvaluation)  )
-                        UpdateCorrectionHistory<Color>(bestEvaluation - recorrectedEvaluation, depth, ply);
+                        UpdateCorrectionHistory<Us>(bestEvaluation - recorrectedEvaluation, depth, ply);
                 }
 
                 // Transposition Table Writing:
@@ -1302,11 +1330,11 @@ namespace StockDory
             return bestEvaluation;
         }
 
-        template<Color Color, bool PV>
+        template<Side Us, bool PV>
         Score Quiescence(const uint8_t ply, Score alpha, const Score beta)
         {
-            // Opponent's color for recursive calls
-            constexpr auto OColor = Opposite(Color);
+            // Opponent's side for recursive calls
+            constexpr Side Them = Opposite(Us);
 
             if (ThreadType == Main) {
                 const uint64_t nodes = GetNodes();
@@ -1330,7 +1358,7 @@ namespace StockDory
             // We should stop searching if we have reached the maximum depth as otherwise we may start accessing
             // memory we haven't allocated
             if (ply >= MaxDepth) [[unlikely]]
-                return Board.Checked<Color>() ? Draw : CorrectEvaluation<Color>(ScaleEvaluation<Color>(), ply);
+                return Board.Checked<Us>() ? Draw : CorrectEvaluation<Us>(ScaleEvaluation<Us>(), ply);
 
             const ZobristHash hash = Board.Zobrist();
 
@@ -1379,13 +1407,13 @@ namespace StockDory
 
             if (ttEntry.ScaledEvaluation != None) scaledEvaluation = ttEntry.ScaledEvaluation;
             else {
-                scaledEvaluation = ScaleEvaluation<Color>();
+                scaledEvaluation = ScaleEvaluation<Us>();
 
                 if (ttEntry.Type == Invalid)
                     TT[hash] = { .ScaledEvaluation = static_cast<CompressedScore>(scaledEvaluation) };
             }
 
-            const Score correctedEvaluation = CorrectEvaluation<Color>(scaledEvaluation, ply);
+            const Score correctedEvaluation = CorrectEvaluation<Us>(scaledEvaluation, ply);
 
             Score staticEvaluation = correctedEvaluation;
 
@@ -1404,14 +1432,12 @@ namespace StockDory
             if (staticEvaluation >= beta) return beta;
             if (staticEvaluation > alpha) alpha = staticEvaluation;
 
-            using MoveList = OrderedMoveList<Color, true>;
-
-            MoveList moves (Board, ply, Killer, NullHistory, NullHistory, NullHistory, CaptureHistory);
+            MoveList<Us, Ordered, CaptureMoves> moves (
+                Board, ply, Killer, NullHistory, NullHistory, NullHistory, CaptureHistory
+            );
 
             Score bestEvaluation = staticEvaluation;
-            for (uint8_t i = 0; i < moves.Count(); i++) {
-                const Move move = moves[i];
-
+            for (const Move move : moves) {
                 // Static Exchange Evaluation (SEE) Pruning:
                 //
                 // SEE is essentially an evaluation that determines if an exchange of pieces is materially favorable for
@@ -1421,7 +1447,7 @@ namespace StockDory
 
                 const PreviousState state = DoMove<false>(move, ply);
 
-                const Score evaluation = -Quiescence<OColor, PV>(ply + 1, -beta, -alpha);
+                const Score evaluation = -Quiescence<Them, PV>(ply + 1, -beta, -alpha);
 
                 UndoMove<false>(state, move);
 
@@ -1439,55 +1465,57 @@ namespace StockDory
             return bestEvaluation;
         }
 
-        template<bool UpdateRepetitionHistory>
+        template<bool UpdateRepetition>
         PreviousState DoMove(const Move move, const uint8_t ply)
         {
-            constexpr MoveType MT = NNUE | ZOBRIST;
+            const bool resetHalfMoveClock = move.Capture() || Board[move.From()].Type() == Pawn;
 
-            const bool resetHalfMoveCounter = move.Capture() || Board[move.From()].Piece() == Pawn;
-
-            Stack[ply + 1].HalfMoveCounter = resetHalfMoveCounter ? 0 : Stack[ply].HalfMoveCounter + 1;
+            Stack[ply + 1].HalfMoveClock = resetHalfMoveClock ? 0 : Stack[ply].HalfMoveClock + 1;
 
             Stack[ply].       Move = move;
-            Stack[ply].PieceToMove = Board[move.From()].Piece();
+            Stack[ply].PieceToMove = Board[move.From()].Type();
 
-            const PreviousState state = Board.Move<MT>(move, ThreadId);
+            AccumulatorDelta delta;
+
+            const PreviousState state = Board.MakeMove<Hashed>(move, delta);
+
+            Evaluator.Push(delta, Board);
             IncrementNodes();
 
             const ZobristHash hash = Board.Zobrist();
 
             TT.Prefetch(hash);
 
-            if (UpdateRepetitionHistory) Repetition.Push(hash);
+            if (UpdateRepetition) Repetition.Push(hash);
 
             return state;
         }
 
-        template<bool UpdateRepetitionHistory>
+        template<bool UpdateRepetition>
         void UndoMove(const PreviousState state, const Move move)
         {
-            constexpr MoveType MT = NNUE | ZOBRIST;
+            Board.UndoMove<Hashed>(state, move);
 
-            Board.UndoMove<MT>(state, move, ThreadId);
+            Evaluator.Pop();
 
-            if (UpdateRepetitionHistory) Repetition.Pop();
+            if (UpdateRepetition) Repetition.Pop();
         }
 
-        template<Color Color, bool Increase>
+        template<Side Us, bool Increase>
         void UpdateHistory(const Move move, const int16_t depth, const uint8_t ply)
         {
             const int16_t bonus = std::clamp<int32_t>(HistoryMultiplier * depth - HistoryShiftDown, 0, HistoryLimit);
 
-            int16_t& history = History[Color][Board[move.From()].Piece()][move.To()];
+            int16_t& history = History[Us][Board[move.From()].Type()][move.To()];
 
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
 
             auto Continuation = [&](const uint8_t delta) -> int16_t&
             {
-                return ContinuationHistory[delta % 2 == 0 ?        Color : Opposite(Color)              ]
+                return ContinuationHistory[            delta % 2 == 0 ?   Us       : Opposite(Us)       ]
                                           [Stack[ply - delta].PieceToMove ][Stack[ply - delta].Move.To()]
-                                          [                        Color                                ]
-                                          [Board[move.From()].Piece()     ][                   move.To()];
+                                          [                               Us                            ]
+                                          [Board[move.From()].Type()      ][                   move.To()];
             };
 
             if (Stack[ply - 1].Move) {
@@ -1503,21 +1531,21 @@ namespace StockDory
             }
         }
 
-        template<Color Color, bool Increase>
+        template<Side Us, bool Increase>
         void UpdateCaptureHistory(const Move move, const int16_t depth)
         {
             const int16_t bonus = std::clamp<int32_t>(
                 CaptureHistoryMultiplier * depth - CaptureHistoryShiftDown, 0, HistoryLimit
             );
 
-            const auto targetPiece = move.EnPassant() ? Pawn : Board[move.To()].Piece();
+            const auto targetPiece = move.EnPassant() ? Pawn : Board[move.To()].Type();
 
-            int16_t& history = CaptureHistory[Color][Board[move.From()].Piece()][move.To()][targetPiece];
+            int16_t& history = CaptureHistory[Us][Board[move.From()].Type()][move.To()][targetPiece];
 
             history += bonus * (Increase ? 1 : -1) - history * bonus / HistoryLimit;
         }
 
-        template<Color Color>
+        template<Side Us>
         Score CorrectEvaluation(const Score evaluation, const uint8_t ply) const
         {
             const       ZobristHash     minor = Board.ZobristMinor();
@@ -1525,11 +1553,11 @@ namespace StockDory
                 Board.ZobristMajor(White), Board.ZobristMajor(Black)
             };
 
-            const int16_t minorHistory = MinorCorrectionHistory[Color][minor % CorrectionHistorySize];
+            const int16_t minorHistory = MinorCorrectionHistory[Us][minor % CorrectionHistorySize];
 
             const Array<int16_t, 2> majorHistory = {
-                MajorCorrectionHistory[White][Color][major[White] % CorrectionHistorySize],
-                MajorCorrectionHistory[Black][Color][major[Black] % CorrectionHistorySize]
+                MajorCorrectionHistory[White][Us][major[White] % CorrectionHistorySize],
+                MajorCorrectionHistory[Black][Us][major[Black] % CorrectionHistorySize]
             };
 
             const int32_t minorCorrection =                minorHistory                 * CorrectionHistoryMinorWeight;
@@ -1544,7 +1572,7 @@ namespace StockDory
                 const auto   ourPreviousTarget = Stack[ply - 2].Move.To();
                 const auto theirPreviousTarget = Stack[ply - 1].Move.To();
 
-                const int16_t correctionContinuationHistory = CorrectionContinuationHistory[Color]
+                const int16_t correctionContinuationHistory = CorrectionContinuationHistory[Us]
                     [  ourPreviousPiece][  ourPreviousTarget]
                     [theirPreviousPiece][theirPreviousTarget];
 
@@ -1560,7 +1588,7 @@ namespace StockDory
             );
         }
 
-        template<Color Color>
+        template<Side Us>
         void UpdateCorrectionHistory(const Score difference, const int16_t depth, const uint8_t ply)
         {
             const int32_t bonus = std::clamp<int32_t>(
@@ -1570,13 +1598,13 @@ namespace StockDory
             );
 
             const ZobristHash minor = Board.ZobristMinor();
-            int16_t& minorCorrection = MinorCorrectionHistory[Color][minor % CorrectionHistorySize];
+            int16_t& minorCorrection = MinorCorrectionHistory[Us][minor % CorrectionHistorySize];
 
             minorCorrection += bonus - minorCorrection * abs(bonus) / CorrectionHistoryLimit;
 
-            for (const auto color : { White, Black }) {
-                const ZobristHash major = Board.ZobristMajor(color);
-                int16_t& majorCorrection = MajorCorrectionHistory[color][Color][major % CorrectionHistorySize];
+            for (const auto side : { White, Black }) {
+                const ZobristHash major = Board.ZobristMajor(side);
+                int16_t& majorCorrection = MajorCorrectionHistory[side][Us][major % CorrectionHistorySize];
 
                 majorCorrection += bonus - majorCorrection * abs(bonus) / CorrectionHistoryLimit;
             }
@@ -1588,7 +1616,7 @@ namespace StockDory
                 const auto   ourPreviousTarget = Stack[ply - 2].Move.To();
                 const auto theirPreviousTarget = Stack[ply - 1].Move.To();
 
-                int16_t& correctionContinuation = CorrectionContinuationHistory[Color]
+                int16_t& correctionContinuation = CorrectionContinuationHistory[Us]
                     [  ourPreviousPiece][  ourPreviousTarget]
                     [theirPreviousPiece][theirPreviousTarget];
 
@@ -1596,7 +1624,7 @@ namespace StockDory
             }
         }
 
-        template<Color Color>
+        template<Side Us>
         [[clang::noinline]]
         Score ScaleEvaluation() const
         {
@@ -1614,7 +1642,7 @@ namespace StockDory
                                              (static_cast<int32_t>(Count(queen )) - 2) * MaterialScalingWeightQueen  ;
 
             return std::clamp<Score>(
-                (Evaluation::Evaluate(Color, ThreadId) * weightedMaterial) / MaterialScalingQuantization,
+                (Evaluator.Evaluate(Board) * weightedMaterial) / MaterialScalingQuantization,
                 -MateInMaxDepth + 1,
                  MateInMaxDepth - 1
             );
@@ -1629,153 +1657,6 @@ namespace StockDory
                 nEntry.Type == Beta) ||
                 nEntry.Depth > pEntry.Depth - TTReplacementDepthMargin)
                 TT[hash] = nEntry;
-        }
-
-    };
-
-    class ParallelTaskPool
-    {
-
-        using ParallelTask = SearchTask<Parallel>;
-
-        std::vector<ParallelTask> SearchTaskPool;
-        std::vector<ThreadedTask> ThreadTaskPool;
-
-        size_t TaskCount = 0;
-
-        public:
-        ParallelTaskPool()
-        {
-            Clear ();
-            Resize();
-        }
-
-        void Resize()
-        {
-            TaskCount = ThreadPool.Size() - 1;
-
-            SearchTaskPool.reserve(TaskCount);
-            ThreadTaskPool.reserve(TaskCount);
-        }
-
-        void Clear()
-        {
-            SearchTaskPool.clear();
-            ThreadTaskPool.clear();
-        }
-
-        size_t Size() const { return TaskCount; }
-
-        void Fill(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc)
-        {
-            for (size_t i = 0; i < TaskCount; i++) SearchTaskPool.emplace_back(l, b, r, hmc, i + 1);
-        }
-
-        void Execute()
-        {
-            for (auto& task : SearchTaskPool) ThreadTaskPool.emplace_back(ThreadPool.Execute(
-                [&task] -> void { task.IterativeDeepening(); }
-            ));
-        }
-
-        void Stop()
-        {
-            for (auto &task : SearchTaskPool) task.Stop();
-            for (auto &task : ThreadTaskPool) task.Wait();
-        }
-
-        auto Tasks() const { return std::views::zip(SearchTaskPool, ThreadTaskPool); }
-
-    };
-
-    template<typename MainEventHandler = DefaultSearchEventHandler>
-    struct ThreadedSearch
-    {
-
-        static inline ParallelTaskPool ParallelTaskPool;
-
-        struct ThreadedSearchTaskPassthroughHandler : DefaultSearchEventHandler
-        {
-
-            static void HandleIterativeDeepeningIterationCompletion(const IterativeDeepeningIterationCompletionEvent& e)
-            {
-                IterativeDeepeningIterationCompletionEvent event = e;
-
-                for (const auto& [task, _] : ParallelTaskPool.Tasks()) event.Nodes += task.GetNodes();
-
-                return MainEventHandler::HandleIterativeDeepeningIterationCompletion(event);
-            }
-
-            static void HandleIterativeDeepeningCompletion(const IterativeDeepeningCompletionEvent& e)
-            { MainEventHandler::HandleIterativeDeepeningCompletion(e); }
-
-        };
-
-        using MainSearchTask = SearchTask<Main, ThreadedSearchTaskPassthroughHandler>;
-
-        static inline MainSearchTask MainTask;
-
-        static inline Atomic<bool> Searching { false };
-
-        static void Run(Limit& l, Board& b, RepetitionStack& r, const uint8_t hmc)
-        {
-            if (Searching.Exchange(true, MemoryOrder::acq_rel)) return;
-
-            // Symmetric MultiProcessing (SMP):
-            //
-            // Relevant links:
-            // - http://en.wikipedia.org/wiki/Symmetric_multiprocessing
-            // - https://www.chessprogramming.org/Lazy_SMP
-            //
-            // Assuming there is more than one thread available for the search, a SMP approach is used to get a much
-            // more accurate search. This approach relies on constructive and destructive interference of multiple
-            // threads through the transposition table shared between them - the main thread is running the main search
-            // task, while the other threads are running parallel search tasks that are constructively and destructively
-            // interfering with the main search task (and with each other).
-            //
-            // Destructive interference happens when one task overwrites the transposition table entry another task is
-            // about to read - this prevents the task from reading the entry and forces it to search the position again,
-            // potentially disabling certain pruning techniques and enabling others. Regardless, the search space
-            // explored by the task gets widened, and the search is more accurate, however, searching the extra branches
-            // causes the search to take longer to complete; a consequence of destructive interference.
-            //
-            // Constructive interference happens when one task provides a transposition table entry that another task
-            // is about to read - this allows the task to read the entry and use it to speed through certain branches by
-            // returning directly from the transposition table if possible. Where this isn't possible, the task can use
-            // the entry's evaluation as the static evaluation for that branch, enabling certain pruning techniques and
-            // disabling others, once again widening the search space explored by the task. Furthermore, the provided
-            // entry's move can be used to speed through the branch since the move policy ensures that the move is
-            // the first move in the move list. This can allow the search for that branch to complete much faster,
-            // overall reducing the search time, mitigating the destructive interference's negative impact on the
-            // search time.
-            //
-            // Together, the search space is considerably widened, making the search more accurate, while the search
-            // time remains relatively the same on average. This leads the engine to find better moves in the same
-            // amount of time and avoid some pitfalls of the heuristical pruning, reduction, and search techniques used
-
-            if (ParallelTaskPool.Size()) {
-                ParallelTaskPool.Fill(l, b, r, hmc);
-                ParallelTaskPool.Execute();
-            }
-
-            ReplaceInline(MainTask, l, b, r, hmc, 0);
-
-            ThreadPool.Execute(
-                [] -> void
-                {
-                    MainTask.IterativeDeepening();
-
-                    // The main thread is responsible for ensuring that it stops all the parallel tasks when it has
-                    // concluded searching
-                    if (ParallelTaskPool.Size()) {
-                        ParallelTaskPool.Stop();
-                        ParallelTaskPool.Clear();
-                    }
-
-                    Searching.Store(false, MemoryOrder::release);
-                    Searching.NotifyAll();
-                }
-            );
         }
 
     };

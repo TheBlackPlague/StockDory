@@ -3,7 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+#include <cstdlib>
 #include <iostream>
+#include <sstream>
+
+#include <strutil.h>
 
 #include "Information.h"
 
@@ -22,18 +26,15 @@ static void DisplayTitle()
 
 int main(const int argc, const char* argv[])
 {
-    StockDory::Evaluation::Initialize();
-
     DisplayTitle();
 
-    if (argc > 1) {
-        if (strutil::compare_ignore_case(argv[1], "bench"  )) {
-            StockDory::BenchHash::Run();
-            return EXIT_SUCCESS;
-        }
+    if (argc > 1 && strutil::compare_ignore_case(argv[1], "bench")) {
+        StockDory::BenchHash::Run();
+    } else {
+        StockDory::UCI().Launch();
     }
 
-    StockDory::UCI::Launch();
+    StockDory::Engine::Shutdown();
 
     return EXIT_SUCCESS;
 }

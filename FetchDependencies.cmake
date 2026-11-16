@@ -3,14 +3,21 @@ include(DownloadCPM.cmake)
 CPMAddPackage(
         NAME MantaRay
         GITHUB_REPOSITORY TheBlackPlague/MantaRay
-        GIT_TAG 49ee5c96f36c8fb0277d850eb9d54a205399c684
+        GIT_TAG 344d7225885e5a82a12bf54a34fdc679d96d9831
         OPTIONS
-        "BUILD_TESTS OFF"
-        "BUILD_BENCHMARKS OFF"
+        "BUILD_EXAMPLES OFF"
 )
 
 CPMAddPackage(
-        NAME nanothread
-        GITHUB_REPOSITORY TheBlackPlague/nanothread
-        GIT_TAG master
+        NAME fastrange
+        GITHUB_REPOSITORY lemire/fastrange
+        GIT_TAG f6e712b4725fc9443a11516a6302f5220e0ed951
+        DOWNLOAD_ONLY YES
+)
+
+CPMAddPackage(
+        NAME strutil
+        GITHUB_REPOSITORY Shot511/strutil
+        GIT_TAG dafb13e8e5e7761dc9a731862a666221e82cd546
+        DOWNLOAD_ONLY YES
 )

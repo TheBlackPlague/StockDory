@@ -6,15 +6,15 @@
 #ifndef STOCKDORY_TRANSPOSITIONTABLE_H
 #define STOCKDORY_TRANSPOSITIONTABLE_H
 
+#include <algorithm>
 #include <bit>
+#include <cstring>
 #include <vector>
 
-#include "../Backend/ThreadPool.h"
-#include "../Backend/Type/Zobrist.h"
-
-#include "../External/fastrange.h"
+#include <fastrange.h>
 
 #include "Common.h"
+#include "Memory.h"
 
 namespace StockDory
 {
@@ -62,13 +62,35 @@ namespace StockDory
         {
             Count = bytes / sizeof(Entry);
 
-            Clear();
+            Internal = Storage(Count);
         }
 
-        void Clear() { Internal = Storage(Count); }
+        void Clear() { Clear(0, 1); }
+
+        void Clear(const size_t part, const size_t parts)
+        {
+            const size_t first = Count *  part      / parts;
+            const size_t last  = Count * (part + 1) / parts;
+
+            std::memset(static_cast<void*>(Internal.data() + first), 0, (last - first) * sizeof(Entry));
+        }
 
         [[nodiscard]]
         size_t Size() const { return Internal.size(); }
+
+        [[nodiscard]]
+        uint16_t HashFull() const
+        {
+            uint16_t used = 0;
+
+            for (size_t i = 0; i < std::min<size_t>(Count, 1000); i++) {
+                const Entry& entry = Internal[i];
+
+                if (entry.Key.Load(MemoryOrder::relaxed) | entry.Data.Load(MemoryOrder::relaxed)) used++;
+            }
+
+            return used;
+        }
 
         private:
         class Reference

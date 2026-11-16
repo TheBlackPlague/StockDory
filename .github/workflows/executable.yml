@@ -21,38 +21,38 @@ jobs:
       fail-fast: false
       matrix:
         arch: [ x86-64, x86-64-v2, x86-64-v3, x86-64-v4, apple-m1, apple-m2, apple-m3, apple-m4, apple-m5 ]
-        os: [ ubuntu-latest , windows-latest, macos-latest ]
+        os: [ ubuntu-24.04 , windows-2025-vs2026, macos-26 ]
         include:
-          - os: windows-latest
+          - os: windows-2025-vs2026
             extension: .exe
         exclude:
-          - os: windows-latest
+          - os: windows-2025-vs2026
             arch: apple-m1
-          - os: windows-latest
+          - os: windows-2025-vs2026
             arch: apple-m2
-          - os: windows-latest
+          - os: windows-2025-vs2026
             arch: apple-m3
-          - os: windows-latest
+          - os: windows-2025-vs2026
             arch: apple-m4
-          - os: windows-latest
+          - os: windows-2025-vs2026
             arch: apple-m5
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             arch: apple-m1
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             arch: apple-m2
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             arch: apple-m3
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             arch: apple-m4
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             arch: apple-m5
-          - os: macos-latest
+          - os: macos-26
             arch: x86-64
-          - os: macos-latest
+          - os: macos-26
             arch: x86-64-v2
-          - os: macos-latest
+          - os: macos-26
             arch: x86-64-v3
-          - os: macos-latest
+          - os: macos-26
             arch: x86-64-v4
 
     runs-on: ${{ matrix.os }}
@@ -60,44 +60,44 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - if: matrix.os == 'ubuntu-latest'
+    - if: matrix.os == 'ubuntu-24.04'
       name: Install Linux Dependencies
       run: |
         sudo apt install ninja-build
         sudo apt remove python3-lldb-14
-    - if: matrix.os == 'windows-latest'
+    - if: matrix.os == 'windows-2025-vs2026'
       name: Install Windows Dependencies
       run: |
         choco install ninja
 
-    - if: matrix.os == 'ubuntu-latest'
+    - if: matrix.os == 'ubuntu-24.04'
       name: Install Clang 22 (Ubuntu)
       run: |
         wget https://apt.llvm.org/llvm.sh
         sudo chmod +x llvm.sh
         sudo ./llvm.sh 22
         sudo rm -rf llvm.sh
-    - if: matrix.os == 'windows-latest'
+    - if: matrix.os == 'windows-2025-vs2026'
       name: Install Clang 22 (Windows)
       run: |
         choco install llvm --version 22.1.8 --force -y
-    - if: matrix.os == 'macos-latest'
+    - if: matrix.os == 'macos-26'
       name: Install Clang 22 (MacOS)
       run: |
         brew update-reset
         brew update
         brew install llvm@22
 
-    - if: matrix.os == 'ubuntu-latest'
+    - if: matrix.os == 'ubuntu-24.04'
       name: Set CXX for Linux
       run: |
         echo "CXX=clang++-22" >> $GITHUB_ENV
-    - if: matrix.os == 'windows-latest'
+    - if: matrix.os == 'windows-2025-vs2026'
       name: Set CXX for Windows
       shell: powershell
       run: |
         echo "CXX=clang++" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-    - if: matrix.os == 'macos-latest'
+    - if: matrix.os == 'macos-26'
       name: Set CXX for MacOS
       run: |
         echo "CXX=/opt/homebrew/opt/llvm@22/bin/clang++" >> $GITHUB_ENV
@@ -115,7 +115,7 @@ jobs:
     - name: Build
       run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }}
 
-    - if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
+    - if: matrix.os == 'ubuntu-24.04' || matrix.os == 'macos-26'
       name: Extract Binary Identifier (Linux and MacOS)
       run: |
         VERSION=$(grep 'const std::string VERSION' ${{ github.workspace }}/build/BuildSystem/Information.h | cut -d'"' -f2)
@@ -126,7 +126,7 @@ jobs:
         fi
         echo "IDENTIFIER=${IDENTIFIER}" >> $GITHUB_ENV
 
-    - if: matrix.os == 'windows-latest'
+    - if: matrix.os == 'windows-2025-vs2026'
       name: Extract Binary Identifier (Windows)
       shell: powershell
       run: |
@@ -151,7 +151,7 @@ jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/')
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
 

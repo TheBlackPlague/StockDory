@@ -9,14 +9,29 @@
 #include <array>
 #include <cstdint>
 
-#include "../Type/BitBoard.h"
-#include "../Type/Piece.h"
-
 #include "AttackTable.h"
-#include "RayTable.h"
 
 namespace StockDory
 {
+
+    namespace RayTable
+    {
+
+        constexpr Array<BitBoard, 8> File {
+            0x0101010101010101, 0x0202020202020202, 0x0404040404040404, 0x0808080808080808,
+            0x1010101010101010, 0x2020202020202020, 0x4040404040404040, 0x8080808080808080
+        };
+
+        constexpr Array<BitBoard, 8> Rank {
+            0x00000000000000FF, 0x000000000000FF00, 0x0000000000FF0000, 0x00000000FF000000,
+            0x000000FF00000000, 0x0000FF0000000000, 0x00FF000000000000, 0xFF00000000000000
+        };
+
+        constexpr BitBoard Edged = File[0] | File[7] | Rank[0] | Rank[7];
+
+        extern Array<BitBoard, 64, 64> Between;
+
+    } // StockDory
 
     class BlackMagicFactory
     {
@@ -98,8 +113,8 @@ namespace StockDory
         constexpr static auto RookOccupiedMask = [](const Square sq) constexpr -> BitBoard
         {
             // Horizontal files & vertical ranks.
-            const BitBoard h = RayTable::Horizontal[sq % 8] & ~(RayTable::Vertical  [0] | RayTable::Vertical  [7]);
-            const BitBoard v = RayTable::Vertical  [sq / 8] & ~(RayTable::Horizontal[0] | RayTable::Horizontal[7]);
+            const BitBoard h = RayTable::File[sq % 8] & ~(RayTable::Rank[0] | RayTable::Rank[7]);
+            const BitBoard v = RayTable::Rank[sq / 8] & ~(RayTable::File[0] | RayTable::File[7]);
 
             // Occupied inside but not the square itself.
             return (h | v) & ~FromSquare(sq);
@@ -153,14 +168,14 @@ namespace StockDory
             return temp;
         }();
 
-        constexpr static uint32_t MagicIndex(const Piece p, const Square sq, const BitBoard occupied)
+        constexpr static uint32_t MagicIndex(const PieceType type, const Square sq, const BitBoard occupied)
         {
             // Magic:
-            const auto& [magicPair, base] = Magic[p - 2][sq];
+            const auto& [magicPair, base] = Magic[type - 2][sq];
             const auto& [magic    , mask] = magicPair;
 
             // Hash:
-            return base + static_cast<int32_t>(((occupied | mask) * magic) >> (64 - PieceValue[p - 2]));
+            return base + static_cast<int32_t>(((occupied | mask) * magic) >> (64 - PieceValue[type - 2]));
         }
 
     };
@@ -180,7 +195,7 @@ inline auto StockDory::AttackTable::Sliding = [] -> Array<BitBoard, 87988>
             }}
         }};
 
-        const auto  p     = static_cast<Piece>(i + 2);
+        const auto  type  = static_cast<PieceType>(i + 2);
         const auto& magic = BlackMagicFactory::Magic[i];
         const auto& delta = deltaStride[i];
 
@@ -215,7 +230,7 @@ inline auto StockDory::AttackTable::Sliding = [] -> Array<BitBoard, 87988>
                     }
 
                     // List insertion:
-                    temp[BlackMagicFactory::MagicIndex(p, sq, occ)] = moves;
+                    temp[BlackMagicFactory::MagicIndex(type, sq, occ)] = moves;
 
                     // Occupation Recalculation:
                     // ReSharper disable once CppRedundantParentheses
@@ -229,6 +244,16 @@ inline auto StockDory::AttackTable::Sliding = [] -> Array<BitBoard, 87988>
 
     return temp;
 }();
+
+StockDory::BitBoard StockDory::AttackTable::Bishop(const Square sq, const BitBoard occupied)
+{
+    return Sliding[BlackMagicFactory::MagicIndex(PieceType::Bishop, sq, occupied)];
+}
+
+StockDory::BitBoard StockDory::AttackTable::Rook(const Square sq, const BitBoard occupied)
+{
+    return Sliding[BlackMagicFactory::MagicIndex(PieceType::Rook, sq, occupied)];
+}
 
 inline auto StockDory::RayTable::Between = [] -> Array<BitBoard, 64, 64>
 {

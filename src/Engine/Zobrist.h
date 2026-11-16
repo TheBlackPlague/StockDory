@@ -9,13 +9,7 @@
 #include <array>
 #include <cstdint>
 
-#include "Color.h"
-#include "Piece.h"
-#include "Square.h"
-
-#include "../Template/MoveType.h"
-
-using ZobristHash = uint64_t;
+#include "Common.h"
 
 namespace StockDory::Zobrist
 {
@@ -386,33 +380,33 @@ namespace StockDory::Zobrist
         0x0000000000000000
     };
 
-    constexpr ZobristHash ColorToMoveKey = 0x547E5B66033ED5B7;
+    constexpr ZobristHash SideToMoveKey = 0x547E5B66033ED5B7;
 
-    template<MoveType T>
-    constexpr ZobristHash HashPiece(const ZobristHash hash, const Piece p, const Color c, const Square sq)
+    template<MakeMode Mode>
+    constexpr ZobristHash HashPiece(const ZobristHash hash, const PieceType type, const Side side, const Square sq)
     {
-        if (T & ZOBRIST) return hash ^ PieceKey[c][p][sq];
+        if (Mode == Hashed) return hash ^ PieceKey[side][type][sq];
         return hash;
     }
 
-    template<MoveType T>
+    template<MakeMode Mode>
     constexpr ZobristHash HashCastling(const ZobristHash hash, const uint8_t castlingRight)
     {
-        if (T & ZOBRIST) return hash ^ CastlingKey[castlingRight];
+        if (Mode == Hashed) return hash ^ CastlingKey[castlingRight];
         return hash;
     }
 
-    template<MoveType T>
+    template<MakeMode Mode>
     constexpr ZobristHash HashEnPassant(const ZobristHash hash, const Square enPassantSquare)
     {
-        if (T & ZOBRIST) return hash ^ EnPassantKey[enPassantSquare];
+        if (Mode == Hashed) return hash ^ EnPassantKey[enPassantSquare];
         return hash;
     }
 
-    template<MoveType T>
-    constexpr ZobristHash HashColorFlip(const ZobristHash hash)
+    template<MakeMode Mode>
+    constexpr ZobristHash HashSideFlip(const ZobristHash hash)
     {
-        if (T & ZOBRIST) return hash ^ ColorToMoveKey;
+        if (Mode == Hashed) return hash ^ SideToMoveKey;
         return hash;
     }
 

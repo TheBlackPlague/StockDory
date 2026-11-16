@@ -2,13 +2,15 @@ cmake_minimum_required(VERSION 3.21)
 
 project(StockDory LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD          23 )
+set(CMAKE_CXX_STANDARD_REQUIRED ON )
+set(CMAKE_CXX_EXTENSIONS        OFF)
 
-set(CMAKE_CXX_FLAGS         "-flto=full"                    )
+set(CMAKE_CXX_FLAGS         "${CMAKE_CXX_FLAGS} -flto=full" )
 set(CMAKE_CXX_FLAGS_DEBUG   "-Wall -Wextra -g -ftime-report")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG"                  )
 
-if (NOT APPLE)
+if (NOT APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-avx512vnni")
 endif ()
 
@@ -78,10 +80,6 @@ if (ARCHITECTURE_FLAGS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCHITECTURE_FLAGS}")
 endif ()
 
-if (NOT BUILD_NATIVE AND ARCHITECTURE_FLAGS)
-    set(NANOTHREAD_NATIVE_FLAGS "${ARCHITECTURE_FLAGS}" CACHE STRING "Compilation flags used to target the host processor architecture." FORCE)
-endif ()
-
 if (BUILD_PGO)
     if (NOT EXISTS ${CMAKE_BINARY_DIR}/pgo.profdata)
         message(STATUS "PGO: No profile data found, adding profiling steps to the build...")
@@ -114,17 +112,17 @@ if (BUILD_TUNING)
     target_compile_definitions(StockDory PRIVATE BUILD_TUNING)
 endif ()
 
+target_include_directories(StockDory PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(StockDory PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/BuildSystem)
-target_link_libraries(StockDory MantaRay nanothread)
+
+target_include_directories(StockDory PRIVATE ${fastrange_SOURCE_DIR} ${strutil_SOURCE_DIR})
+
+target_link_libraries(StockDory MantaRay)
 
 if (WIN32)
     target_link_libraries(StockDory advapi32)
 else ()
     target_link_libraries(StockDory pthread)
-endif ()
-
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(StockDory atomic)
 endif ()
 
 if (CMAKE_BUILD_TYPE MATCHES "Release")

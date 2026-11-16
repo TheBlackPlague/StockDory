@@ -8,7 +8,7 @@
 
 #include <array>
 
-#include "../Type/BitBoard.h"
+#include "Common.h"
 
 namespace StockDory::AttackTable
 {
@@ -95,6 +95,9 @@ namespace StockDory::AttackTable
     };
 
     extern Array<BitBoard, 87988> Sliding;
+
+    BitBoard Bishop(const Square sq, const BitBoard occupied);
+    BitBoard Rook  (const Square sq, const BitBoard occupied);
 
 } // StockDory
 
