@@ -86,9 +86,9 @@ namespace StockDory
             uint64_t                 nodeC = 0;
             std::chrono::nanoseconds timeC {};
 
-            for (size_t i = 0; i < BenchCount; i++) {
-                Engine::NewGame();
+            Engine::NewGame();
 
+            for (size_t i = 0; i < BenchCount; i++) {
                 if (const auto set = Engine::SetPosition(Positions[i]); !set) [[unlikely]]
                     return Error(std::format("Bench position {}: {}", i + 1, set.error()));
 

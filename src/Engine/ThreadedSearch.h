@@ -47,6 +47,7 @@ namespace StockDory
                 [](const size_t index) -> void
                 {
                     if (index != 0) ParallelTaskPool[index - 1] = new SearchTask<Parallel>();
+                    else ReplaceInline(MainTask);
                 }
             );
         }
@@ -56,6 +57,20 @@ namespace StockDory
             for (const SearchTask<Parallel>* task : ParallelTaskPool) delete task;
 
             ParallelTaskPool.clear();
+        }
+
+        static void Reset()
+        {
+            Stop();
+            Wait();
+
+            ThreadPool.Run(
+                [](const size_t index) -> void
+                {
+                    if      (index == 0                      ) ReplaceInline(MainTask);
+                    else if (index <= ParallelTaskPool.size()) ReplaceInline(*ParallelTaskPool[index - 1]);
+                }
+            );
         }
 
         static void Start(
@@ -95,6 +110,17 @@ namespace StockDory
             return MainTask.Summary(MainTask.TotalNodes(), time);
         }
 
+        template<SearchThreadType ThreadType>
+        [[clang::noinline]] // the "noinline" here is important so we discard the stack usage
+        static void Prepare(SearchTask<ThreadType>& task)
+        {
+            auto persistent = static_cast<const SearchPersistentData&>(task);
+
+            persistent.Decay();
+
+            ReplaceInline(task, Limit, Board, Repetition, HalfMoveClock, persistent);
+        }
+
         static void Run(const size_t index)
         {
             // Symmetric MultiProcessing (SMP):
@@ -131,7 +157,7 @@ namespace StockDory
             if (index != 0) {
                 SearchTask<Parallel>& task = *ParallelTaskPool[index - 1];
 
-                ReplaceInline(task, Limit, Board, Repetition, HalfMoveClock);
+                Prepare(task);
 
                 if (ParallelPreparing.Subtract(1, MemoryOrder::release) == 0) ParallelPreparing.NotifyAll();
 
@@ -142,7 +168,7 @@ namespace StockDory
                 return;
             }
 
-            ReplaceInline(MainTask, Limit, Board, Repetition, HalfMoveClock);
+            Prepare(MainTask);
 
             while (const uint32_t building = ParallelPreparing.Load(MemoryOrder::acquire))
                 ParallelPreparing.Wait(building, MemoryOrder::acquire);
@@ -164,7 +190,6 @@ namespace StockDory
 
             // The main thread is responsible for notifying the handlers about the completion of the search, providing
             // them with the best move found
-
             EventHandler.HandleSearchCompletion({
                 .Move = Result.Move,
 

@@ -140,8 +140,10 @@ namespace StockDory
 
     PARAMETER(uint8_t, FFPDepthFactor, 150, 75, 255);
 
-    PARAMETER(uint16_t, HistoryMultiplier, 300, 150, 450);
-    PARAMETER(uint16_t, HistoryShiftDown , 250,   0, 500);
+    PARAMETER(uint16_t, HistoryMultiplier  ,  300, 150,  450);
+    PARAMETER(uint16_t, HistoryShiftDown   ,  250,   0,  500);
+    PARAMETER(uint16_t, HistoryDecayFactorN,  750, 512, 1024);
+    PARAMETER(uint16_t, HistoryDecayFactorD, 1024, 512, 8192);
 
     PARAMETER(int16_t, EvaluationHistoryAdjustmentMultiplier  ,   8,    1,   32);
     PARAMETER(int16_t, EvaluationHistoryAdjustmentOffset      ,   0, -128,  128);
