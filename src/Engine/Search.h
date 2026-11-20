@@ -1155,10 +1155,10 @@ namespace StockDory
 
                     // Static Exchange Evaluation (SEE) Pruning:
                     //
-                    // SEE is essentially an evaluation that determines if an exchange of pieces is materially favorable
-                    // for us or not, and if it is not, then that tactical sequence is not worth searching further, and
-                    // we can prune that branch entirely. As there is more of the search left to recover the material
-                    // further from the leaves, we tolerate larger losses at higher depths
+                    // SEE is essentially an evaluation that determines if an exchange is materially favorable for us,
+                    // and if it isn't, then that tactical sequence is typically not worth searching further and we can
+                    // skip it. As there is more of the search left to recover a material loss, we can tolerate larger
+                    // losses at higher depth
                     if (cls == PolicyClass::BadTactical && !SEE::Accurate(Board, move, -SEETacticalDepthFactor * depth))
                         continue;
                 }
@@ -1474,13 +1474,12 @@ namespace StockDory
             );
 
             Score bestEvaluation = staticEvaluation;
-            for (const Move move : moves) {
+            for (const auto [i, move, cls] : moves) {
                 // Static Exchange Evaluation (SEE) Pruning:
                 //
-                // SEE is essentially an evaluation that determines if an exchange of pieces is materially favorable for
-                // us or not, and if it is not, then that tactical sequence is not worth searching further, and we can
-                // prune that branch entirely
-                if (!SEE::Accurate(Board, move, 0)) continue;
+                // SEE is essentially an evaluation that determines if an exchange is materially favorable for us, and
+                // if it isn't, then that tactical sequence is typically not worth searching further and we can skip it
+                if (cls == PolicyClass::BadTactical) continue;
 
                 const PreviousState state = DoMove<false>(move, ply);
 
