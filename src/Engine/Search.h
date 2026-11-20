@@ -1115,30 +1115,53 @@ namespace StockDory
 
                 seenQuiets += quiet;
 
+                const PieceType movingPiece = Board[move.From()].Type();
+
                 // Avoid pruning in PV (includes root), when under check, or when our best evaluation so far is losing
                 // as we may return a mated score without verifying otherwise
                 if (!PV && !checked && !IsLoss(bestEvaluation)) {
-                    // Forward Futility Pruning (FFP):
-                    //
-                    // FFP is a technique which tries to reasonably estimate whether it's futile to continue searching
-                    // through the subtrees of a branch. It uses the static evaluation, with the addition of a margin
-                    // that depends on how far the search is from the leaf, and checks if the branch is recoverable; if
-                    // it is not, then the branch is pruned, saving search time for elsewhere
-                    if (!IsLoss(staticEvaluation) && quiet && staticEvaluation + depth * FFPDepthFactor <= alpha)
-                        break;
+                    if (quiet) {
+                        const int32_t lmrDepth = std::max<int32_t>(0, depth - LMRTable[depth][i] / LMRQuantization);
 
-                    // Late Move Pruning (LMP):
+                        const int32_t quietHistory = History [Us][movingPiece][move.To()] +
+                                                     counter [Us][movingPiece][move.To()] +
+                                                     followup[Us][movingPiece][move.To()] ;
+
+                        // Forward Futility Pruning (FFP):
+                        //
+                        // FFP is a technique which tries to reasonably estimate whether it's futile to continue
+                        // searching through the subtrees of a branch. It uses the static evaluation, with the addition
+                        // of a margin that depends on how far the search is from the leaf, and checks if the branch is
+                        // recoverable; if it is not, then the branch is pruned, saving search time for elsewhere
+                        if (!IsLoss(staticEvaluation) && lmrDepth <= FFPMaximumDepth &&
+                            staticEvaluation + lmrDepth * FFPDepthFactor + quietHistory / FFPHistoryDivisor <= alpha) {
+                            moves.SkipQuiets();
+                            continue;
+                        }
+
+                        // Late Move Pruning (LMP):
+                        //
+                        // LMP is a technique which heavily relies on the accuracy of the move policy: it leverages that
+                        // with an accurate and stable move policy, in the vast majority of branches, all the good moves
+                        // would have already been searched earlier and that all the moves that are searched later are
+                        // likely not good moves and we can avoid searching them entirely. This is less reliable further
+                        // from the leaves of the tree and hence we search more quiet moves before pruning at higher
+                        // depths
+                        if (majorMaterial && seenQuiets > (LMPLastQuietBase + depth * depth) / (2 - improving)) {
+                            moves.SkipQuiets();
+                            continue;
+                        }
+                    }
+
+                    // Static Exchange Evaluation (SEE) Pruning:
                     //
-                    // LMP is a technique which heavily relies on the accuracy of the move policy: it leverages that
-                    // with an accurate and stable move policy, in the vast majority of branches, all the good moves
-                    // would have already been searched earlier and that all the moves that are searched later are
-                    // likely not good moves and we can avoid searching them entirely. This is less reliable further
-                    // from the leaves of the tree and hence applied at low depths
-                    if (majorMaterial && depth <= LMPMaximumDepth && seenQuiets > LMPLastQuietBase + depth * depth)
-                        break;
+                    // SEE is essentially an evaluation that determines if an exchange of pieces is materially favorable
+                    // for us or not, and if it is not, then that tactical sequence is not worth searching further, and
+                    // we can prune that branch entirely. As there is more of the search left to recover the material
+                    // further from the leaves, we tolerate larger losses at higher depths
+                    if (cls == PolicyClass::BadTactical && !SEE::Accurate(Board, move, -SEETacticalDepthFactor * depth))
+                        continue;
                 }
-
-                const PieceType movingPiece = Board[move.From()].Type();
 
                 uint64_t nodesBeforeMove = 0;
 
