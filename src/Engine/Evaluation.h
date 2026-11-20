@@ -20,7 +20,7 @@
 namespace StockDory
 {
 
-    constexpr int16_t EvaluationScale = 400;
+    constexpr int16_t EvaluationScale = 356;
 
     // Architecture:
     namespace Networks
