@@ -11,6 +11,24 @@
 namespace StockDory
 {
 
+    enum class PolicyClass : uint8_t
+    {
+
+        TT,
+        GoodTactical,
+        Quiet,
+        BadTactical
+
+    };
+
+    struct PolicyScore
+    {
+
+        int32_t     Score;
+        PolicyClass Class;
+
+    };
+
     template<Side Us, bool CaptureOnly = false>
     class Policy
     {
@@ -66,7 +84,7 @@ namespace StockDory
             Followup(followup), CaptureHistory(captureHistory), TTMove(tt) {}
 
         template<PieceType Type, PieceType Promotion = NAPT>
-        int32_t Score(const Move move) const
+        PolicyScore Score(const Move move) const
         {
             // Policy:
             //
@@ -84,7 +102,7 @@ namespace StockDory
             // - Bad Quiet Moves
             //   - Bad History Moves
 
-            if (move == TTMove) return MaximumScore;
+            if (move == TTMove) return { .Score = MaximumScore, .Class = PolicyClass::TT };
 
             int32_t score = 0;
 
@@ -97,10 +115,10 @@ namespace StockDory
                 score += MvvLva[targetPiece][Type] * (goodCapture ? 20 : 1);
                 score += CaptureHistory[Us][Type][move.To()][targetPiece];
 
-                return score;
+                return { .Score = score, .Class = goodCapture ? PolicyClass::GoodTactical : PolicyClass::BadTactical };
             }
 
-            if (Promotion != NAPT) return score;
+            if (Promotion != NAPT) return { .Score = score, .Class = PolicyClass::GoodTactical };
 
             if (move.SameIdentity(KillerOne)) score += HistoryLimit    ;
             if (move.SameIdentity(KillerTwo)) score += HistoryLimit / 2;
@@ -109,7 +127,7 @@ namespace StockDory
             score += Counter [Us][Type][move.To()];
             score += Followup[Us][Type][move.To()];
 
-            return score;
+            return { .Score = score, .Class = PolicyClass::Quiet };
         }
 
     };

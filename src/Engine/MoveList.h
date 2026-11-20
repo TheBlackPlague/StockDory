@@ -7,6 +7,7 @@
 #define STOCKDORY_MOVELIST_H
 
 #include <algorithm>
+#include <cassert>
 #include <iterator>
 #include <type_traits>
 #include <utility>
@@ -26,23 +27,28 @@ namespace StockDory
         struct OrderedMove
         {
 
-            int32_t Score;
-            Move    Move ;
+            int32_t     Score;
+            Move        Move ;
+            PolicyClass Class;
 
         };
+
+        static_assert(sizeof(OrderedMove) == 8);
 
         using Entry = std::conditional_t<Ordering == Ordered, OrderedMove, Move>;
 
         Array<Entry, MaxMove> Internal;
 
-        uint8_t Size = 0;
+        uint8_t Size  = 0;
+        uint8_t Index = 0;
 
         public:
         struct IndexedMove
         {
 
-            uint8_t Index;
-            Move    Move ;
+            uint8_t     Index;
+            Move        Move ;
+            PolicyClass Class;
 
             // ReSharper disable once CppNonExplicitConversionOperator
             operator StockDory::Move() const { return Move; }
@@ -54,16 +60,14 @@ namespace StockDory
 
             MoveList& List;
 
-            uint8_t Index = 0;
-
             public:
             explicit Iterator(MoveList& list) : List(list) {}
 
-            bool operator !=(const std::default_sentinel_t) const { return Index < List.Size; }
+            bool operator !=(const std::default_sentinel_t) const { return List.Index < List.Size; }
 
-            IndexedMove operator *() const { return { .Index = Index, .Move = List.Next(Index) }; }
+            IndexedMove operator *() const { return List.Next(); }
 
-            Iterator& operator ++() { Index++; return *this; }
+            Iterator& operator ++() { List.Index++; return *this; }
 
         };
 
@@ -76,6 +80,7 @@ namespace StockDory
 
         explicit MoveList(
             const Board&                  board,
+            const bool                  checked,
             const uint8_t                   ply,
             const KTable&                killer,
             const HTable&               history,
@@ -91,10 +96,22 @@ namespace StockDory
 
             Emitter emitter (*this, policy);
 
-            Generate<Us, Set>(board, emitter);
+            GenerateFrom<Us, Set>(board, board.Masks<Us>(checked), BBFilled, emitter);
         }
 
         uint8_t Count() const { return Size; }
+
+        void SkipQuiets() requires (Ordering == Ordered)
+        {
+            assert(Index < Size);
+
+            uint8_t size = Index + 1;
+
+            for (uint8_t i = Index + 1; i < Size; i++)
+                if (Internal[i].Class != PolicyClass::Quiet) Internal[size++] = Internal[i];
+
+            Size = size;
+        }
 
         Move operator [](const uint8_t index) const requires (Ordering == Unordered) { return Internal[index]; }
 
@@ -107,16 +124,16 @@ namespace StockDory
         std::default_sentinel_t end() const requires (Ordering == Ordered) { return {}; }
 
         private:
-        Move Next(const uint8_t sorted) requires (Ordering == Ordered)
+        IndexedMove Next() requires (Ordering == Ordered)
         {
-            int32_t best = Internal[sorted].Score << 8 | (MaxMove - sorted);
-            for (uint8_t i = sorted + 1; i < Size; i++) best = std::max(best, Internal[i].Score << 8 | (MaxMove - i));
+            int32_t best = Internal[Index].Score << 8 | (MaxMove - Index);
+            for (uint8_t i = Index + 1; i < Size; i++) best = std::max(best, Internal[i].Score << 8 | (MaxMove - i));
 
             const uint8_t index = MaxMove - (best & 0xFF);
 
-            std::swap(Internal[index], Internal[sorted]);
+            std::swap(Internal[index], Internal[Index]);
 
-            return Internal[sorted].Move;
+            return { .Index = Index, .Move = Internal[Index].Move, .Class = Internal[Index].Class };
         }
 
         class Emitter
@@ -197,8 +214,11 @@ namespace StockDory
             {
                 const Move move (from, to, flag);
 
-                if constexpr (Ordering == Ordered) *Cursor++ = { Policy->template Score<Type, Promotion>(move), move };
-                else                               *Cursor++ = move;
+                if constexpr (Ordering == Ordered) {
+                    const PolicyScore policy = Policy->template Score<Type, Promotion>(move);
+
+                    *Cursor++ = { policy.Score, move, policy.Class };
+                } else *Cursor++ = move;
             }
 
             [[clang::always_inline]]

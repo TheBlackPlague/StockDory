@@ -1090,7 +1090,9 @@ namespace StockDory
             const HTable& counter  = Continuation(1);
             const HTable& followup = Continuation(2);
 
-            MoveList<Us, Ordered> moves (Board, ply, Killer, History, counter, followup, CaptureHistory, ttMove);
+            MoveList<Us, Ordered> moves (
+                Board, checked, ply, Killer, History, counter, followup, CaptureHistory, ttMove
+            );
 
             SearchTranspositionEntry ttEntryNew
             {
@@ -1107,7 +1109,7 @@ namespace StockDory
 
             Score bestEvaluation = -Infinity;
 
-            for (const auto [i, move] : moves) {
+            for (const auto [i, move, cls] : moves) {
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
 
@@ -1445,7 +1447,7 @@ namespace StockDory
             if (staticEvaluation > alpha) alpha = staticEvaluation;
 
             MoveList<Us, Ordered, CaptureMoves> moves (
-                Board, ply, Killer, NullHistory, NullHistory, NullHistory, CaptureHistory
+                Board, Board.Checked<Us>(), ply, Killer, NullHistory, NullHistory, NullHistory, CaptureHistory
             );
 
             Score bestEvaluation = staticEvaluation;

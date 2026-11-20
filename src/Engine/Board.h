@@ -400,6 +400,12 @@ namespace StockDory
         template<Side S>
         GenerationMasks Masks() const { return { .Check = Check<S>(), .Pin = Pin<S>() }; }
 
+        template<Side S>
+        GenerationMasks Masks(const bool checked) const
+        {
+            return { .Check = checked ? Check<S>() : CheckBitBoard { .Check = BBFilled }, .Pin = Pin<S>() };
+        }
+
         BitBoard Attackers(const Square sq, const BitBoard occupied) const
         {
             BitBoard attackers = AttackTable::Pawn[White][sq] &  PieceBoard( Pawn , Black)  |
