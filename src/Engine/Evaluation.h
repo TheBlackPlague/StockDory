@@ -20,11 +20,13 @@
 namespace StockDory
 {
 
+    constexpr int16_t EvaluationScale = 400;
+
     // Architecture:
     namespace Networks
     {
 
-        template<size_t Hidden, bool SquaredActivation = true>
+        template<size_t Hidden, int16_t Scale, bool SquaredActivation = true>
         constexpr auto PerspectiveBase768()
         {
             using namespace MantaRay;
@@ -43,10 +45,10 @@ namespace StockDory
 
             const auto y = l1(yConcat);
 
-            return Output(y, 400);
+            return Output(y, Scale);
         }
 
-        constexpr auto Eclipse() { return PerspectiveBase768<1536>(); }
+        constexpr auto Eclipse() { return PerspectiveBase768<1536, EvaluationScale>(); }
 
     } // Networks
 
