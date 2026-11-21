@@ -1090,7 +1090,9 @@ namespace StockDory
             const HTable& counter  = Continuation(1);
             const HTable& followup = Continuation(2);
 
-            MoveList<Us, Ordered> moves (Board, ply, Killer, History, counter, followup, CaptureHistory, ttMove);
+            MoveList<Us, Ordered> moves (
+                Board, checked, ply, Killer, History, counter, followup, CaptureHistory, ttMove
+            );
 
             SearchTranspositionEntry ttEntryNew
             {
@@ -1107,7 +1109,7 @@ namespace StockDory
 
             Score bestEvaluation = -Infinity;
 
-            for (const auto [i, move] : moves) {
+            for (const auto [i, move, cls] : moves) {
                 const bool capture = move.Capture();
                 const bool quiet   = move.Quiet  ();
 
@@ -1445,17 +1447,17 @@ namespace StockDory
             if (staticEvaluation > alpha) alpha = staticEvaluation;
 
             MoveList<Us, Ordered, CaptureMoves> moves (
-                Board, ply, Killer, NullHistory, NullHistory, NullHistory, CaptureHistory
+                Board, Board.Checked<Us>(), ply, Killer, NullHistory, NullHistory, NullHistory, CaptureHistory
             );
 
             Score bestEvaluation = staticEvaluation;
-            for (const Move move : moves) {
+            for (const auto [i, move, cls] : moves) {
                 // Static Exchange Evaluation (SEE) Pruning:
                 //
                 // SEE is essentially an evaluation that determines if an exchange of pieces is materially favorable for
                 // us or not, and if it is not, then that tactical sequence is not worth searching further, and we can
                 // prune that branch entirely
-                if (!SEE::Accurate(Board, move, 0)) continue;
+                if (cls == PolicyClass::BadTactical) continue;
 
                 const PreviousState state = DoMove<false>(move, ply);
 
