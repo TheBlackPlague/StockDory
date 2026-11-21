@@ -1115,30 +1115,76 @@ namespace StockDory
 
                 seenQuiets += quiet;
 
+                const PieceType movingPiece = Board[move.From()].Type();
+
                 // Avoid pruning in PV (includes root), when under check, or when our best evaluation so far is losing
                 // as we may return a mated score without verifying otherwise
                 if (!PV && !checked && !IsLoss(bestEvaluation)) {
-                    // Forward Futility Pruning (FFP):
-                    //
-                    // FFP is a technique which tries to reasonably estimate whether it's futile to continue searching
-                    // through the subtrees of a branch. It uses the static evaluation, with the addition of a margin
-                    // that depends on how far the search is from the leaf, and checks if the branch is recoverable; if
-                    // it is not, then the branch is pruned, saving search time for elsewhere
-                    if (!IsLoss(staticEvaluation) && quiet && staticEvaluation + depth * FFPDepthFactor <= alpha)
-                        break;
+                    if (quiet) {
+                        // Forward Futility Pruning (FFP):
+                        //
+                        // FFP is a technique which tries to reasonably estimate whether a branch has any chance of
+                        // recovering. In its estimate, it considers how far we're from the leaves of the tree, since
+                        // that leaves more of the search to recover. However, if it is believed that the branch will
+                        // not recover or provide any more value to this search, then it is deemed futile to search such
+                        // a branch, and it is instead pruned
+                        if (!IsLoss(staticEvaluation) && staticEvaluation + depth * FFPDepthFactor <= alpha) {
+                            moves.SkipQuiets();
+                            continue;
+                        }
 
-                    // Late Move Pruning (LMP):
-                    //
-                    // LMP is a technique which heavily relies on the accuracy of the move policy: it leverages that
-                    // with an accurate and stable move policy, in the vast majority of branches, all the good moves
-                    // would have already been searched earlier and that all the moves that are searched later are
-                    // likely not good moves and we can avoid searching them entirely. This is less reliable further
-                    // from the leaves of the tree and hence applied at low depths
-                    if (majorMaterial && depth <= LMPMaximumDepth && seenQuiets > LMPLastQuietBase + depth * depth)
-                        break;
+                        // Late Move Pruning (LMP):
+                        //
+                        // LMP is a technique which is heavily reliant on an accurate move policy. It leverages the
+                        // judgement of the policy, in that in the vast majority branches, the policy will have ordered
+                        // all the good moves earlier in the tree and all the late moves are likely not good moves and
+                        // we can avoid searching them entirely. This an be less reliable the further you are from the
+                        // leaves of the tree, and hence only applied at low depths
+                        if (majorMaterial &&
+                            depth <= LMPMaximumDepth && seenQuiets > LMPLastQuietBase + depth * depth) {
+                            moves.SkipQuiets();
+                            continue;
+                        }
+
+                        // Static Exchange Evaluation (SEE) Pruning:
+                        //
+                        // SEE is essentially an evaluation that estimates if an exchange we're entering into can, at
+                        // the end, be materially favorable for us. If not, then such a sequence is likely not worth
+                        // searching further and we can prune that branch
+                        const int32_t history = History [Us][movingPiece][move.To()] +
+                                                counter [Us][movingPiece][move.To()] +
+                                                followup[Us][movingPiece][move.To()] ;
+
+                        const int32_t margin = SEEPruningQuietDepthFactor * depth +
+                                               history / SEEPruningQuietHistoryDivisor;
+
+                        if (!SEE::Accurate(Board, move, -std::max<int32_t>(margin, 0))) continue;
+                    } else if (cls == PolicyClass::BadTactical) {
+                        const PieceType targetPiece = move.EnPassant() ? Pawn : Board[move.To()].Type();
+
+                        // Forward Futility Pruning (FFP):
+                        //
+                        // FFP is a technique which tries to reasonably estimate whether a branch has any chance of
+                        // recovering. In its estimate, it considers how far we're from the leaves of the tree, since
+                        // that leaves more of the search to recover, as well as the value of the piece we're trying
+                        // to capture
+                        if (!IsLoss(staticEvaluation) &&
+                            staticEvaluation + depth * FFPDepthFactor + SEE::Value(targetPiece) <= alpha)
+                            continue;
+
+                        // Static Exchange Evaluation (SEE) Pruning:
+                        //
+                        // SEE is essentially an evaluation that estimates if an exchange we're entering into can, at
+                        // the end, be materially favorable for us. If not, then such a sequence is likely not worth
+                        // searching further and we can prune that branch
+                        const int32_t history = CaptureHistory[Us][movingPiece][move.To()][targetPiece];
+
+                        const int32_t margin = SEEPruningCaptureBase + SEEPruningCaptureDepthFactor * depth +
+                                               history / SEEPruningCaptureHistoryDivisor;
+
+                        if (!SEE::Accurate(Board, move, -std::max<int32_t>(margin, 0))) continue;
+                    }
                 }
-
-                const PieceType movingPiece = Board[move.From()].Type();
 
                 uint64_t nodesBeforeMove = 0;
 

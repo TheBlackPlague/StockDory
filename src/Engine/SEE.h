@@ -19,6 +19,8 @@ namespace StockDory
         };
 
         public:
+        static int32_t Value(const PieceType type) { return Internal[type]; }
+
         static bool Accurate(const Board& board, const Move move, const int32_t threshold)
         {
             if (move.Promotion() != NAPT || move.EnPassant() || move.Castling()) return true;
