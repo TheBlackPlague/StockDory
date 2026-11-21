@@ -126,6 +126,10 @@ namespace StockDory
     PARAMETER(uint8_t, IIRMinimumDepth  , 4, 3, 8);
     PARAMETER(uint8_t, IIRDepthReduction, 1, 0, 2);
 
+    PARAMETER(uint8_t, SEEDepthFactor, 30, 15, 120);
+
+    PARAMETER(uint8_t, FFPDepthFactor, 150, 75, 255);
+
     PARAMETER(uint8_t, LMPMaximumDepth , 3, 1,  8);
     PARAMETER(uint8_t, LMPLastQuietBase, 3, 1, 16);
 
@@ -137,8 +141,6 @@ namespace StockDory
     PARAMETER(uint16_t, LMRGaveCheckPenalty , 1024,   0, 2048);
     PARAMETER(uint16_t, LMRHistoryWeight    , 1024, 512, 2048);
     PARAMETER(uint16_t, LMRHistoryPartition ,    2,   1,    4);
-
-    PARAMETER(uint8_t, FFPDepthFactor, 150, 75, 255);
 
     PARAMETER(uint16_t, HistoryMultiplier  ,  300, 150,  450);
     PARAMETER(uint16_t, HistoryShiftDown   ,  250,   0,  500);

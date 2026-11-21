@@ -81,6 +81,7 @@ namespace StockDory
         explicit MoveList(
             const Board&                  board,
             const bool                  checked,
+            const int16_t                 depth,
             const uint8_t                   ply,
             const KTable&                killer,
             const HTable&               history,
@@ -91,7 +92,7 @@ namespace StockDory
         ) requires (Ordering == Ordered)
         {
             const OrderingPolicy policy (
-                board, killer[0][ply], killer[1][ply], history, counter, followup, captureHistory, ttMove
+                board, depth, killer[0][ply], killer[1][ply], history, counter, followup, captureHistory, ttMove
             );
 
             Emitter emitter (*this, policy);

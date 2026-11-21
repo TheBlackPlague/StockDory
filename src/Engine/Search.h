@@ -1091,7 +1091,7 @@ namespace StockDory
             const HTable& followup = Continuation(2);
 
             MoveList<Us, Ordered> moves (
-                Board, checked, ply, Killer, History, counter, followup, CaptureHistory, ttMove
+                Board, checked, depth, ply, Killer, History, counter, followup, CaptureHistory, ttMove
             );
 
             SearchTranspositionEntry ttEntryNew
@@ -1447,7 +1447,7 @@ namespace StockDory
             if (staticEvaluation > alpha) alpha = staticEvaluation;
 
             MoveList<Us, Ordered, CaptureMoves> moves (
-                Board, Board.Checked<Us>(), ply, Killer, NullHistory, NullHistory, NullHistory, CaptureHistory
+                Board, Board.Checked<Us>(), 0, ply, Killer, NullHistory, NullHistory, NullHistory, CaptureHistory
             );
 
             Score bestEvaluation = staticEvaluation;

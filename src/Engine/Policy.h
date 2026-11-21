@@ -7,6 +7,7 @@
 #define STOCKDORY_POLICY_H
 
 #include "SEE.h"
+#include "TunableParameter.h"
 
 namespace StockDory
 {
@@ -58,6 +59,8 @@ namespace StockDory
 
         const Board& Board;
 
+        const int16_t Depth;
+
         const Move KillerOne;
         const Move KillerTwo;
 
@@ -73,6 +76,7 @@ namespace StockDory
         public:
         Policy(
             const StockDory::Board& board,
+            const int16_t depth,
             const Move killerOne,
             const Move killerTwo,
             const HTable&  history,
@@ -80,7 +84,7 @@ namespace StockDory
             const HTable& followup,
             const CaptureHTable& captureHistory,
             const Move tt
-        ) : Board(board), KillerOne(killerOne), KillerTwo(killerTwo), History(history), Counter(counter),
+        ) : Board(board), Depth(depth), KillerOne(killerOne), KillerTwo(killerTwo), History(history), Counter(counter),
             Followup(followup), CaptureHistory(captureHistory), TTMove(tt) {}
 
         template<PieceType Type, PieceType Promotion = NAPT>
@@ -109,7 +113,7 @@ namespace StockDory
             if (Promotion != NAPT) score += PromotionFactor[Promotion] * PromotionMultiplier;
 
             if (CaptureOnly || move.Capture()) {
-                const bool goodCapture = SEE::Accurate(Board, move, 0);
+                const bool goodCapture = SEE::Accurate(Board, move, Depth * -SEEDepthFactor);
                 const auto targetPiece = move.EnPassant() ? Pawn : Board[move.To()].Type();
 
                 score += MvvLva[targetPiece][Type] * (goodCapture ? 20 : 1);
