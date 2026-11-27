@@ -1147,7 +1147,7 @@ namespace StockDory
                 if      (capture) searchedCaptures.Push(move);
                 else if ( quiet ) searchedQuiets  .Push(move);
 
-                // Principle Variation Search (PVS):
+                // Principal Variation Search (PVS):
                 //
                 // PVS is a search technique that heavily relies on the move policy; working on the assumption that the
                 // move policy ensures that the best moves are ordered first, and thus, the first move is likely the
