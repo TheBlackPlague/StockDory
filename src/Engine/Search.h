@@ -157,7 +157,7 @@ namespace StockDory
 
         void PopNull(const size_t previous) { Pop(); NullBoundary = previous; }
 
-        bool Found(const uint8_t halfMoveClock) const
+        bool Found(const uint8_t halfMoveClock, const uint8_t ply) const
         {
             if (CurrentIndex <= NullBoundary) return false;
 
@@ -170,6 +170,8 @@ namespace StockDory
 
             for (size_t distance = 4; distance <= limit; distance += 2) {
                 if (Internal[current - distance] != hash) continue;
+
+                if (distance < ply) return true;
 
                 if (++found == RepetitionLimit) return true;
             }
@@ -775,11 +777,11 @@ namespace StockDory
 
                 // Repetition:
                 //
-                // The repetition rule states that if the same position occurs three times, then the game is drawn. We
-                // check this by storing the Zobrist Hashes of all positions we've seen in the current branch of the
-                // search. We check if the current position's hash has been seen before N times, where N is equal to
-                // the repetition limit (3 by default)
-                if (Repetition.Found(Stack[ply].HalfMoveClock)) return Draw;
+                // The repetition rule states that if the same position occurs three or more times, then the game can be
+                // claimed as a draw by either side. A position repeated inside the search tree (i.e. after root) is
+                // scored as a draw on its first repetition, as either side could repeat it again. Otherwise, we check
+                // if a position has been seen before at least 3 times
+                if (Repetition.Found(Stack[ply].HalfMoveClock, ply)) return Draw;
 
                 // Insufficient material:
                 //
